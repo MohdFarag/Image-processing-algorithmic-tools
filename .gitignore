@@ -476,3 +476,5 @@ src/__pycache__/
 src/.vscode/
 src/.vs/
 .vs/
+
+assets/testinputs/

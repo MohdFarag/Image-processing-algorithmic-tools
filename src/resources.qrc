@@ -1,0 +1,12 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file alias="icon.svg">assets/icons/icon.svg</file>
+    <file alias="bmp.ico">assets/icons/bmp.ico</file>
+    <file alias="jpeg.ico">assets/icons/jpeg.ico</file>
+    <file alias="file.ico">assets/icons/file.ico</file>
+    <file alias="folder.ico">assets/icons/folder.ico</file>
+    <file alias="image.ico">assets/icons/image.ico</file>
+    <file alias="menu.ico">assets/icons/menu.ico</file>
+    <file alias="exit.svg">assets/icons/exit.svg</file>
+</qresource>
+</RCC>

@@ -7,13 +7,17 @@ from style import progressBarStyle
 
 if __name__ == "__main__":
 
-    # Initialize Our Window App
+    # Create the application
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     app.setStyleSheet(progressBarStyle)
 
-    popWindow = Window()
-    popWindow.show()
+    win = Window()
+    win.show()
 
-    # Run the application
+    # Create and show the main window
+    win = Window()
+    win.show()
+        
+    # Run the event loop
     sys.exit(app.exec_())
