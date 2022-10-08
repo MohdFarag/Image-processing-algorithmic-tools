@@ -477,4 +477,4 @@ src/.vscode/
 src/.vs/
 .vs/
 
-assets/testinputs
+src/assets/testinputs/
