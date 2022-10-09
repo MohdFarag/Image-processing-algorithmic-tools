@@ -469,12 +469,10 @@ ASALocalRun/
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
 
-# Ionide (
-
 # Others
 src/__pycache__/
 src/.vscode/
 src/.vs/
 .vs/
 
-src/assets/testinputs/
+*.dcm
