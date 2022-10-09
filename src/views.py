@@ -7,41 +7,34 @@ import os
 
 # Import Classes
 from .additionsQt import *
-
+from .image import ImageViewer
 # Importing Qt widgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-
-# Importing numpy and pandas
-import numpy as np
-import pandas as pd
-
-# Importing pyqtgraph as pg
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore
-from pyqtgraph.dockarea import *
+import os
 
 # Importing Logging
 from .log import appLogger
 
+
+MODE_TO_BPP = {'1':1, 'L':8, 'P':8, 'RGB':24, 'RGBA':32, 'CMYK':32, 'YCbCr':24, 'I':32, 'F':32}
+
 class Window(QMainWindow):
-    """Main Window."""
+    """Main Window"""
     def __init__(self):
         """Initializer."""
         super().__init__()
 
-        ### Initialize Variable
-        self.thread = QThread()
+        self.infoDict = dict()
 
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon.svg"))
 
         ### Setting title
         self.setWindowTitle("Image Viewer")
+        # self.resize(600,600)
 
         ### UI contents
         self._createActions()
@@ -49,7 +42,6 @@ class Window(QMainWindow):
         self._createToolBar()
         # self._createContextMenu()
         self._createStatusBar()
-        self._connectActions()
         # Central area
         self._initUI()
         # Connect signals
@@ -79,6 +71,12 @@ class Window(QMainWindow):
         self.aboutAction = QAction("&About...", self)
         self.aboutAction.setStatusTip('About')
 
+    def addSeperator(self, parent):
+        # Creating a separator action
+        self.separator = QAction(self)
+        self.separator.setSeparator(True)
+        parent.addAction(self.separator)
+
     # Menu
     def _createMenuBar(self):
         # Menu bar
@@ -101,8 +99,6 @@ class Window(QMainWindow):
         ## Append taps
         menuBar.addMenu(fileMenu)
         menuBar.addMenu(helpMenu)
-
-        appLogger.debug("Application started successfully.")
 
     # Tool Bar
     def _createToolBar(self):
@@ -153,42 +149,122 @@ class Window(QMainWindow):
         # Outer Layout
         outerLayout = QVBoxLayout()
 
-        ######### INIT GUI #########
+        ### init GUI ###
+        
         # Main layout
+        
+        self.viewer = ImageViewer()
+        outerLayout.addWidget(self.viewer)
 
-        ######### INIT GUI #########
+        # Add docker
+        self.addDockLayout()
+
+        ### GUI ###
         centralMainWindow.setLayout(outerLayout)
 
+
+    def addDockLayout(self):       
+        self.dockInfo = QDockWidget("Information", self)
+        self.dockInfo
+
+        self.dataWidget = QTreeWidget()
+        self.dataWidget.setColumnCount(2)
+        self.dataWidget.setHeaderLabels(["Attribute", "Value"])
+        self.setInfo("dcm")
+
+        self.dockInfo.setWidget(self.dataWidget)
+        
+        self.dockInfo.setFloating(False)
+
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockInfo)
+
+    def setInfo(self, ext, width="", height="", size="", depth="", color="", Modality="", PatientName="", PatientAge="", BodyPartExamined=""):
+        info = dict()
+        if ext == "dcm":
+            info = {
+                    "Width":width, 
+                    "Height":height,
+                    "Total Size":size,
+                    "Bit depth":depth,
+                    "Image color":color,
+                    "Modality used": Modality,
+                    "Patient name": PatientName,
+                    "Patient Age": PatientAge,
+                    "Body part examined": BodyPartExamined
+                    }
+        else:
+            info = {
+                    "Width":width, 
+                    "Height":height,
+                    "Total Size":size,
+                    "Bit depth":depth,
+                    "Image color":color
+                    }
+
+        self.setDataOfTree(info)
+
+    def setDataOfTree(self, data):
+        self.dataWidget.clear()
+        items = []
+        item = QTreeWidgetItem(["metadata"])
+        for key, value in data.items():
+            child = QTreeWidgetItem([key, str(value)])
+            item.addChild(child)
+        self.dataWidget.insertTopLevelItem(0, item)
+
+    # Temp.
     def getSize(self):
         return 0 
-
+    
     # Connect
     def _connectActions(self):
         self.openAction.triggered.connect(self.browseImage)
         self.exitAction.triggered.connect(self.exit)
     
     def _connect(self):
+        self._connectActions()
         pass
 
     # Open image
     def browseImage(self):
-        try:
-            path, fileExtension = QFileDialog.getOpenFileName(None, "Load Image File", os.getenv('HOME') ,"csv(*.csv)")            
+        
+            path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
+            fileExtension = path.split(".")[-1]
             # If no message chosed
             if path == "":
                 return
-            
-            if fileExtension == "csv(*.csv)":
-                pass
-
-        except Exception as e:
-            appLogger.exception("Can't open a image file")
+            try:
+                data = self.viewer.setImage(path,fileExtension)
+            except Exception as e:
+                appLogger.exception("Can't open a image file !")
     
-    def addSeperator(self, parent):
-        # Creating a separator action
-        self.separator = QAction(self)
-        self.separator.setSeparator(True)
-        parent.addAction(self.separator)
+            size = f"{os.stat(path).st_size * 8} bits"
+
+            if fileExtension == "dcm":
+                width =  f"{self.getAttr(data, 'Rows')} px"
+                height = f"{self.getAttr(data, 'Columns')} px"
+                depth = f"{self.getAttr(data, 'BitsStored')} bit/pixel"
+                mode = self.getAttr(data, "PhotometricInterpretation")
+                modality = self.getAttr(data, "Modality")
+                name = self.getAttr(data, "PatientName")
+                age = self.getAttr(data,"PatientAge")
+                body = self.getAttr(data,"BodyPartExamined")
+                
+                self.setInfo(fileExtension,width, height, size, depth, mode, modality, name, age, body)
+            else:
+                width = f"{self.getAttr(data,'width')} + px"
+                height = f"{self.getAttr(data,'height')} + px"
+                depth = f"{MODE_TO_BPP[data.mode]} bit/pixel"
+                mode = self.getAttr(data,"mode")
+
+                self.setInfo(fileExtension, width, height, size, depth, mode)
+    
+    # Get Data
+    def getAttr(self, variable, att):
+        if hasattr(variable, att):
+            return getattr(variable, att)
+        else:
+            return "N/A"
 
     # Exit the application
     def exit(self):

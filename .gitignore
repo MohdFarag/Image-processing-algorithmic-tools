@@ -475,4 +475,4 @@ src/.vscode/
 src/.vs/
 .vs/
 
-*.dcm
+src/assets/testinputs/*
