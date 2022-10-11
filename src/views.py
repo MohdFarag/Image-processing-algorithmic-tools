@@ -18,8 +18,7 @@ import os
 # Importing Logging
 from .log import appLogger
 
-
-MODE_TO_BPP = {'1':1, 'L':8, 'P':8, 'RGB':24, 'RGBA':32, 'CMYK':32, 'YCbCr':24, 'I':32, 'F':32}
+MODE_TO_BPP = {"1": 1, "L": 8, "P": 8, "RGB": 24, "RGBA": 32, "CMYK": 32, "YCbCr": 24, "LAB": 24, "HSV": 24, "I": 32, "F": 32}
 
 class Window(QMainWindow):
     """Main Window"""
@@ -227,17 +226,20 @@ class Window(QMainWindow):
 
     # Open image
     def browseImage(self):
-        
             path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
             fileExtension = path.split(".")[-1]
+            
             # If no message chosed
             if path == "":
                 return
+            
             try:
                 data = self.viewer.setImage(path,fileExtension)
             except Exception as e:
-                appLogger.exception("Can't open a image file !")
-    
+                appLogger.exception("Can't open the file !")
+                QMessageBox.critical(self , "Corrupted image" , "Sorry, the image is corrupted !")
+                return
+            
             size = f"{os.stat(path).st_size * 8} bits"
 
             if fileExtension == "dcm":
@@ -252,8 +254,8 @@ class Window(QMainWindow):
                 
                 self.setInfo(fileExtension,width, height, size, depth, mode, modality, name, age, body)
             else:
-                width = f"{self.getAttr(data,'width')} + px"
-                height = f"{self.getAttr(data,'height')} + px"
+                width = f"{self.getAttr(data,'width')} px"
+                height = f"{self.getAttr(data,'height')} px"
                 depth = f"{MODE_TO_BPP[data.mode]} bit/pixel"
                 mode = self.getAttr(data,"mode")
 
