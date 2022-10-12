@@ -25,7 +25,7 @@ class ImageViewer(FigureCanvasQTAgg):
             return
 
         if fileExtension == "dcm":
-            dicomImg = dicom.dcmread(image_path)
+            dicomImg = dicom.dcmread(image_path, force=True)
             self.img = dicomImg.pixel_array
             self.axes.imshow(self.img,cmap="gray")
         else:
