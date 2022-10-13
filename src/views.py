@@ -1,6 +1,8 @@
 # Resources
-import PIL
-import pydicom
+from math import ceil, log2
+import cv2 as cv
+
+import numpy as np
 from .rcIcon import *
 
 # Importing sys package
@@ -217,30 +219,38 @@ class Window(QMainWindow):
             except:
                 # Error
                 appLogger.exception("Can't open the file !")
-                QMessageBox.critical(self , "Corrupted image" , "Sorry, the image is corrupted !")
+                QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
             else:
                 self.statusbar.showMessage(path.split("/")[-1])
-
-                # To convert to bits: multiply by 8
-                size = f"{os.stat(path).st_size * 8} bits" 
-
+                
                 if fileExtension == "dcm":
                     # If dicom
-                    width =  f"{self.getAttr(data, 'Rows')} px"
-                    height = f"{self.getAttr(data, 'Columns')} px"
-                    depth = f"{self.getAttr(data, 'BitsStored')} bit/pixel"
+                    width =  self.getAttr(data, 'Columns')
+                    height = self.getAttr(data, 'Rows')
+                    depth = self.getAttr(data, 'BitsAllocated')
+                    size = f"{width * height * depth} bits" 
+                    width =  f"{width} px"
+                    height = f"{height} px"
+                    depth = f"{depth} bit/pixel"
                     mode = self.getAttr(data, "PhotometricInterpretation")
                     modality = self.getAttr(data, "Modality")
                     name = self.getAttr(data, "PatientName")
                     age = self.getAttr(data,"PatientAge")
                     body = self.getAttr(data,"BodyPartExamined") 
-                    # Set the information                  
+                    # Set the information                 
                     self.setInfo(fileExtension,width, height, size, depth, mode, modality, name, age, body)
                 else:
+
                     # If (jpeg, bitmap)
-                    width = f"{self.getAttr(data,'width')} px"
-                    height = f"{self.getAttr(data,'height')} px"
-                    depth = f"{MODE_TO_BPP[data.mode]} bit/pixel"
+                    imageChannel = cv.imread(path)
+
+                    width = self.getAttr(data,'width')
+                    height = self.getAttr(data,'height')
+                    depth = self.getDepth(data,imageChannel)
+                    size = f"{width * height * depth} bits" 
+                    width =  f"{width} px"
+                    height = f"{height} px"
+                    depth = f"{depth} bit/pixel"
                     mode = self.getAttr(data,"mode")
                     # Set the information
                     self.setInfo(fileExtension, width, height, size, depth, mode)
@@ -253,6 +263,24 @@ class Window(QMainWindow):
         else:
             # If attribute is not found.
             return "N/A"
+
+    # TODO: Check: Right or Wrong
+    def getDepth(self, image,imageChannel):
+        image_sequence = image.getdata()
+        image_array = np.asarray(image_sequence)
+        minVal = image_array.min()
+        maxVal = image_array.max()
+        diff = maxVal - minVal
+        bitDepthForOneChannel = ceil(log2(diff))
+        
+        if imageChannel.shape[2] != None:
+            _ , _ , numOfChannels = imageChannel.shape
+        else:
+            numOfChannels = 1
+            
+        bitDepth = bitDepthForOneChannel * numOfChannels
+
+        return bitDepth
 
     # Exit the application
     def exit(self):
