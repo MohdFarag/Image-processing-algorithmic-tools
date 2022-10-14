@@ -52,12 +52,27 @@ class Window(QMainWindow):
     # Actions
     def _createActions(self):
         # Open Action
-        self.openAction = QAction(QIcon(":file.ico"), "&Open...", self)
+        self.openAction = QAction(QIcon(":file.ico"), "&Open Image...", self)
         self.openAction.setShortcut("Ctrl+O")
         self.openAction.setStatusTip('Open a new image')
 
+        # Grayscale Action
+        self.clearAction = QAction(QIcon(":clear.png"), "&Close Image", self)
+        self.clearAction.setShortcut("Ctrl+C")
+        self.clearAction.setStatusTip('Close the image')
+
+        # Default scale Action
+        self.defaultScaleAction = QAction(QIcon(":defscale.png"), "&Default Scale", self)
+        self.defaultScaleAction.setShortcut("Ctrl+D")
+        self.defaultScaleAction.setStatusTip('Return to default scale')
+
+        # Grayscale Action
+        self.grayScaleAction = QAction(QIcon(":grscale.png"), "&Gray Scale", self)
+        self.grayScaleAction.setShortcut("Ctrl+G")
+        self.grayScaleAction.setStatusTip('Transform to gray scale')
+
         # Exit Action
-        self.exitAction = QAction(QIcon(":exit.svg"), "&Exit...", self)
+        self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
         self.exitAction.setShortcut("Ctrl+Q")
         self.exitAction.setStatusTip('Exit application')
 
@@ -84,7 +99,14 @@ class Window(QMainWindow):
         fileMenu = QMenu("&File", self)
         fileMenu.addAction(self.openAction) # Open file in menu
         fileMenu.addSeparator() # Seperator
+        fileMenu.addAction(self.clearAction) # Clear image in menu
+        fileMenu.addSeparator() # Seperator
         fileMenu.addAction(self.exitAction) # Exit file in menu
+
+        ## Edit tap
+        editMenu = QMenu("&Edit", self)
+        editMenu.addAction(self.defaultScaleAction) # Default scale in menu
+        editMenu.addAction(self.grayScaleAction) # Gray scale in menu
         
         ## Help tap
         helpMenu = QMenu("&Help", self)
@@ -96,13 +118,17 @@ class Window(QMainWindow):
         
         ## Append taps
         menuBar.addMenu(fileMenu)
+        menuBar.addMenu(editMenu)
         menuBar.addMenu(helpMenu)
 
     # Tool Bar
     def _createToolBar(self):
         # Using a title
-        toolBar = self.addToolBar("File")
+        toolBar = self.addToolBar("Top")
         toolBar.addAction(self.openAction)
+        toolBar.addAction(self.defaultScaleAction)
+        toolBar.addAction(self.grayScaleAction)
+        toolBar.addAction(self.clearAction)
     
     # Context Menu Event
     def contextMenuEvent(self, event):
@@ -110,6 +136,10 @@ class Window(QMainWindow):
         menu = QMenu(self)
         # Populating the menu with actions
         menu.addAction(self.openAction)
+        self.addSeperator(menu)
+        menu.addAction(self.defaultScaleAction)
+        menu.addAction(self.grayScaleAction)
+        menu.addAction(self.clearAction)
         self.addSeperator(menu)
         menu.addAction(self.helpContentAction)
         menu.addAction(self.checkUpdatesAction)
@@ -138,6 +168,7 @@ class Window(QMainWindow):
         # Main layout
         
         self.viewer = ImageViewer()
+
         outerLayout.addWidget(self.viewer)
 
         # Add docker
@@ -146,9 +177,8 @@ class Window(QMainWindow):
         ### GUI ###
         centralMainWindow.setLayout(outerLayout)
 
-
-    def addDockLayout(self):
-        # Dock widget    
+    # Dock widget 
+    def addDockLayout(self):   
         self.dockInfo = QDockWidget("Information", self)
         # Tree widget which contains the info
         self.dataWidget = QTreeWidget()
@@ -199,6 +229,9 @@ class Window(QMainWindow):
     # Connect
     def _connectActions(self):
         self.openAction.triggered.connect(self.browseImage) # When click on browse image action
+        self.defaultScaleAction.triggered.connect(self.viewer.toDefaultScale) # When click on grayscale image action
+        self.grayScaleAction.triggered.connect(self.viewer.toGrayScale) # When click on grayscale image action
+        self.clearAction.triggered.connect(self.viewer.clearImage) # When click on exit action
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
@@ -265,22 +298,19 @@ class Window(QMainWindow):
             return "N/A"
 
     # TODO: Check: Right or Wrong
-    def getDepth(self, image,imageChannel):
+    def getDepth(self, image, imageChannel):
         image_sequence = image.getdata()
-        image_array = np.asarray(image_sequence)
-        minVal = image_array.min()
-        maxVal = image_array.max()
-        diff = maxVal - minVal
-        bitDepthForOneChannel = ceil(log2(diff))
+        image_array = np.asarray(image_sequence) 
+        range = image_array.max() - image_array.min()
+        bitDepthForOneChannel = ceil(log2(range))
         
-        if imageChannel.shape[2] != None:
+        try:
             _ , _ , numOfChannels = imageChannel.shape
-        else:
+        except:
             numOfChannels = 1
-            
-        bitDepth = bitDepthForOneChannel * numOfChannels
-
-        return bitDepth
+        finally:
+            bitDepth = bitDepthForOneChannel * numOfChannels
+            return bitDepth
 
     # Exit the application
     def exit(self):

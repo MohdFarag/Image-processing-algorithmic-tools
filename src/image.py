@@ -11,35 +11,78 @@ class ImageViewer(FigureCanvasQTAgg):
     def __init__(self, parent=None):
         self.fig = Figure()
         self.axes = self.fig.add_subplot(111,)
-        self.img = np.array([])
         self.axes.grid(False)
-        self.axes.set_axis_off()
+        self.setTheme()
+
+        # Variables
+        self.loaded = False
+        self.img = None
+        self.newImage = None
 
         super(ImageViewer, self).__init__(self.fig)   
 
+    def setTheme(self):
+        self.fig.set_edgecolor("black")
+        
+        self.axes.spines['bottom'].set_color('0.5')
+        self.axes.spines['top'].set_color('0.5')
+        self.axes.spines['right'].set_color('0.5')
+        self.axes.spines['left'].set_color('0.5')
+
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+
 
     def setImage(self, image_path, fileExtension):
-        self.clearImage()
         if image_path == "":
             return
 
         if fileExtension == "dcm":
             dicomImg = dicom.dcmread(image_path, force=True)
             self.img = dicomImg.pixel_array
-            self.axes.imshow(self.img,cmap="gray")
+            self.axes.imshow(self.img)
         else:
             self.img = mpimg.imread(image_path)
             self.axes.imshow(self.img)
             imgData = Image.open(image_path)
 
+        self.newImage = np.dot(self.img[...,:3], [0.299, 0.587, 0.144])
         self.draw()
-        self.axes.set_axis_off()
+
+        self.loaded = True
 
         if fileExtension == "dcm":
             return dicomImg
         else:
             return imgData
 
+    # Return to default scale
+    def toDefaultScale(self):
+        if self.loaded:
+            self.axes.imshow(self.img)
+            self.draw()
+
+    # Transform to gray scale
+    def toGrayScale(self):
+        if self.loaded:
+            try:
+                self.axes.imshow(self.newImage, cmap='gray')
+            except:
+                self.axes.imshow(self.img, cmap='gray')
+            finally:    
+                self.draw()
+
+    def NearestNeighborInterpolation(self, data, zoomingFactor):
+        pass
+
+    def NearestNeighborInterpolation(self, data, zoomingFactor):
+        pass
+
     def clearImage(self):
         self.axes.clear()
-        self.axes.set_axis_off()
+        self.setTheme()
+        self.draw()
+
+        self.loaded = False
+        self.img = None
+        self.newImage = None

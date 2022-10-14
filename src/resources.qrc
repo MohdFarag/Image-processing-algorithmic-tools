@@ -7,6 +7,9 @@
     <file alias="folder.ico">assets/icons/folder.ico</file>
     <file alias="image.ico">assets/icons/image.ico</file>
     <file alias="menu.ico">assets/icons/menu.ico</file>
+    <file alias="defscale.png">assets/icons/defscale.png</file>
+    <file alias="grscale.png">assets/icons/grayscale.png</file>
+    <file alias="clear.png">assets/icons/clear.png</file>
     <file alias="exit.svg">assets/icons/exit.svg</file>
 </qresource>
 </RCC>
