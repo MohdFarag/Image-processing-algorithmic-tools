@@ -11,9 +11,6 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
 
-    win = Window()
-    win.show()
-
     # Create and show the main window
     win = Window()
     win.show()

@@ -9,6 +9,8 @@
     <file alias="menu.ico">assets/icons/menu.ico</file>
     <file alias="defscale.png">assets/icons/defscale.png</file>
     <file alias="grscale.png">assets/icons/grayscale.png</file>
+    <file alias="zoom.png">assets/icons/zoom.png</file>
+    <file alias="paxiliteZoom.png">assets/icons/paxilateZoom.png</file>
     <file alias="clear.png">assets/icons/clear.png</file>
     <file alias="exit.svg">assets/icons/exit.svg</file>
 </qresource>

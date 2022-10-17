@@ -24,19 +24,15 @@ class ImageViewer(FigureCanvasQTAgg):
     def setTheme(self):
         self.fig.set_edgecolor("black")
         
-        self.axes.spines['bottom'].set_color('0.5')
-        self.axes.spines['top'].set_color('0.5')
-        self.axes.spines['right'].set_color('0.5')
-        self.axes.spines['left'].set_color('0.5')
-
+        self.axes.spines['bottom'].set_color('red')
+        self.axes.spines['top'].set_color('red')
+        self.axes.spines['right'].set_color('red')
+        self.axes.spines['left'].set_color('red')
         self.axes.set_xticks([])
         self.axes.set_yticks([])
 
 
     def setImage(self, image_path, fileExtension):
-        if image_path == "":
-            return
-
         if fileExtension == "dcm":
             dicomImg = dicom.dcmread(image_path, force=True)
             self.img = dicomImg.pixel_array
@@ -48,7 +44,6 @@ class ImageViewer(FigureCanvasQTAgg):
 
         self.newImage = np.dot(self.img[...,:3], [0.299, 0.587, 0.144])
         self.draw()
-
         self.loaded = True
 
         if fileExtension == "dcm":
@@ -72,11 +67,17 @@ class ImageViewer(FigureCanvasQTAgg):
             finally:    
                 self.draw()
 
-    def NearestNeighborInterpolation(self, data, zoomingFactor):
-        pass
+    def nearestNeighborInterpolation(self, zoomingFactor):
+        print(zoomingFactor)
+        if self.loaded:
+            self.axes.imshow(self.newImage)
+            self.draw()
 
-    def NearestNeighborInterpolation(self, data, zoomingFactor):
-        pass
+    def linearInterpolation(self, zoomingFactor):
+        print(zoomingFactor)
+        if self.loaded:
+            self.axes.imshow(self.newImage)
+            self.draw()
 
     def clearImage(self):
         self.axes.clear()

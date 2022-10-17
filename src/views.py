@@ -1,8 +1,8 @@
-# Resources
 from math import ceil, log2
 import cv2 as cv
-
 import numpy as np
+
+# Resources
 from .rcIcon import *
 
 # Importing sys package
@@ -43,6 +43,7 @@ class Window(QMainWindow):
         self._createActions()
         self._createMenuBar()
         self._createToolBar()
+        self._createToolBar("zoom")
         self._createStatusBar()
         # Central area
         self._initUI()
@@ -70,6 +71,16 @@ class Window(QMainWindow):
         self.grayScaleAction = QAction(QIcon(":grscale.png"), "&Gray Scale", self)
         self.grayScaleAction.setShortcut("Ctrl+G")
         self.grayScaleAction.setStatusTip('Transform to gray scale')
+
+        # Zoom Nearest Neighbor Interpolation Action
+        self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":paxiliteZoom.png"), "&Nearest Neighbor", self)
+        self.zoomNearestNeighborInterpolationAction.setShortcut("Ctrl+1")
+        self.zoomNearestNeighborInterpolationAction.setStatusTip('Zoom in/out by Nearest Neighbor Interpolation method based on input')
+
+        # Zoom Linear Interpolation Action
+        self.zoomLinearInterpolationAction = QAction(QIcon(":zoom.png"), "&Linear", self)
+        self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
+        self.zoomLinearInterpolationAction.setStatusTip('Zoom in/out by Linear Interpolation method based on input')
 
         # Exit Action
         self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
@@ -122,13 +133,22 @@ class Window(QMainWindow):
         menuBar.addMenu(helpMenu)
 
     # Tool Bar
-    def _createToolBar(self):
-        # Using a title
-        toolBar = self.addToolBar("Top")
-        toolBar.addAction(self.openAction)
-        toolBar.addAction(self.defaultScaleAction)
-        toolBar.addAction(self.grayScaleAction)
-        toolBar.addAction(self.clearAction)
+    def _createToolBar(self, type=""):
+        self.toolBar = QToolBar("Tool Bar")
+        if type=="zoom":
+            self.addToolBar(Qt.TopToolBarArea,self.toolBar)
+            self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            self.zoomFactorInput = QLineEdit("0")
+            self.toolBar.addWidget(self.zoomFactorInput)
+            self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
+            self.toolBar.addAction(self.zoomLinearInterpolationAction)
+        else:
+            # Using a title
+            self.addToolBar(Qt.RightToolBarArea, self.toolBar)
+            self.toolBar.addAction(self.openAction)
+            self.toolBar.addAction(self.defaultScaleAction)
+            self.toolBar.addAction(self.grayScaleAction)
+            self.toolBar.addAction(self.clearAction)
     
     # Context Menu Event
     def contextMenuEvent(self, event):
@@ -163,19 +183,46 @@ class Window(QMainWindow):
         # Outer Layout
         outerLayout = QVBoxLayout()
 
+        # Initialize tab screen
+        tabs = QTabWidget()
+        tabs.setStyleSheet(f"""font-size:15px;""")
         ### init GUI ###
         
         # Main layout
+        self.originalTab = QWidget()
+        self.originalLayout()
+        tabs.addTab(self.originalTab, "Original Image")
         
-        self.viewer = ImageViewer()
-
-        outerLayout.addWidget(self.viewer)
+        # Main layout
+        self.zoomTab = QWidget()
+        self.zoomLayout()
+        tabs.addTab(self.zoomTab, "Zoom Image")
+    
+        outerLayout.addWidget(tabs)
 
         # Add docker
         self.addDockLayout()
-
+    
         ### GUI ###
         centralMainWindow.setLayout(outerLayout)
+
+    # Original Layout
+    def originalLayout(self):
+        originalLayout = QVBoxLayout()
+        
+        self.originalViewer = ImageViewer()
+        originalLayout.addWidget(self.originalViewer)
+
+        self.originalTab.setLayout(originalLayout)
+
+    # Zoom Layout
+    def zoomLayout(self):
+        zoomLayout = QVBoxLayout()
+        
+        self.zoomViewer = ImageViewer()
+        zoomLayout.addWidget(self.zoomViewer)
+
+        self.zoomTab.setLayout(zoomLayout)
 
     # Dock widget 
     def addDockLayout(self):   
@@ -229,9 +276,12 @@ class Window(QMainWindow):
     # Connect
     def _connectActions(self):
         self.openAction.triggered.connect(self.browseImage) # When click on browse image action
-        self.defaultScaleAction.triggered.connect(self.viewer.toDefaultScale) # When click on grayscale image action
-        self.grayScaleAction.triggered.connect(self.viewer.toGrayScale) # When click on grayscale image action
-        self.clearAction.triggered.connect(self.viewer.clearImage) # When click on exit action
+        self.defaultScaleAction.triggered.connect(self.originalViewer.toDefaultScale) # When click on grayscale image action
+        self.grayScaleAction.triggered.connect(self.originalViewer.toGrayScale) # When click on grayscale image action
+        self.clearAction.triggered.connect(self.originalViewer.clearImage) # When click on exit action
+        self.clearAction.triggered.connect(self.zoomViewer.clearImage) # When click on exit action
+        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomViewer.linearInterpolation(self.zoomFactorInput.text()))
+        self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomViewer.nearestNeighborInterpolation(self.zoomFactorInput.text()))
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
@@ -246,9 +296,11 @@ class Window(QMainWindow):
             # If no image choosed
             if path == "":
                 return
-            
+
             try:
-                data = self.viewer.setImage(path,fileExtension)
+                data = self.originalViewer.setImage(path,fileExtension)
+                data = self.zoomViewer.setImage(path,fileExtension)
+                self.zoomViewer.toGrayScale()
             except:
                 # Error
                 appLogger.exception("Can't open the file !")
