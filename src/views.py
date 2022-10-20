@@ -31,8 +31,18 @@ class Window(QMainWindow):
         """Initializer."""
         super().__init__()
 
-        self.infoDict = dict()
-
+        ### Variables
+        self.fileExtension = ""
+        self.widthOfImage = ""
+        self.heightOfImage = ""
+        self.sizeOfImage = ""
+        self.depthOfImage = ""
+        self.modeOfImage = ""
+        self.modalityOfImage = ""
+        self.nameOfPatient = ""
+        self.ageOfPatient = ""
+        self.bodyOfPatient = ""    
+        
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon.svg"))
 
@@ -49,7 +59,7 @@ class Window(QMainWindow):
         self._initUI()
         # Connect signals
         self._connect()
-    
+   
     # Actions
     def _createActions(self):
         # Open Action
@@ -95,6 +105,7 @@ class Window(QMainWindow):
         self.aboutAction = QAction("&About...", self)
         self.aboutAction.setStatusTip('About')
 
+    # Add seperator
     def addSeperator(self, parent):
         # Creating a separator action
         self.separator = QAction(self)
@@ -251,7 +262,14 @@ class Window(QMainWindow):
                     "Patient name": PatientName,
                     "Patient Age": PatientAge,
                     "Body part examined": BodyPartExamined
-                    }
+                }
+        elif ext in ["Bilinear", "Nearest Neighbor"]:
+            info = {
+                    "Interpolation Type": ext,
+                    "Width": width, 
+                    "Height": height,
+                    "Image color": f"{color}->Grayscale" ,
+                }
         else:
             info = {
                     "Width":width, 
@@ -259,7 +277,7 @@ class Window(QMainWindow):
                     "Total Size":size,
                     "Bit depth":depth,
                     "Image color":color
-                    }
+                }
         
         # Update the tree
         self.setDataOfTree(info)
@@ -280,66 +298,105 @@ class Window(QMainWindow):
         self.grayScaleAction.triggered.connect(self.originalViewer.toGrayScale) # When click on grayscale image action
         self.clearAction.triggered.connect(self.originalViewer.clearImage) # When click on exit action
         self.clearAction.triggered.connect(self.zoomViewer.clearImage) # When click on exit action
-        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomViewer.linearInterpolation(self.zoomFactorInput.text()))
-        self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomViewer.nearestNeighborInterpolation(self.zoomFactorInput.text()))
+        
+        # Interpoloations
+        self.zoomNearestNeighborInterpolationAction.triggered.connect(self.nearestNeighborInterpolation)
+        self.zoomLinearInterpolationAction.triggered.connect(self.linearInterpolation)
+
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
         self._connectActions()
 
+    # Linear Interpolation
+    def linearInterpolation(self):
+        try:
+            zoomingFactor = float(self.zoomFactorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid facor.")
+            return
+        
+        if zoomingFactor > 0:
+            self.widthOfImage, self.heightOfImage = self.zoomViewer.linearInterpolation(zoomingFactor)
+            self.widthOfImage = f"{self.widthOfImage} px"
+            self.heightOfImage = f"{self.heightOfImage} px"
+            self.fileExtension = "Bilinear"
+            self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+        else:
+            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid facor.")
+
+    # Nearest Neighbor Interpolation
+    def nearestNeighborInterpolation(self):
+        try:
+            zoomingFactor = float(self.zoomFactorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
+            return
+
+        if zoomingFactor > 0:
+            self.widthOfImage, self.heightOfImage = self.zoomViewer.nearestNeighborInterpolation(zoomingFactor)
+            self.widthOfImage = f"{self.widthOfImage} px"
+            self.heightOfImage = f"{self.heightOfImage} px"
+            self.fileExtension = "Nearest Neighbor"
+            self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+        else:
+            QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
+
     # Open image
     def browseImage(self):
-            # Browse function
-            path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
-            fileExtension = path.split(".")[-1] # get ext.
+        # Browse Function
+        path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
+        self.fileExtension = path.split(".")[-1] # get ext.
+        
+        # If no image choosed
+        if path == "":
+            return
+
+        try:
+            data = self.originalViewer.setImage(path, self.fileExtension)
+            data = self.zoomViewer.setImage(path, self.fileExtension)
+            self.zoomViewer.toGrayScale()
+        except:
+            # Error
+            appLogger.exception("Can't open the file !")
+            QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
+        else:
+            self.statusbar.showMessage(path.split("/")[-1])
             
-            # If no image choosed
-            if path == "":
-                return
+            if self.fileExtension == "dcm":
+                # If dicom
+                self.widthOfImage =  self.getAttr(data, 'Columns')
+                self.heightOfImage = self.getAttr(data, 'Rows')
+                self.depthOfImage = self.getAttr(data, 'BitsAllocated')
+                self.sizeOfImage = f"{self.widthOfImage * self.heightOfImage * self.depthOfImage} bits" 
+                self.widthOfImage =  f"{self.widthOfImage} px"
+                self.heightOfImage = f"{self.heightOfImage} px"
+                self.depthOfImage = f"{self.depthOfImage} bit/pixel"
+                self.modeOfImage = self.getAttr(data, "PhotometricInterpretation")
+                self.modalityOfImage = self.getAttr(data, "Modality")
+                self.nameOfPatient = self.getAttr(data, "PatientName")
+                self.ageOfPatient = self.getAttr(data,"PatientAge")
+                self.bodyOfPatient = self.getAttr(data,"BodyPartExamined") 
 
-            try:
-                data = self.originalViewer.setImage(path,fileExtension)
-                data = self.zoomViewer.setImage(path,fileExtension)
-                self.zoomViewer.toGrayScale()
-            except:
-                # Error
-                appLogger.exception("Can't open the file !")
-                QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
+                # Set the information                 
+                self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
             else:
-                self.statusbar.showMessage(path.split("/")[-1])
+                # If (jpeg, bitmap)
+                imageChannel = cv.imread(path)
+
+                self.widthOfImage = self.getAttr(data,'width')
+                self.heightOfImage = self.getAttr(data,'height')
+                self.depthOfImage = self.getDepth(data, imageChannel)
+
+                self.sizeOfImage = f"{self.widthOfImage * self.heightOfImage * self.depthOfImage} bits" 
+                self.widthOfImage =  f"{self.widthOfImage} px"
+                self.heightOfImage = f"{self.heightOfImage} px"
+                self.depthOfImage = f"{self.depthOfImage} bit/pixel"
+                self.modeOfImage = self.getAttr(data,"mode")
                 
-                if fileExtension == "dcm":
-                    # If dicom
-                    width =  self.getAttr(data, 'Columns')
-                    height = self.getAttr(data, 'Rows')
-                    depth = self.getAttr(data, 'BitsAllocated')
-                    size = f"{width * height * depth} bits" 
-                    width =  f"{width} px"
-                    height = f"{height} px"
-                    depth = f"{depth} bit/pixel"
-                    mode = self.getAttr(data, "PhotometricInterpretation")
-                    modality = self.getAttr(data, "Modality")
-                    name = self.getAttr(data, "PatientName")
-                    age = self.getAttr(data,"PatientAge")
-                    body = self.getAttr(data,"BodyPartExamined") 
-                    # Set the information                 
-                    self.setInfo(fileExtension,width, height, size, depth, mode, modality, name, age, body)
-                else:
+                # Set the information
+                self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
 
-                    # If (jpeg, bitmap)
-                    imageChannel = cv.imread(path)
-
-                    width = self.getAttr(data,'width')
-                    height = self.getAttr(data,'height')
-                    depth = self.getDepth(data,imageChannel)
-                    size = f"{width * height * depth} bits" 
-                    width =  f"{width} px"
-                    height = f"{height} px"
-                    depth = f"{depth} bit/pixel"
-                    mode = self.getAttr(data,"mode")
-                    # Set the information
-                    self.setInfo(fileExtension, width, height, size, depth, mode)
-    
     # Get Data
     def getAttr(self, variable, att):
         if hasattr(variable, att):
