@@ -313,7 +313,7 @@ class Window(QMainWindow):
         try:
             zoomingFactor = float(self.zoomFactorInput.text())
         except:
-            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid facor.")
+            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
             return
         
         if zoomingFactor > 0:
@@ -323,7 +323,7 @@ class Window(QMainWindow):
             self.fileExtension = "Bilinear"
             self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
         else:
-            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid facor.")
+            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
 
     # Nearest Neighbor Interpolation
     def nearestNeighborInterpolation(self):
