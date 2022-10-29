@@ -21,9 +21,6 @@ from PyQt5.QtCore import *
 # Importing Logging
 from .log import appLogger
 
-# Mode/Color to Bit dipth dict
-MODE_TO_BPP = {"1": 1, "L": 8, "P": 8, "RGB": 24, "RGBA": 32, "CMYK": 32, "YCbCr": 24, "LAB": 24, "HSV": 24, "I": 32, "F": 32}
-
 # Window class
 class Window(QMainWindow):
     """Main Window"""
@@ -52,8 +49,9 @@ class Window(QMainWindow):
         ### UI contents
         self._createActions()
         self._createMenuBar()
-        self._createToolBar()
+        self._createToolBar("original")
         self._createToolBar("zoom")
+        self._createToolBar("T")
         self._createStatusBar()
         # Central area
         self._initUI()
@@ -92,6 +90,21 @@ class Window(QMainWindow):
         self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
         self.zoomLinearInterpolationAction.setStatusTip('Zoom in/out by Linear Interpolation method based on input')
 
+        # Construct T image Action
+        self.constructTAction = QAction(QIcon(":T.png"), "&Construct T", self)
+        self.constructTAction.setShortcut("ctrl+T")
+        self.constructTAction.setStatusTip('Construct an image with a T letter in the center')
+
+        # Rotate the image
+        self.rotateAction = QAction(QIcon(":rotate.png"), "&Rotate T", self)
+        self.rotateAction.setShortcut("ctrl+R")
+        self.rotateAction.setStatusTip('Rotate the image')
+
+        # Sheer the image
+        self.sheerAction = QAction(QIcon(":sheer.png"), "&Sheer T", self)
+        self.sheerAction.setShortcut("ctrl+S")
+        self.sheerAction.setStatusTip('Sheer the image')
+
         # Exit Action
         self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
         self.exitAction.setShortcut("Ctrl+Q")
@@ -129,6 +142,7 @@ class Window(QMainWindow):
         editMenu = QMenu("&Edit", self)
         editMenu.addAction(self.defaultScaleAction) # Default scale in menu
         editMenu.addAction(self.grayScaleAction) # Gray scale in menu
+        editMenu.addAction(self.constructTAction) # Construct image with T in menu
         
         ## Help tap
         helpMenu = QMenu("&Help", self)
@@ -146,20 +160,33 @@ class Window(QMainWindow):
     # Tool Bar
     def _createToolBar(self, type=""):
         self.toolBar = QToolBar("Tool Bar")
-        if type=="zoom":
+        if type == "zoom":
             self.addToolBar(Qt.TopToolBarArea,self.toolBar)
             self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            self.zoomFactorInput = QLineEdit("0")
+            self.zoomFactorInput = QLineEdit("1")
+            self.zoomFactorInput.setStyleSheet("""border:1px solid #00d; 
+                                                height:20px; 
+                                                padding:3px; 
+                                                border-radius:7px; 
+                                                font-size:16px; 
+                                                margin-right:5px""")
             self.toolBar.addWidget(self.zoomFactorInput)
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
-        else:
+            self.toolBar.addAction(self.rotateAction)
+            self.toolBar.addAction(self.sheerAction)
+        
+        elif type == "original":
             # Using a title
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)
             self.toolBar.addAction(self.openAction)
             self.toolBar.addAction(self.defaultScaleAction)
             self.toolBar.addAction(self.grayScaleAction)
             self.toolBar.addAction(self.clearAction)
+        elif type == "T":
+            self.addToolBar(Qt.RightToolBarArea, self.toolBar)
+            self.toolBar.addAction(self.constructTAction)
+
     
     # Context Menu Event
     def contextMenuEvent(self, event):
@@ -171,6 +198,8 @@ class Window(QMainWindow):
         menu.addAction(self.defaultScaleAction)
         menu.addAction(self.grayScaleAction)
         menu.addAction(self.clearAction)
+        self.addSeperator(menu)
+        menu.addAction(self.constructTAction)
         self.addSeperator(menu)
         menu.addAction(self.helpContentAction)
         menu.addAction(self.checkUpdatesAction)
@@ -204,10 +233,15 @@ class Window(QMainWindow):
         self.originalLayout()
         tabs.addTab(self.originalTab, "Original Image")
         
-        # Main layout
+        # Zoom layout
         self.zoomTab = QWidget()
         self.zoomLayout()
-        tabs.addTab(self.zoomTab, "Zoom Image")
+        tabs.addTab(self.zoomTab, "Zoom")
+
+        # Zoom layout
+        self.rotationSheeringTab = QWidget()
+        self.rotationSheeringLayout()
+        tabs.addTab(self.rotationSheeringTab, "Rotation and Sheering")
     
         outerLayout.addWidget(tabs)
 
@@ -230,10 +264,19 @@ class Window(QMainWindow):
     def zoomLayout(self):
         zoomLayout = QVBoxLayout()
         
-        self.zoomViewer = ImageViewer()
+        self.zoomViewer = ImageViewer(axisColor="black")
         zoomLayout.addWidget(self.zoomViewer)
 
         self.zoomTab.setLayout(zoomLayout)
+
+    # Rotation and Sheering Layout
+    def rotationSheeringLayout(self):
+        rotationSheeringLayout = QVBoxLayout()
+        
+        self.rotationSheeringViewer = ImageViewer(axisExisting=True,axisColor="red")
+        rotationSheeringLayout.addWidget(self.rotationSheeringViewer)
+
+        self.rotationSheeringTab.setLayout(rotationSheeringLayout)
 
     # Dock widget 
     def addDockLayout(self):   
@@ -293,6 +336,7 @@ class Window(QMainWindow):
     
     # Connect
     def _connectActions(self):
+        # Original Actions
         self.openAction.triggered.connect(self.browseImage) # When click on browse image action
         self.defaultScaleAction.triggered.connect(self.originalViewer.toDefaultScale) # When click on grayscale image action
         self.grayScaleAction.triggered.connect(self.originalViewer.toGrayScale) # When click on grayscale image action
@@ -302,6 +346,9 @@ class Window(QMainWindow):
         # Interpoloations
         self.zoomNearestNeighborInterpolationAction.triggered.connect(self.nearestNeighborInterpolation)
         self.zoomLinearInterpolationAction.triggered.connect(self.linearInterpolation)
+
+        # T
+        self.constructTAction.triggered.connect(self.rotationSheeringViewer.constructT)
 
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     

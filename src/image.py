@@ -7,31 +7,34 @@ import pydicom as dicom
 from PIL import Image
 
 class ImageViewer(FigureCanvasQTAgg):
-    def __init__(self, parent=None):
-        self.fig = Figure(figsize=(6, 6),dpi=80)
+    def __init__(self, parent=None, axisExisting=False, axisColor="#329da8"):
+        self.fig = Figure(figsize = (6, 6), dpi = 80)
         self.axes = self.fig.add_subplot(111)
-
-        self.axes.grid(False)
-        self.setShape()
 
         # Variables
         self.loaded = False
         self.defaultImage = None
         self.grayImage = None
+        self.axisExisting = axisExisting
+        self.axisColor = axisColor
+
+        self.axes.grid(self.axisColor)
+        self.axes.grid(False)
+        self.setShape()
 
         super(ImageViewer, self).__init__(self.fig)
    
     # Set Theme
     def setShape(self):
         self.fig.set_edgecolor("black")
-        
-        self.axes.spines['bottom'].set_color('#329da8')
-        self.axes.spines['top'].set_color('#329da8')
-        self.axes.spines['right'].set_color('#329da8')
-        self.axes.spines['left'].set_color('#329da8')
+        self.axes.spines['bottom'].set_color(self.axisColor)
+        self.axes.spines['top'].set_color(self.axisColor)
+        self.axes.spines['right'].set_color(self.axisColor)
+        self.axes.spines['left'].set_color(self.axisColor)
 
-        self.axes.set_xticks([])
-        self.axes.set_yticks([])
+        if not self.axisExisting:
+            self.axes.set_xticks([])
+            self.axes.set_yticks([])
 
     # Set Image
     def setImage(self, image_path, fileExtension):
@@ -83,8 +86,8 @@ class ImageViewer(FigureCanvasQTAgg):
                 oldWidth = self.grayImage.shape[0]
                 oldHeight = self.grayImage.shape[1]
                 
-                newWidth = ceil(oldWidth * zoomingFactor)
-                newHeight = ceil(oldHeight * zoomingFactor)
+                newWidth = round(oldWidth * zoomingFactor)
+                newHeight = round(oldHeight * zoomingFactor)
 
                 # Initilize the zoomed image
                 zoomedImage = np.zeros((newWidth,newHeight))
@@ -92,12 +95,18 @@ class ImageViewer(FigureCanvasQTAgg):
                 # Set the values
                 for i in range(newWidth):
                     for j in range(newHeight):
-                        # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
-                        x = floor(i/zoomingFactor)
-                        y = floor(j/zoomingFactor)
+                        if i/zoomingFactor > oldWidth - 1 or j/zoomingFactor > oldHeight - 1 :
+                            # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
+                            x = floor(i/zoomingFactor)
+                            y = floor(j/zoomingFactor)
+                        else:
+                            # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
+                            x = round(i/zoomingFactor)
+                            y = round(j/zoomingFactor)
 
                         zoomedImage[i,j] = self.grayImage[x,y]
-                
+
+
                 zoomWidth = int(zoomedImage.shape[0]/zoomingFactor)
                 zoomHeight = int(zoomedImage.shape[1]/zoomingFactor)
                 
@@ -114,10 +123,10 @@ class ImageViewer(FigureCanvasQTAgg):
             scale_factor = float(scale_factor)
 
             img_height, img_width = self.grayImage.shape[:2]
-            height=ceil(img_height*scale_factor)
-            width=ceil(img_width*scale_factor)
+            height = round(img_height*scale_factor)
+            width = round(img_width*scale_factor)
 
-            resized = np.empty([height, width])
+            resized = np.zeros([height, width])
 
             x_ratio = float(img_width - 1) / (width - 1) if width > 1 else 0
             y_ratio = float(img_height - 1) / (height - 1) if height > 1 else 0
@@ -135,7 +144,7 @@ class ImageViewer(FigureCanvasQTAgg):
                         b = self.grayImage[y_l, x_h]
                         c = self.grayImage[y_h, x_l]
                         d = self.grayImage[y_h, x_h]
-                         
+                            
                         pixel = a * (1 - x_weight) * (1 - y_weight) + b * x_weight * (1 - y_weight) + c * y_weight * (1 - x_weight) + d * x_weight * y_weight
                         resized[i][j] = pixel
                     except:
@@ -143,7 +152,7 @@ class ImageViewer(FigureCanvasQTAgg):
 
             zoomWidth = int(resized.shape[0]/scale_factor)
             zoomHeight = int(resized.shape[1]/scale_factor)
-            self.axes.imshow(resized[:zoomWidth,:zoomHeight], cmap="gray")
+            self.axes.imshow(resized, cmap="gray")
             self.draw()
 
             return resized.shape
@@ -158,8 +167,8 @@ class ImageViewer(FigureCanvasQTAgg):
             img_height, img_width = self.grayImage.shape[:2]
             image = self.grayImage.ravel()
 
-            height = floor(img_height*scale_factor)
-            width = floor(img_width*scale_factor)
+            height = round(img_height*scale_factor)
+            width = round(img_width*scale_factor)
 
             x_ratio = float(img_width - 1) / (width - 1) if width > 1 else 0
             y_ratio = float(img_height - 1) / (height - 1) if height > 1 else 0
@@ -195,17 +204,24 @@ class ImageViewer(FigureCanvasQTAgg):
 
             return resized.shape[1],resized.shape[0]
 
-    # Round in Nearest Neighbor Interpolation
-    def roundNum(self, num):
-        if num - int(num) <= 0.5:
-            return floor(num)
-        else:
-            return floor(num)
+    def constructT(self):
+        imageTshape = np.zeros((128,128))
+        for i in range(29,50):
+            for j in range(29,100):
+                imageTshape[i,j] = 1
+        
+        for i in range(49,100):
+            for j in range(54,74):
+                imageTshape[i,j] = 1
+
+        self.axes.imshow(imageTshape, cmap="gray", extent=(0, 128, 0, 128))
+        self.draw()
+        
 
     # Clear figure
     def clearImage(self):
         self.axes.clear()
-        self.setTheme()
+        self.setShape()
         self.draw()
 
         self.loaded = False
