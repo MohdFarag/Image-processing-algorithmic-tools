@@ -73,7 +73,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
 
-    # Zoom Image
+    # Zoom image
     def zoomImage(self, scaleFactor, mode):
         if self.loaded and self.grayImage.ndim == 2:
             scaleFactor = float(scaleFactor)
@@ -132,8 +132,11 @@ class ImageViewer(FigureCanvasQTAgg):
         return resizedImage.shape[0], resizedImage.shape[1]
 
     # Construct T shape
-    def constructT(self):
-        self.imageTshape = np.zeros((128,128))
+    def constructT(self, background="white"):
+        self.imageTshape = np.zeros((128,128), dtype=np.uint8)
+        
+        if background == "black":
+            self.imageTshape.fill(255)
 
         for i in range(29,50):
             for j in range(29,100):
@@ -222,8 +225,8 @@ class ImageViewer(FigureCanvasQTAgg):
         else:
             return "N/A","N/A"
 
-    # Sheer T image
-    def sheerT(self, angle):
+    # shear T image
+    def shearT(self, angle):
         if self.loaded:
             # Converting degrees to radians
             angle = math.radians(angle)
@@ -235,7 +238,7 @@ class ImageViewer(FigureCanvasQTAgg):
           
             # Initilize rotated image
             shearedImage = np.zeros((oldWidth,oldHeight))
-            tangent = -math.tan(angle/2)
+            tangent = math.tan(-angle)
 
             # Find the center of the Rotated T image
             centerHeight = int( (oldHeight+1)/2) # mid row

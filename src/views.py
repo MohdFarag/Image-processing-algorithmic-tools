@@ -106,10 +106,10 @@ class Window(QMainWindow):
         self.rotateLinearAction.setShortcut("ctrl+4")
         self.rotateLinearAction.setStatusTip('Rotate the image')
 
-        # Sheer the image
-        self.sheerAction = QAction(QIcon(":sheer.png"), "&Sheer T by 90", self)
-        self.sheerAction.setShortcut("ctrl+5")
-        self.sheerAction.setStatusTip('Sheer the image')
+        # Shear the image
+        self.shearAction = QAction(QIcon(":shear.png"), "&Shear T", self)
+        self.shearAction.setShortcut("ctrl+5")
+        self.shearAction.setStatusTip('Shear the image')
 
         # Exit Action
         self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
@@ -169,29 +169,29 @@ class Window(QMainWindow):
         if type == "zoom":
             self.addToolBar(Qt.TopToolBarArea,self.toolBar)
             self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            self.zoomFactorInput = QLineEdit("0")
-            self.zoomFactorInput.setStyleSheet("""border:1px solid #00d; 
+            self.factorInput = QLineEdit("0")
+            self.factorInput.setStyleSheet("""border:1px solid #00d; 
                                                 height:20px; 
                                                 padding:3px; 
                                                 border-radius:7px; 
                                                 font-size:16px; 
                                                 margin-right:5px""")
-            self.toolBar.addWidget(self.zoomFactorInput)
+            self.toolBar.addWidget(self.factorInput)
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
             self.toolBar.addAction(self.rotateNearestAction)
             self.toolBar.addAction(self.rotateLinearAction)
-            self.toolBar.addAction(self.sheerAction)
+            self.toolBar.addAction(self.shearAction)
         
         elif type == "original":
             # Using a title
-            self.addToolBar(Qt.RightToolBarArea, self.toolBar)
+            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.openAction)
             self.toolBar.addAction(self.defaultScaleAction)
             self.toolBar.addAction(self.grayScaleAction)
             self.toolBar.addAction(self.clearAction)
         elif type == "T":
-            self.addToolBar(Qt.RightToolBarArea, self.toolBar)
+            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.constructTAction)
 
     # Context Menu Event
@@ -219,6 +219,7 @@ class Window(QMainWindow):
         self.statusbar.setStyleSheet(f"""font-size:15px;
                                  padding: 4px;""")
         self.statusbar.showMessage("Ready", 3000)
+
         # Adding a permanent message
         self.statusbar.addPermanentWidget(QLabel("Image processing algorithms"))
 
@@ -244,10 +245,10 @@ class Window(QMainWindow):
         self.zoomLayout()
         tabs.addTab(self.zoomTab, "Zoom")
 
-        # Zoom layout
-        self.rotationSheeringTab = QWidget()
-        self.rotationSheeringLayout()
-        tabs.addTab(self.rotationSheeringTab, "Rotation and Sheering")
+        # Rotation and shearing layout
+        self.rotationShearingTab = QWidget()
+        self.rotationShearingLayout()
+        tabs.addTab(self.rotationShearingTab, "Rotation and Shearing")
     
         outerLayout.addWidget(tabs)
 
@@ -275,14 +276,14 @@ class Window(QMainWindow):
 
         self.zoomTab.setLayout(zoomLayout)
 
-    # Rotation and Sheering Layout
-    def rotationSheeringLayout(self):
-        rotationSheeringLayout = QVBoxLayout()
+    # Rotation and Shearing Layout
+    def rotationShearingLayout(self):
+        rotationShearingLayout = QVBoxLayout()
         
-        self.rotationSheeringViewer = ImageViewer(axisExisting=True,axisColor="red")
-        rotationSheeringLayout.addWidget(self.rotationSheeringViewer)
+        self.rotationShearingViewer = ImageViewer(axisExisting=True,axisColor="red")
+        rotationShearingLayout.addWidget(self.rotationShearingViewer)
 
-        self.rotationSheeringTab.setLayout(rotationSheeringLayout)
+        self.rotationShearingTab.setLayout(rotationShearingLayout)
 
     # Dock widget 
     def addDockLayout(self):   
@@ -357,27 +358,43 @@ class Window(QMainWindow):
         self.clearAction.triggered.connect(self.originalViewer.clearImage) # When click on exit action
         self.clearAction.triggered.connect(self.zoomViewer.clearImage) # When click on exit action
         
-        # Zoom
+        # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
         self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
 
-        # T
-        self.constructTAction.triggered.connect(self.rotationSheeringViewer.constructT)
+        # Construct T
+        self.constructTAction.triggered.connect(lambda: self.rotationShearingViewer.constructT("white"))
 
-        # Rotate
+        # Rotate image
         self.rotateNearestAction.triggered.connect(lambda: self.rotateT(interpolationMode="nearest"))
         self.rotateLinearAction.triggered.connect(lambda: self.rotateT(interpolationMode="linear"))
 
-        self.sheerAction.triggered.connect(lambda: self.rotationSheeringViewer.sheerT(90))
+        self.shearAction.triggered.connect(self.shearT)
 
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
         self._connectActions()
 
+    def shearT(self):
+        try:
+            shearFactor = float(self.factorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid shearing factor" , "Please enter valid factor.")
+            return
+        
+        if -90 < shearFactor < 90:
+            try:
+                self.rotationShearingViewer.shearT(shearFactor)
+            except:
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+        else:
+            QMessageBox.critical(self , "Invalid shearing factor" , "Shear angle should be between -90° and 90°.")
+
     def zoomImage(self, interpolationMode):
         try:
-            zoomingFactor = float(self.zoomFactorInput.text())
+            zoomingFactor = float(self.factorInput.text())
         except:
             QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
             return
@@ -401,12 +418,12 @@ class Window(QMainWindow):
     # Rotate Image
     def rotateT(self, interpolationMode):
         try:
-            rotationAngle = float(self.zoomFactorInput.text())
+            rotationAngle = float(self.factorInput.text())
         except:
             QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
             return
 
-        self.widthOfImage, self.heightOfImage = self.rotationSheeringViewer.rotateT(rotationAngle, interpolationMode)
+        self.widthOfImage, self.heightOfImage = self.rotationShearingViewer.rotateT(rotationAngle, interpolationMode)
 
         direction = "Clockwise"
         if rotationAngle >= 0:

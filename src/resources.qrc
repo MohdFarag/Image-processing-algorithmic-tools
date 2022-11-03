@@ -13,7 +13,7 @@
     <file alias="paxiliteZoom.png">assets/icons/paxilateZoom.png</file>
     <file alias="T.png">assets/icons/T.png</file>
     <file alias="rotate.png">assets/icons/rotate.png</file>
-    <file alias="sheer.png">assets/icons/sheer.png</file>
+    <file alias="shear.png">assets/icons/shear.png</file>
     <file alias="clear.png">assets/icons/clear.png</file>
     <file alias="exit.svg">assets/icons/exit.svg</file>
 </qresource>
