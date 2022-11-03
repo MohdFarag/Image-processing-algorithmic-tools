@@ -1,4 +1,4 @@
-# Image viewer
+# Image Processing Algorithms
 
 **An application that illustrates the image with extention BMP, DICOM, JPEG.**
 
