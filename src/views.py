@@ -38,7 +38,8 @@ class Window(QMainWindow):
         self.modalityOfImage = ""
         self.nameOfPatient = ""
         self.ageOfPatient = ""
-        self.bodyOfPatient = ""    
+        self.bodyOfPatient = ""
+        self.interpolationMode = "" 
         
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon.svg"))
@@ -81,12 +82,12 @@ class Window(QMainWindow):
         self.grayScaleAction.setStatusTip('Transform to gray scale')
 
         # Zoom Nearest Neighbor Interpolation Action
-        self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":paxiliteZoom.png"), "&Nearest Neighbor", self)
+        self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":paxiliteZoom.png"), "&Zoom Nearest Neighbor", self)
         self.zoomNearestNeighborInterpolationAction.setShortcut("Ctrl+1")
         self.zoomNearestNeighborInterpolationAction.setStatusTip('Zoom in/out by Nearest Neighbor Interpolation method based on input')
 
         # Zoom Linear Interpolation Action
-        self.zoomLinearInterpolationAction = QAction(QIcon(":zoom.png"), "&Linear", self)
+        self.zoomLinearInterpolationAction = QAction(QIcon(":zoom.png"), "&Zoom Linear", self)
         self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
         self.zoomLinearInterpolationAction.setStatusTip('Zoom in/out by Linear Interpolation method based on input')
 
@@ -96,13 +97,18 @@ class Window(QMainWindow):
         self.constructTAction.setStatusTip('Construct an image with a T letter in the center')
 
         # Rotate the image
-        self.rotateAction = QAction(QIcon(":rotate.png"), "&Rotate T", self)
-        self.rotateAction.setShortcut("ctrl+R")
-        self.rotateAction.setStatusTip('Rotate the image')
+        self.rotateNearestAction = QAction(QIcon(":rotate.png"), "&Rotate T Nearest", self)
+        self.rotateNearestAction.setShortcut("ctrl+3")
+        self.rotateNearestAction.setStatusTip('Rotate the image')
+
+        # Rotate the image
+        self.rotateLinearAction = QAction(QIcon(":rotate.png"), "&Rotate T Linear", self)
+        self.rotateLinearAction.setShortcut("ctrl+4")
+        self.rotateLinearAction.setStatusTip('Rotate the image')
 
         # Sheer the image
-        self.sheerAction = QAction(QIcon(":sheer.png"), "&Sheer T", self)
-        self.sheerAction.setShortcut("ctrl+S")
+        self.sheerAction = QAction(QIcon(":sheer.png"), "&Sheer T by 90", self)
+        self.sheerAction.setShortcut("ctrl+5")
         self.sheerAction.setStatusTip('Sheer the image')
 
         # Exit Action
@@ -163,7 +169,7 @@ class Window(QMainWindow):
         if type == "zoom":
             self.addToolBar(Qt.TopToolBarArea,self.toolBar)
             self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            self.zoomFactorInput = QLineEdit("1")
+            self.zoomFactorInput = QLineEdit("0")
             self.zoomFactorInput.setStyleSheet("""border:1px solid #00d; 
                                                 height:20px; 
                                                 padding:3px; 
@@ -173,7 +179,8 @@ class Window(QMainWindow):
             self.toolBar.addWidget(self.zoomFactorInput)
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
-            self.toolBar.addAction(self.rotateAction)
+            self.toolBar.addAction(self.rotateNearestAction)
+            self.toolBar.addAction(self.rotateLinearAction)
             self.toolBar.addAction(self.sheerAction)
         
         elif type == "original":
@@ -187,7 +194,6 @@ class Window(QMainWindow):
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)
             self.toolBar.addAction(self.constructTAction)
 
-    
     # Context Menu Event
     def contextMenuEvent(self, event):
         # Creating a menu object with the central widget as parent
@@ -214,7 +220,7 @@ class Window(QMainWindow):
                                  padding: 4px;""")
         self.statusbar.showMessage("Ready", 3000)
         # Adding a permanent message
-        self.statusbar.addPermanentWidget(QLabel("Upload your image"))
+        self.statusbar.addPermanentWidget(QLabel("Image processing algorithms"))
 
     # GUI
     def _initUI(self):
@@ -306,12 +312,20 @@ class Window(QMainWindow):
                     "Patient Age": PatientAge,
                     "Body part examined": BodyPartExamined
                 }
-        elif ext in ["Bilinear", "Nearest Neighbor"]:
+        elif ext in ["Zoom Bilinear", "Zoom Nearest Neighbor"]:
             info = {
                     "Interpolation Type": ext,
                     "Width": width, 
                     "Height": height,
                     "Image color": f"{color}->Grayscale" ,
+                }
+        elif ext in ["Rotate Bilinear", "Rotate Nearest Neighbor"]:
+            info = {
+                    "Interpolation Type": ext,
+                    "Width": width, 
+                    "Height": height,
+                    "Angle": f"{size}°",
+                    "Direction": depth,
                 }
         else:
             info = {
@@ -343,20 +357,25 @@ class Window(QMainWindow):
         self.clearAction.triggered.connect(self.originalViewer.clearImage) # When click on exit action
         self.clearAction.triggered.connect(self.zoomViewer.clearImage) # When click on exit action
         
-        # Interpoloations
-        self.zoomNearestNeighborInterpolationAction.triggered.connect(self.nearestNeighborInterpolation)
-        self.zoomLinearInterpolationAction.triggered.connect(self.linearInterpolation)
+        # Zoom
+        self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
+        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
 
         # T
         self.constructTAction.triggered.connect(self.rotationSheeringViewer.constructT)
+
+        # Rotate
+        self.rotateNearestAction.triggered.connect(lambda: self.rotateT(interpolationMode="nearest"))
+        self.rotateLinearAction.triggered.connect(lambda: self.rotateT(interpolationMode="linear"))
+
+        self.sheerAction.triggered.connect(lambda: self.rotationSheeringViewer.sheerT(90))
 
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
         self._connectActions()
 
-    # Linear Interpolation
-    def linearInterpolation(self):
+    def zoomImage(self, interpolationMode):
         try:
             zoomingFactor = float(self.zoomFactorInput.text())
         except:
@@ -364,31 +383,42 @@ class Window(QMainWindow):
             return
         
         if zoomingFactor > 0:
-            self.widthOfImage, self.heightOfImage = self.zoomViewer.linearInterpolation(zoomingFactor)
-            self.widthOfImage = f"{self.widthOfImage} px"
-            self.heightOfImage = f"{self.heightOfImage} px"
-            self.fileExtension = "Bilinear"
-            self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+            try:
+                self.widthOfImage, self.heightOfImage = self.zoomViewer.zoomImage(zoomingFactor, interpolationMode)
+            except:
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+                
+            if interpolationMode == "nearest":
+                self.interpolationMode = "Zoom Nearest Neighbor"
+            elif interpolationMode == "linear":
+                self.interpolationMode = "Zoom Bilinear"
+
+            self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
         else:
             QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
 
-    # Nearest Neighbor Interpolation
-    def nearestNeighborInterpolation(self):
+    # Rotate Image
+    def rotateT(self, interpolationMode):
         try:
-            zoomingFactor = float(self.zoomFactorInput.text())
+            rotationAngle = float(self.zoomFactorInput.text())
         except:
             QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
             return
 
-        if zoomingFactor > 0:
-            self.widthOfImage, self.heightOfImage = self.zoomViewer.nearestNeighborInterpolation(zoomingFactor)
-            self.widthOfImage = f"{self.widthOfImage} px"
-            self.heightOfImage = f"{self.heightOfImage} px"
-            self.fileExtension = "Nearest Neighbor"
-            self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-        else:
-            QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
+        self.widthOfImage, self.heightOfImage = self.rotationSheeringViewer.rotateT(rotationAngle, interpolationMode)
 
+        direction = "Clockwise"
+        if rotationAngle >= 0:
+            direction = "Counterclockwise"
+                
+        if interpolationMode == "nearest":
+            self.interpolationMode = "Rotate Nearest Neighbor"
+        else :
+            self.interpolationMode = "Rotate Bilinear"
+        
+        self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, abs(rotationAngle), direction)
+        
     # Open image
     def browseImage(self):
         # Browse Function
