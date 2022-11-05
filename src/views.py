@@ -7,7 +7,6 @@ from .rcIcon import *
 
 # Importing sys package
 import sys
-import os
 
 # Import Classes
 from .additionsQt import *
@@ -45,7 +44,7 @@ class Window(QMainWindow):
         self.setWindowIcon(QIcon(":icon.svg"))
 
         ### Setting title
-        self.setWindowTitle("Image Viewer")
+        self.setWindowTitle("Image Processing Algorithms")
 
         ### UI contents
         self._createActions()
@@ -111,6 +110,11 @@ class Window(QMainWindow):
         self.shearAction.setShortcut("ctrl+5")
         self.shearAction.setStatusTip('Shear the image')
 
+        # Equalize the image
+        self.equalizeAction = QAction(QIcon(":equalize.png"), "&Equalize", self)
+        self.equalizeAction.setShortcut("ctrl+E")
+        self.equalizeAction.setStatusTip('Equalize the image')
+
         # Exit Action
         self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
         self.exitAction.setShortcut("Ctrl+Q")
@@ -148,7 +152,8 @@ class Window(QMainWindow):
         editMenu = QMenu("&Edit", self)
         editMenu.addAction(self.defaultScaleAction) # Default scale in menu
         editMenu.addAction(self.grayScaleAction) # Gray scale in menu
-        editMenu.addAction(self.constructTAction) # Construct image with T in menu
+        editMenu.addAction(self.constructTAction) # Construct T in menu
+        editMenu.addAction(self.equalizeAction) # Equalize image in menu
         
         ## Help tap
         helpMenu = QMenu("&Help", self)
@@ -189,6 +194,7 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.openAction)
             self.toolBar.addAction(self.defaultScaleAction)
             self.toolBar.addAction(self.grayScaleAction)
+            self.toolBar.addAction(self.equalizeAction)
             self.toolBar.addAction(self.clearAction)
         elif type == "T":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
@@ -203,6 +209,7 @@ class Window(QMainWindow):
         self.addSeperator(menu)
         menu.addAction(self.defaultScaleAction)
         menu.addAction(self.grayScaleAction)
+        menu.addAction(self.equalizeAction)
         menu.addAction(self.clearAction)
         self.addSeperator(menu)
         menu.addAction(self.constructTAction)
@@ -239,7 +246,12 @@ class Window(QMainWindow):
         self.originalTab = QWidget()
         self.originalLayout()
         tabs.addTab(self.originalTab, "Original Image")
-        
+
+        # Histogram layout
+        self.histogramTab = QWidget()
+        self.equalizeLayout()
+        tabs.addTab(self.histogramTab, "Histogram")
+
         # Zoom layout
         self.zoomTab = QWidget()
         self.zoomLayout()
@@ -249,7 +261,7 @@ class Window(QMainWindow):
         self.rotationShearingTab = QWidget()
         self.rotationShearingLayout()
         tabs.addTab(self.rotationShearingTab, "Rotation and Shearing")
-    
+
         outerLayout.addWidget(tabs)
 
         # Add docker
@@ -260,10 +272,12 @@ class Window(QMainWindow):
 
     # Original Layout
     def originalLayout(self):
-        originalLayout = QVBoxLayout()
+        originalLayout = QHBoxLayout()
         
         self.originalViewer = ImageViewer()
+        self.histogramViewer = ImageViewer(axisExisting=True, axisColor='green')
         originalLayout.addWidget(self.originalViewer)
+        originalLayout.addWidget(self.histogramViewer)
 
         self.originalTab.setLayout(originalLayout)
 
@@ -284,6 +298,16 @@ class Window(QMainWindow):
         rotationShearingLayout.addWidget(self.rotationShearingViewer)
 
         self.rotationShearingTab.setLayout(rotationShearingLayout)
+
+    def equalizeLayout(self):
+        histogramLayout = QHBoxLayout()
+        
+        self.equalizedImageViewer = ImageViewer(axisColor="blue")
+        self.equalizedHistogramViewer = ImageViewer(axisExisting=True, axisColor="blue")
+        histogramLayout.addWidget(self.equalizedImageViewer)
+        histogramLayout.addWidget(self.equalizedHistogramViewer)
+
+        self.histogramTab.setLayout(histogramLayout)
 
     # Dock widget 
     def addDockLayout(self):   
@@ -455,8 +479,9 @@ class Window(QMainWindow):
             appLogger.exception("Can't open the file !")
             QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
         else:
+            self.histogramViewer.drawHistogram(self.originalViewer.grayImage)
+
             self.statusbar.showMessage(path.split("/")[-1])
-            
             if self.fileExtension == "dcm":
                 # If dicom
                 self.widthOfImage =  self.getAttr(data, 'Columns')

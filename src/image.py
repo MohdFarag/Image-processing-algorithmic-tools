@@ -262,6 +262,40 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.imshow(shearedImage, cmap="gray", extent=(0, 128, 0, 128))
             self.draw()
 
+    def histogram(self, img : np.ndarray):
+        self.clearImage()
+        # Create list of values 0-255
+        pixels = [x for x in range(256)]
+      
+        # Initialize width and height of image
+        width, height = img.shape
+        counts = []
+        
+        # For each intensity value
+        for i in pixels:
+            # Set counter to 0
+            temp = 0
+
+            # Traverse through the pixels
+            for x in range(width):
+                for y in range(height):
+
+                    # If pixel intensity equal to intensity level
+                    # Increment counter
+                    if (img[x][y] == i):
+                        temp += 1
+
+            # Append frequency of intensity level 
+            counts.append(temp)
+        
+        return pixels, counts
+
+    # Get histogram image
+    def drawHistogram(self, image):
+        pixels, counts = self.histogram(image)
+        self.axes.bar(pixels, counts)
+        self.draw()
+
     # Clear figure
     def clearImage(self):
         self.axes.clear()
