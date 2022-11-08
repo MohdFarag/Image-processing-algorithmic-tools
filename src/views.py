@@ -38,7 +38,8 @@ class Window(QMainWindow):
         self.nameOfPatient = ""
         self.ageOfPatient = ""
         self.bodyOfPatient = ""
-        self.interpolationMode = "" 
+        self.interpolationMode = ""
+        self.currentViewer = ImageViewer()
         
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon.svg"))
@@ -238,31 +239,32 @@ class Window(QMainWindow):
         outerLayout = QVBoxLayout()
 
         # Initialize tab screen
-        tabs = QTabWidget()
-        tabs.setStyleSheet(f"""font-size:15px;""")
+        self.tabs = QTabWidget()
+        self.tabs.setStyleSheet(f"""font-size:15px;""")
         ### init GUI ###
         
         # Main layout
         self.originalTab = QWidget()
         self.originalLayout()
-        tabs.addTab(self.originalTab, "Original Image")
-
+        self.tabs.addTab(self.originalTab, "Original Image")
+        self.currentViewer = self.originalViewer # Primary Viewer
+        
         # Histogram layout
-        self.histogramTab = QWidget()
+        self.equalizeTab = QWidget()
         self.equalizeLayout()
-        tabs.addTab(self.histogramTab, "Normalizing")
+        self.tabs.addTab(self.equalizeTab, "Normalizing")
 
         # Zoom layout
         self.zoomTab = QWidget()
         self.zoomLayout()
-        tabs.addTab(self.zoomTab, "Zooming")
+        self.tabs.addTab(self.zoomTab, "Zooming")
 
         # Rotation and shearing layout
         self.rotationShearingTab = QWidget()
         self.rotationShearingLayout()
-        tabs.addTab(self.rotationShearingTab, "Rotation and Shearing")
+        self.tabs.addTab(self.rotationShearingTab, "Rotation and Shearing")
 
-        outerLayout.addWidget(tabs)
+        outerLayout.addWidget(self.tabs)
 
         # Add docker
         self.addDockLayout()
@@ -300,14 +302,14 @@ class Window(QMainWindow):
         self.rotationShearingTab.setLayout(rotationShearingLayout)
 
     def equalizeLayout(self):
-        histogramLayout = QHBoxLayout()
+        equalizeLayout = QHBoxLayout()
         
         self.equalizedImageViewer = ImageViewer(axisColor="blue", type="image", title="Equalized Image")
         self.equalizedHistogramViewer = ImageViewer(axisExisting=True, axisColor="blue", type="hist", title="Histogram of Equalized Image")
-        histogramLayout.addWidget(self.equalizedImageViewer)
-        histogramLayout.addWidget(self.equalizedHistogramViewer)
+        equalizeLayout.addWidget(self.equalizedImageViewer)
+        equalizeLayout.addWidget(self.equalizedHistogramViewer)
 
-        self.histogramTab.setLayout(histogramLayout)
+        self.equalizeTab.setLayout(equalizeLayout)
 
     # Dock widget 
     def addDockLayout(self):   
@@ -377,10 +379,10 @@ class Window(QMainWindow):
     def _connectActions(self):
         # Original Actions
         self.openAction.triggered.connect(self.browseImage) # When click on browse image action
-        self.defaultScaleAction.triggered.connect(self.originalViewer.toDefaultScale) # When click on grayscale image action
-        self.grayScaleAction.triggered.connect(self.originalViewer.toGrayScale) # When click on grayscale image action
-        self.clearAction.triggered.connect(self.originalViewer.clearImage) # When click on exit action
-        self.clearAction.triggered.connect(self.zoomViewer.clearImage) # When click on exit action
+        self.defaultScaleAction.triggered.connect(self.currentViewer.toDefaultScale) # When click on grayscale image action
+        self.grayScaleAction.triggered.connect(self.currentViewer.toGrayScale) # When click on grayscale image action
+        self.clearAction.triggered.connect(self.currentViewer.clearImage) # When click on exit action
+        self.clearAction.triggered.connect(self.currentViewer.clearImage) # When click on exit action
         
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
@@ -400,6 +402,7 @@ class Window(QMainWindow):
 
         self.equalizeAction.triggered.connect(lambda: self.equalizedHistogramViewer.normalizeHistogram(self.equalizedImageViewer, self.originalViewer.grayImage)) 
 
+        self.tabs.currentChanged.connect(lambda: self.setCurrentTab(self.tabs.currentIndex()))
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
@@ -477,9 +480,9 @@ class Window(QMainWindow):
             return
 
         try:
-            data = self.originalViewer.setImage(path, self.fileExtension, gray=False)
-            self.zoomViewer.setImage(path, self.fileExtension)
-            self.rotationShearingViewer.setImage(path, self.fileExtension)
+            data = self.currentViewer.setImage(path, self.fileExtension, gray=False)
+            # self.zoomViewer.setImage(path, self.fileExtension)
+            # self.rotationShearingViewer.setImage(path, self.fileExtension)
         except:
             # Error
             appLogger.exception("Can't open the file !")
@@ -545,6 +548,20 @@ class Window(QMainWindow):
         finally:
             bitDepth = bitDepthForOneChannel * numOfChannels
             return bitDepth
+
+    def setCurrentTab(self, indexOfTab:int):
+        if indexOfTab == 0:
+            self.currentViewer = self.originalViewer
+        elif indexOfTab == 1:
+            self.currentViewer = self.originalViewer
+        elif indexOfTab == 2:
+            self.currentViewer = self.zoomViewer
+        elif indexOfTab == 3:
+            self.currentViewer = self.rotationShearingViewer
+
+    def addTab(self):
+        # self.tabs.addTab
+        pass
 
     # Exit the application
     def exit(self):

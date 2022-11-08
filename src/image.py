@@ -21,9 +21,9 @@ class ImageViewer(FigureCanvasQTAgg):
         self.axisExisting = axisExisting
         self.axisColor = axisColor
         self.title = title
+        self.axes.grid(False)
 
         if type == "image":
-            self.axes.grid(True)
             self.xlabel = "Width"
             self.ylabel = "Height"
         
@@ -37,7 +37,6 @@ class ImageViewer(FigureCanvasQTAgg):
             norm = mpl.colors.Normalize(vmin=0, vmax=255)
             
             self.fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation='horizontal')
-            self.axes.grid(False)
         
         self.axes.set_title(self.title)
         self.axes.set_xlabel(self.xlabel)
@@ -46,6 +45,10 @@ class ImageViewer(FigureCanvasQTAgg):
 
         super(ImageViewer, self).__init__(self.fig)
    
+    # Set grid
+    def setGrid(self, status):
+        self.axes.grid(status)
+
     # Set Theme
     def setTheme(self):
         self.axes.set_title(self.title)
@@ -230,7 +233,7 @@ class ImageViewer(FigureCanvasQTAgg):
                         y_floor = math.floor(y)
                         y_ceil = min(oldHeight - 1, math.ceil(y))
                         
-                        if (x >= 0 and y >= 0 and x < oldWidth and y < oldHeight):
+                        if (x >= 0 and y >= 0 and x < sizeImage and y < sizeImage):
                             if (x_ceil == x_floor) and (y_ceil == y_floor):
                                 q = self.grayImage[int(y), int(x)]
                             elif (y_ceil == y_floor):
