@@ -452,6 +452,7 @@ class Window(QMainWindow):
             QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
             return
 
+        
         self.widthOfImage, self.heightOfImage = self.rotationShearingViewer.rotateImage(rotationAngle, interpolationMode)
 
         direction = "Clockwise"

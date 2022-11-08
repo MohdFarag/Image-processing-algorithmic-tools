@@ -24,11 +24,12 @@ class ImageViewer(FigureCanvasQTAgg):
 
         if type == "image":
             self.axes.grid(True)
+            self.xlabel = "Width"
+            self.ylabel = "Height"
         
         elif type == "hist":
-            self.axes.set_xlabel("Intenisty")
-            self.axes.set_ylabel("Count")
-
+            self.xlabel = "Intenisty"
+            self.ylabel = "Count"
             divider = make_axes_locatable(self.axes)
             cax = divider.append_axes('bottom', size='6%', pad=0.55, add_to_figure=True)
             
@@ -39,12 +40,18 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.grid(False)
         
         self.axes.set_title(self.title)
+        self.axes.set_xlabel(self.xlabel)
+        self.axes.set_ylabel(self.ylabel)
         self.setTheme()
 
         super(ImageViewer, self).__init__(self.fig)
    
     # Set Theme
     def setTheme(self):
+        self.axes.set_title(self.title)
+        self.axes.set_xlabel(self.xlabel)
+        self.axes.set_ylabel(self.ylabel)
+
         self.fig.set_edgecolor("black")
         self.axes.spines['bottom'].set_color(self.axisColor)
         self.axes.spines['top'].set_color(self.axisColor)
@@ -189,16 +196,18 @@ class ImageViewer(FigureCanvasQTAgg):
             oldWidth = self.grayImage.shape[0]
             # Define the width of the image
             oldHeight = self.grayImage.shape[1]
+
+            sizeImage = min(oldWidth,oldHeight)
           
             # Initilize rotated image 
-            rotatedImage = np.zeros((oldWidth,oldHeight)) 
+            rotatedImage = np.zeros((sizeImage,sizeImage)) 
 
             # Find the center of the Rotated T image
-            centerHeight = int( (oldHeight+1)/2) # mid row
-            centerWidth = int( (oldWidth+1)/2 ) # mid col
+            centerHeight = int( (sizeImage+1)/2) # mid row
+            centerWidth = int( (sizeImage+1)/2 ) # mid col
 
-            for i in range(oldWidth):
-                for j in range(oldHeight):
+            for i in range(sizeImage):
+                for j in range(sizeImage):
                     x = -(j-centerWidth)*sine + (i-centerHeight)*cosine
                     y = (j-centerWidth)*cosine + (i-centerHeight)*sine
                     
@@ -211,7 +220,7 @@ class ImageViewer(FigureCanvasQTAgg):
                         x = round(x)
                         y = round(y)
                         #  check if x/y corresponds to a valid pixel in input image
-                        if (x >= 0 and y >= 0 and x < oldWidth and y < oldHeight):
+                        if (x >= 0 and y >= 0 and x < sizeImage and y < sizeImage):
                             rotatedImage[j][i] = self.grayImage[y][x]
         
                     elif mode == "linear":    
@@ -306,8 +315,16 @@ class ImageViewer(FigureCanvasQTAgg):
     # Get histogram image
     def drawHistogram(self, image:np.ndarray):
         self.clearImage()
-        self.axes.hist(image.ravel(), 256, (0,256))
-        self.axes.set_title(self.title)
+
+        histogram,_,_ = self.axes.hist(image.ravel(), 256, (0,256))
+        histogram = np.array(histogram)
+
+        cdf = histogram.cumsum()
+        cdf_normalized = cdf * float(histogram.max()) / cdf.max()
+        self.axes.plot(cdf_normalized, color = 'r')
+        
+        self.axes.legend(('cdf','histogram'), loc = 'upper left')
+
         self.draw()
 
     # Normalized Histogram
