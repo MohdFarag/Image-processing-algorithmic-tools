@@ -2,13 +2,15 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 import numpy as np
 import math
+
+import matplotlib as mpl
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.image as mpimg
 import pydicom as dicom
 from PIL import Image
-import cv2 as cv
 
 class ImageViewer(FigureCanvasQTAgg):
-    def __init__(self, parent=None, axisExisting=False, axisColor="#329da8"):
+    def __init__(self, parent=None, axisExisting=False, axisColor="#329da8", type="image", title=""):
         self.fig = Figure(figsize = (6, 6), dpi = 80)
         self.axes = self.fig.add_subplot(111)
 
@@ -18,14 +20,31 @@ class ImageViewer(FigureCanvasQTAgg):
         self.grayImage = np.array([])
         self.axisExisting = axisExisting
         self.axisColor = axisColor
+        self.title = title
 
-        self.axes.grid(False)
-        self.setShape()
+        if type == "image":
+            self.axes.grid(True)
+        
+        elif type == "hist":
+            self.axes.set_xlabel("Intenisty")
+            self.axes.set_ylabel("Count")
+
+            divider = make_axes_locatable(self.axes)
+            cax = divider.append_axes('bottom', size='6%', pad=0.55, add_to_figure=True)
+            
+            cmap = mpl.cm.gray
+            norm = mpl.colors.Normalize(vmin=0, vmax=255)
+            
+            self.fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation='horizontal')
+            self.axes.grid(False)
+        
+        self.axes.set_title(self.title)
+        self.setTheme()
 
         super(ImageViewer, self).__init__(self.fig)
    
     # Set Theme
-    def setShape(self):
+    def setTheme(self):
         self.fig.set_edgecolor("black")
         self.axes.spines['bottom'].set_color(self.axisColor)
         self.axes.spines['top'].set_color(self.axisColor)
@@ -270,7 +289,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.draw()
 
     # Build histogram of the image
-    def getHistogram(self, image:np.ndarray,bins):
+    def getHistogram(self, image:np.ndarray, bins):
         # Put pixels in a 1D array by flattening out img array
         flatImage = image.flatten()
 
@@ -287,47 +306,17 @@ class ImageViewer(FigureCanvasQTAgg):
     # Get histogram image
     def drawHistogram(self, image:np.ndarray):
         self.clearImage()
-        self.axes.hist(image.ravel(), 256,(0,256))
+        self.axes.hist(image.ravel(), 256, (0,256))
+        self.axes.set_title(self.title)
         self.draw()
-
-    # Normalized Histogram
-    def normalizeHistogram1(self, equalizedImageViewer, nonEqualizedImage):
-        if len(nonEqualizedImage) != 0:
-            self.clearImage()
-            histogram_array = np.bincount(nonEqualizedImage.flatten(), minlength=256)
-
-            # Normalize
-            num_pixels = np.sum(histogram_array)
-            histogram_array = histogram_array/num_pixels
-
-            # Normalized cumulative histogram
-            cdfHistogram_array = np.cumsum(histogram_array)
-
-            transform_map = np.floor(255 * cdfHistogram_array).astype(np.uint8)
-
-            # flatten image array into 1D list
-            flatNonEqualizedImage = list(nonEqualizedImage.flatten())
-            flatEqualizedImage = [transform_map[p] for p in flatNonEqualizedImage]
-
-            # reshape and write back into img_array
-            equalizedImage = np.reshape(np.asarray(flatEqualizedImage), nonEqualizedImage.shape)
-
-            # Draw equalized image
-            equalizedImageViewer.axes.imshow(equalizedImage, cmap="gray")
-            equalizedImageViewer.draw()
-
-            # Draw normalized hisotgram
-            self.drawHistogram(equalizedImage)
-        else:
-            return
 
     # Normalized Histogram
     def normalizeHistogram(self, equalizedImageViewer, nonEqualizedImage):
         if len(nonEqualizedImage) != 0:
             self.clearImage() # Clear prev
-
+            L = 256
             # Get histogram of nonEqualizedImage
-            nonEqualizedhistogram = np.bincount(nonEqualizedImage.flatten(), minlength=256)
+            nonEqualizedhistogram = np.bincount(nonEqualizedImage.flatten(), minlength=L)
 
             # Normalize
             sumPixels = np.sum(nonEqualizedhistogram)
@@ -337,7 +326,7 @@ class ImageViewer(FigureCanvasQTAgg):
             cfdHistogram = np.cumsum(nonEqualizedhistogram)
 
             # Initilized transform map
-            transformMap = np.round(255 * cfdHistogram)
+            transformMap = np.round((L-1) * cfdHistogram)
 
             # Flatten image array into 1D list
             flatNonEqualizedImage = list(nonEqualizedImage.flatten())
@@ -349,7 +338,7 @@ class ImageViewer(FigureCanvasQTAgg):
             # Draw equalized image
             equalizedImageViewer.axes.imshow(equalizedImage, cmap="gray")
             equalizedImageViewer.draw()
-
+            
             # Draw normalized hisotgram
             self.drawHistogram(equalizedImage)
         else:
@@ -358,7 +347,7 @@ class ImageViewer(FigureCanvasQTAgg):
     # Clear figure
     def clearImage(self):
         self.axes.clear()
-        self.setShape()
+        self.setTheme()
         self.draw()
 
         self.loaded = False

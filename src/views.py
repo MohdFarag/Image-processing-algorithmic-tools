@@ -274,8 +274,8 @@ class Window(QMainWindow):
     def originalLayout(self):
         originalLayout = QHBoxLayout()
         
-        self.originalViewer = ImageViewer()
-        self.histogramViewer = ImageViewer(axisExisting=True, axisColor='green')
+        self.originalViewer = ImageViewer(type="image", title="Original Image")
+        self.histogramViewer = ImageViewer(axisExisting=True, axisColor='green', type="hist", title="Histogram of Original Image")
         originalLayout.addWidget(self.originalViewer)
         originalLayout.addWidget(self.histogramViewer)
 
@@ -285,7 +285,7 @@ class Window(QMainWindow):
     def zoomLayout(self):
         zoomLayout = QVBoxLayout()
         
-        self.zoomViewer = ImageViewer(axisColor="black")
+        self.zoomViewer = ImageViewer(axisColor="black", type="image", title="Zoom Viewer")
         zoomLayout.addWidget(self.zoomViewer)
 
         self.zoomTab.setLayout(zoomLayout)
@@ -294,7 +294,7 @@ class Window(QMainWindow):
     def rotationShearingLayout(self):
         rotationShearingLayout = QVBoxLayout()
         
-        self.rotationShearingViewer = ImageViewer(axisExisting=True,axisColor="red")
+        self.rotationShearingViewer = ImageViewer(axisExisting=True, axisColor="red", type="image", title="Rotation and Shearing Viewer")
         rotationShearingLayout.addWidget(self.rotationShearingViewer)
 
         self.rotationShearingTab.setLayout(rotationShearingLayout)
@@ -302,8 +302,8 @@ class Window(QMainWindow):
     def equalizeLayout(self):
         histogramLayout = QHBoxLayout()
         
-        self.equalizedImageViewer = ImageViewer(axisColor="blue")
-        self.equalizedHistogramViewer = ImageViewer(axisExisting=True, axisColor="blue")
+        self.equalizedImageViewer = ImageViewer(axisColor="blue", type="image", title="Equalized Image")
+        self.equalizedHistogramViewer = ImageViewer(axisExisting=True, axisColor="blue", type="hist", title="Histogram of Equalized Image")
         histogramLayout.addWidget(self.equalizedImageViewer)
         histogramLayout.addWidget(self.equalizedHistogramViewer)
 
