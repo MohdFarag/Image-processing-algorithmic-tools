@@ -250,12 +250,12 @@ class Window(QMainWindow):
         # Histogram layout
         self.histogramTab = QWidget()
         self.equalizeLayout()
-        tabs.addTab(self.histogramTab, "Histogram")
+        tabs.addTab(self.histogramTab, "Normalizing")
 
         # Zoom layout
         self.zoomTab = QWidget()
         self.zoomLayout()
-        tabs.addTab(self.zoomTab, "Zoom")
+        tabs.addTab(self.zoomTab, "Zooming")
 
         # Rotation and shearing layout
         self.rotationShearingTab = QWidget()
@@ -387,20 +387,25 @@ class Window(QMainWindow):
         self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
 
         # Construct T
+        self.constructTAction.triggered.connect(lambda: self.originalViewer.constructT("white"))
+        self.constructTAction.triggered.connect(lambda: self.zoomViewer.constructT("white"))
         self.constructTAction.triggered.connect(lambda: self.rotationShearingViewer.constructT("white"))
+        self.constructTAction.triggered.connect(lambda: self.histogramViewer.drawHistogram(self.originalViewer.defaultImage))
 
         # Rotate image
-        self.rotateNearestAction.triggered.connect(lambda: self.rotateT(interpolationMode="nearest"))
-        self.rotateLinearAction.triggered.connect(lambda: self.rotateT(interpolationMode="linear"))
+        self.rotateNearestAction.triggered.connect(lambda: self.rotateImage(interpolationMode="nearest"))
+        self.rotateLinearAction.triggered.connect(lambda: self.rotateImage(interpolationMode="linear"))
 
-        self.shearAction.triggered.connect(self.shearT)
+        self.shearAction.triggered.connect(self.shearImage)
+
+        self.equalizeAction.triggered.connect(lambda: self.equalizedHistogramViewer.normalizeHistogram(self.equalizedImageViewer, self.originalViewer.grayImage)) 
 
         self.exitAction.triggered.connect(self.exit) # When click on exit action
     
     def _connect(self):
         self._connectActions()
 
-    def shearT(self):
+    def shearImage(self):
         try:
             shearFactor = float(self.factorInput.text())
         except:
@@ -409,7 +414,7 @@ class Window(QMainWindow):
         
         if -90 < shearFactor < 90:
             try:
-                self.rotationShearingViewer.shearT(shearFactor)
+                self.rotationShearingViewer.shearImage(shearFactor)
             except:
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
                 return
@@ -440,14 +445,14 @@ class Window(QMainWindow):
             QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
 
     # Rotate Image
-    def rotateT(self, interpolationMode):
+    def rotateImage(self, interpolationMode):
         try:
             rotationAngle = float(self.factorInput.text())
         except:
             QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
             return
 
-        self.widthOfImage, self.heightOfImage = self.rotationShearingViewer.rotateT(rotationAngle, interpolationMode)
+        self.widthOfImage, self.heightOfImage = self.rotationShearingViewer.rotateImage(rotationAngle, interpolationMode)
 
         direction = "Clockwise"
         if rotationAngle >= 0:
@@ -471,9 +476,9 @@ class Window(QMainWindow):
             return
 
         try:
-            data = self.originalViewer.setImage(path, self.fileExtension)
-            data = self.zoomViewer.setImage(path, self.fileExtension)
-            self.zoomViewer.toGrayScale()
+            data = self.originalViewer.setImage(path, self.fileExtension, gray=False)
+            self.zoomViewer.setImage(path, self.fileExtension)
+            self.rotationShearingViewer.setImage(path, self.fileExtension)
         except:
             # Error
             appLogger.exception("Can't open the file !")

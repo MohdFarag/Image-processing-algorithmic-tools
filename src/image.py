@@ -5,6 +5,8 @@ import math
 import matplotlib.image as mpimg
 import pydicom as dicom
 from PIL import Image
+import cv2 as cv
+
 class ImageViewer(FigureCanvasQTAgg):
     def __init__(self, parent=None, axisExisting=False, axisColor="#329da8"):
         self.fig = Figure(figsize = (6, 6), dpi = 80)
@@ -12,9 +14,8 @@ class ImageViewer(FigureCanvasQTAgg):
 
         # Variables
         self.loaded = False
-        self.defaultImage = np.array([0])
-        self.grayImage = np.array([0])
-        self.imageTshape = np.array([0])
+        self.defaultImage = np.array([])
+        self.grayImage = np.array([])
         self.axisExisting = axisExisting
         self.axisColor = axisColor
 
@@ -36,7 +37,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.set_yticks([])
 
     # Set Image
-    def setImage(self, image_path, fileExtension):
+    def setImage(self, image_path, fileExtension, gray=True):
         # Reading the image
         if fileExtension == "dcm":
             imgData = dicom.dcmread(image_path, force=True)
@@ -44,17 +45,21 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.imshow(self.defaultImage)
         else:
             self.defaultImage = mpimg.imread(image_path)
-            self.axes.imshow(self.defaultImage)
             imgData = Image.open(image_path)
-       
-        self.loaded = True
-        self.draw()
 
         # If image is RGB transform it to gray.
         if self.defaultImage.ndim > 2:
             self.grayImage = self.defaultImage[:,:,0]
         else:
             self.grayImage = self.defaultImage
+
+        if gray:
+            self.axes.imshow(self.grayImage, cmap="gray")
+        else:
+            self.axes.imshow(self.defaultImage)
+
+        self.loaded = True
+        self.draw()
 
         # Depends on extension of the file
         return imgData
@@ -133,25 +138,27 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Construct T shape
     def constructT(self, background="white"):
-        self.imageTshape = np.zeros((128,128), dtype=np.uint8)
+        self.defaultImage = np.zeros((128,128), dtype=np.uint8)
         
         if background == "black":
-            self.imageTshape.fill(255)
+            self.defaultImage.fill(255)
 
         for i in range(29,50):
             for j in range(29,100):
-                self.imageTshape[i,j] = 1
+                self.defaultImage[i,j] = 255
         
         for i in range(49,100):
             for j in range(54,74):
-                self.imageTshape[i,j] = 1
+                self.defaultImage[i,j] = 255
+        
+        self.grayImage = self.defaultImage
 
-        self.axes.imshow(self.imageTshape, cmap="gray", extent=(0, 128, 0, 128))
+        self.axes.imshow(self.defaultImage, cmap="gray", extent=(0, 128, 0, 128))
         self.loaded = True
         self.draw()
     
     # Rotate T image
-    def rotateT(self, angle, mode):
+    def rotateImage(self, angle, mode):
         if self.loaded:
             # Converting degrees to radians
             angle = math.radians(angle)
@@ -160,9 +167,9 @@ class ImageViewer(FigureCanvasQTAgg):
             sine = math.sin(angle)
 
             # Define the height of the image
-            oldWidth = self.imageTshape.shape[0]
+            oldWidth = self.grayImage.shape[0]
             # Define the width of the image
-            oldHeight = self.imageTshape.shape[1]
+            oldHeight = self.grayImage.shape[1]
           
             # Initilize rotated image 
             rotatedImage = np.zeros((oldWidth,oldHeight)) 
@@ -186,7 +193,7 @@ class ImageViewer(FigureCanvasQTAgg):
                         y = round(y)
                         #  check if x/y corresponds to a valid pixel in input image
                         if (x >= 0 and y >= 0 and x < oldWidth and y < oldHeight):
-                            rotatedImage[j][i] = self.imageTshape[y][x]
+                            rotatedImage[j][i] = self.grayImage[y][x]
         
                     elif mode == "linear":    
                         # Calculate the coordinate values for 4 surrounding pixels.
@@ -197,20 +204,20 @@ class ImageViewer(FigureCanvasQTAgg):
                         
                         if (x >= 0 and y >= 0 and x < oldWidth and y < oldHeight):
                             if (x_ceil == x_floor) and (y_ceil == y_floor):
-                                q = self.imageTshape[int(y), int(x)]
+                                q = self.grayImage[int(y), int(x)]
                             elif (y_ceil == y_floor):
-                                q1 = self.imageTshape[int(y), int(x_floor)]
-                                q2 = self.imageTshape[int(y), int(x_ceil)]
+                                q1 = self.grayImage[int(y), int(x_floor)]
+                                q2 = self.grayImage[int(y), int(x_ceil)]
                                 q = q1 * (x_ceil - x) + q2 * (x - x_floor)
                             elif (x_ceil == x_floor):
-                                q1 = self.imageTshape[int(y_floor), int(x)]
-                                q2 = self.imageTshape[int(y_ceil), int(x)]
+                                q1 = self.grayImage[int(y_floor), int(x)]
+                                q2 = self.grayImage[int(y_ceil), int(x)]
                                 q = (q1 * (y_ceil - y)) + (q2 * (y - y_floor))
                             else:
-                                p1 = self.imageTshape[y_floor, x_floor]
-                                p2 = self.imageTshape[y_ceil, x_floor]
-                                p3 = self.imageTshape[y_floor, x_ceil]
-                                p4 = self.imageTshape[y_ceil, x_ceil]
+                                p1 = self.grayImage[y_floor, x_floor]
+                                p2 = self.grayImage[y_ceil, x_floor]
+                                p3 = self.grayImage[y_floor, x_ceil]
+                                p4 = self.grayImage[y_ceil, x_ceil]
 
                                 q1 = p1 * (y_ceil - y) + p2 * (y - y_floor)
                                 q2 = p3 * (y_ceil - y) + p4 * (y - y_floor)
@@ -226,15 +233,15 @@ class ImageViewer(FigureCanvasQTAgg):
             return "N/A","N/A"
 
     # shear T image
-    def shearT(self, angle):
+    def shearImage(self, angle):
         if self.loaded:
             # Converting degrees to radians
             angle = math.radians(angle)
 
             # Define the height of the image
-            oldWidth = self.imageTshape.shape[0]
+            oldWidth = self.grayImage.shape[0]
             # Define the width of the image
-            oldHeight = self.imageTshape.shape[1]
+            oldHeight = self.grayImage.shape[1]
           
             # Initilize rotated image
             shearedImage = np.zeros((oldWidth,oldHeight))
@@ -257,44 +264,96 @@ class ImageViewer(FigureCanvasQTAgg):
                     new_x += centerHeight
                     new_y += centerWidth    
                     if (new_x >= 0 and new_y >= 0 and new_x < oldWidth and new_y < oldHeight):
-                        shearedImage[j][i] = self.imageTshape[new_y,new_x]
+                        shearedImage[j][i] = self.grayImage[new_y,new_x]
 
             self.axes.imshow(shearedImage, cmap="gray", extent=(0, 128, 0, 128))
             self.draw()
 
-    def histogram(self, img : np.ndarray):
-        self.clearImage()
-        # Create list of values 0-255
-        pixels = [x for x in range(256)]
-      
-        # Initialize width and height of image
-        width, height = img.shape
-        counts = []
+    # Build histogram of the image
+    def getHistogram(self, image:np.ndarray,bins):
+        # Put pixels in a 1D array by flattening out img array
+        flatImage = image.flatten()
+
+        # Array with size of bins, set to zeros
+        histogram = np.zeros(bins)
         
-        # For each intensity value
-        for i in pixels:
-            # Set counter to 0
-            temp = 0
-
-            # Traverse through the pixels
-            for x in range(width):
-                for y in range(height):
-
-                    # If pixel intensity equal to intensity level
-                    # Increment counter
-                    if (img[x][y] == i):
-                        temp += 1
-
-            # Append frequency of intensity level 
-            counts.append(temp)
+        # Loop through pixels and sum up counts of pixels
+        for pixel in flatImage:
+            histogram[pixel] += 1
         
-        return pixels, counts
+        # return our final result
+        return histogram
 
     # Get histogram image
-    def drawHistogram(self, image):
-        pixels, counts = self.histogram(image)
-        self.axes.bar(pixels, counts)
+    def drawHistogram(self, image:np.ndarray):
+        self.clearImage()
+        self.axes.hist(image.ravel(), 256,(0,256))
         self.draw()
+
+    # Normalized Histogram
+    def normalizeHistogram1(self, equalizedImageViewer, nonEqualizedImage):
+        if len(nonEqualizedImage) != 0:
+            self.clearImage()
+            histogram_array = np.bincount(nonEqualizedImage.flatten(), minlength=256)
+
+            # Normalize
+            num_pixels = np.sum(histogram_array)
+            histogram_array = histogram_array/num_pixels
+
+            # Normalized cumulative histogram
+            cdfHistogram_array = np.cumsum(histogram_array)
+
+            transform_map = np.floor(255 * cdfHistogram_array).astype(np.uint8)
+
+            # flatten image array into 1D list
+            flatNonEqualizedImage = list(nonEqualizedImage.flatten())
+            flatEqualizedImage = [transform_map[p] for p in flatNonEqualizedImage]
+
+            # reshape and write back into img_array
+            equalizedImage = np.reshape(np.asarray(flatEqualizedImage), nonEqualizedImage.shape)
+
+            # Draw equalized image
+            equalizedImageViewer.axes.imshow(equalizedImage, cmap="gray")
+            equalizedImageViewer.draw()
+
+            # Draw normalized hisotgram
+            self.drawHistogram(equalizedImage)
+        else:
+            return
+
+    # Normalized Histogram
+    def normalizeHistogram(self, equalizedImageViewer, nonEqualizedImage):
+        if len(nonEqualizedImage) != 0:
+            self.clearImage() # Clear prev
+
+            # Get histogram of nonEqualizedImage
+            nonEqualizedhistogram = np.bincount(nonEqualizedImage.flatten(), minlength=256)
+
+            # Normalize
+            sumPixels = np.sum(nonEqualizedhistogram)
+            nonEqualizedhistogram = nonEqualizedhistogram/sumPixels
+
+            # Normalized cumulative histogram
+            cfdHistogram = np.cumsum(nonEqualizedhistogram)
+
+            # Initilized transform map
+            transformMap = np.round(255 * cfdHistogram)
+
+            # Flatten image array into 1D list
+            flatNonEqualizedImage = list(nonEqualizedImage.flatten())
+            flatEqualizedImage = [transformMap[p] for p in flatNonEqualizedImage]
+
+            # Reshape and write back into equalizedImage
+            equalizedImage = np.reshape(np.asarray(flatEqualizedImage), nonEqualizedImage.shape)
+
+            # Draw equalized image
+            equalizedImageViewer.axes.imshow(equalizedImage, cmap="gray")
+            equalizedImageViewer.draw()
+
+            # Draw normalized hisotgram
+            self.drawHistogram(equalizedImage)
+        else:
+            return
 
     # Clear figure
     def clearImage(self):
