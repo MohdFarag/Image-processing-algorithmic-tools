@@ -23,23 +23,22 @@ from .log import appLogger
 # Window class
 class Window(QMainWindow):
     """Main Window"""
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """Initializer."""
-        super().__init__()
+        super(Window, self).__init__(*args, **kwargs)
 
         ### Variables
-        self.fileExtension = ""
-        self.widthOfImage = ""
-        self.heightOfImage = ""
-        self.sizeOfImage = ""
-        self.depthOfImage = ""
-        self.modeOfImage = ""
-        self.modalityOfImage = ""
-        self.nameOfPatient = ""
-        self.ageOfPatient = ""
-        self.bodyOfPatient = ""
-        self.interpolationMode = ""
-        self.currentViewer = ImageViewer()
+        self.widthOfImage = 0
+        self.heightOfImage = 0
+        self.sizeOfImage = 0
+        self.depthOfImage = 0
+        self.fileExtension = "N/A"
+        self.modeOfImage = "N/A"
+        self.modalityOfImage = "N/A"
+        self.nameOfPatient = "N/A"
+        self.ageOfPatient = "N/A"
+        self.bodyOfPatient = "N/A"
+        self.interpolationMode = "N/A"
         
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon.svg"))
@@ -66,20 +65,15 @@ class Window(QMainWindow):
         self.openAction.setShortcut("Ctrl+O")
         self.openAction.setStatusTip('Open a new image')
 
-        # Grayscale Action
+        # Add tab Action
+        self.addTabAction = QAction(QIcon(":add.ico"), "&Add new tab...", self)
+        self.addTabAction.setShortcut("Ctrl+A")
+        self.addTabAction.setStatusTip('Add a new tab')
+
+        # Clear Action
         self.clearAction = QAction(QIcon(":clear.png"), "&Close Image", self)
         self.clearAction.setShortcut("Ctrl+C")
         self.clearAction.setStatusTip('Close the image')
-
-        # Default scale Action
-        self.defaultScaleAction = QAction(QIcon(":defscale.png"), "&Default Scale", self)
-        self.defaultScaleAction.setShortcut("Ctrl+D")
-        self.defaultScaleAction.setStatusTip('Return to default scale')
-
-        # Grayscale Action
-        self.grayScaleAction = QAction(QIcon(":grscale.png"), "&Gray Scale", self)
-        self.grayScaleAction.setShortcut("Ctrl+G")
-        self.grayScaleAction.setStatusTip('Transform to gray scale')
 
         # Zoom Nearest Neighbor Interpolation Action
         self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":paxiliteZoom.png"), "&Zoom Nearest Neighbor", self)
@@ -110,6 +104,11 @@ class Window(QMainWindow):
         self.shearAction = QAction(QIcon(":shear.png"), "&Shear T", self)
         self.shearAction.setShortcut("ctrl+5")
         self.shearAction.setStatusTip('Shear the image')
+        
+        # Equalize the image
+        self.showHistogramAction = QAction(QIcon(":histogram.png"), "&Histogram", self)
+        self.showHistogramAction.setShortcut("ctrl+H")
+        self.showHistogramAction.setStatusTip('Show the histogram')
 
         # Equalize the image
         self.equalizeAction = QAction(QIcon(":equalize.png"), "&Equalize", self)
@@ -151,10 +150,13 @@ class Window(QMainWindow):
 
         ## Edit tap
         editMenu = QMenu("&Edit", self)
-        editMenu.addAction(self.defaultScaleAction) # Default scale in menu
-        editMenu.addAction(self.grayScaleAction) # Gray scale in menu
         editMenu.addAction(self.constructTAction) # Construct T in menu
+        editMenu.addAction(self.showHistogramAction) # Show histogram in menu
         editMenu.addAction(self.equalizeAction) # Equalize image in menu
+        
+        ## View tap
+        viewMenu = QMenu("&View", self)
+        viewMenu.addAction(self.addTabAction) # Add tab in menu
         
         ## Help tap
         helpMenu = QMenu("&Help", self)
@@ -167,6 +169,7 @@ class Window(QMainWindow):
         ## Append taps
         menuBar.addMenu(fileMenu)
         menuBar.addMenu(editMenu)
+        menuBar.addMenu(viewMenu)
         menuBar.addMenu(helpMenu)
 
     # Tool Bar
@@ -187,14 +190,13 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
             self.toolBar.addAction(self.rotateNearestAction)
             self.toolBar.addAction(self.rotateLinearAction)
-            self.toolBar.addAction(self.shearAction)
+            self.toolBar.addAction(self.shearAction)         
         
         elif type == "original":
             # Using a title
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.openAction)
-            self.toolBar.addAction(self.defaultScaleAction)
-            self.toolBar.addAction(self.grayScaleAction)
+            self.toolBar.addAction(self.showHistogramAction)
             self.toolBar.addAction(self.equalizeAction)
             self.toolBar.addAction(self.clearAction)
         elif type == "T":
@@ -208,8 +210,6 @@ class Window(QMainWindow):
         # Populating the menu with actions
         menu.addAction(self.openAction)
         self.addSeperator(menu)
-        menu.addAction(self.defaultScaleAction)
-        menu.addAction(self.grayScaleAction)
         menu.addAction(self.equalizeAction)
         menu.addAction(self.clearAction)
         self.addSeperator(menu)
@@ -240,77 +240,20 @@ class Window(QMainWindow):
 
         # Initialize tab screen
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(f"""font-size:15px;""")
+        self.tabs.setDocumentMode(True)
+        self.tabs.setTabsClosable(True)
+        self.tabs.setStyleSheet(f"""font-size:16px;""")
+        
         ### init GUI ###
-        
-        # Main layout
-        self.originalTab = QWidget()
-        self.originalLayout()
-        self.tabs.addTab(self.originalTab, "Original Image")
-        self.currentViewer = self.originalViewer # Primary Viewer
-        
-        # Histogram layout
-        self.equalizeTab = QWidget()
-        self.equalizeLayout()
-        self.tabs.addTab(self.equalizeTab, "Normalizing")
-
-        # Zoom layout
-        self.zoomTab = QWidget()
-        self.zoomLayout()
-        self.tabs.addTab(self.zoomTab, "Zooming")
-
-        # Rotation and shearing layout
-        self.rotationShearingTab = QWidget()
-        self.rotationShearingLayout()
-        self.tabs.addTab(self.rotationShearingTab, "Rotation and Shearing")
-
+        self.currentTab = self.addNewTab("Image", "red")
         outerLayout.addWidget(self.tabs)
-
+        
         # Add docker
         self.addDockLayout()
-    
         ### GUI ###
+
         centralMainWindow.setLayout(outerLayout)
-
-    # Original Layout
-    def originalLayout(self):
-        originalLayout = QHBoxLayout()
-        
-        self.originalViewer = ImageViewer(type="image", title="Original Image")
-        self.histogramViewer = ImageViewer(axisExisting=True, axisColor='green', type="hist", title="Histogram of Original Image")
-        originalLayout.addWidget(self.originalViewer)
-        originalLayout.addWidget(self.histogramViewer)
-
-        self.originalTab.setLayout(originalLayout)
-
-    # Zoom Layout
-    def zoomLayout(self):
-        zoomLayout = QVBoxLayout()
-        
-        self.zoomViewer = ImageViewer(axisColor="black", type="image", title="Zoom Viewer")
-        zoomLayout.addWidget(self.zoomViewer)
-
-        self.zoomTab.setLayout(zoomLayout)
-
-    # Rotation and Shearing Layout
-    def rotationShearingLayout(self):
-        rotationShearingLayout = QVBoxLayout()
-        
-        self.rotationShearingViewer = ImageViewer(axisExisting=True, axisColor="red", type="image", title="Rotation and Shearing Viewer")
-        rotationShearingLayout.addWidget(self.rotationShearingViewer)
-
-        self.rotationShearingTab.setLayout(rotationShearingLayout)
-
-    def equalizeLayout(self):
-        equalizeLayout = QHBoxLayout()
-        
-        self.equalizedImageViewer = ImageViewer(axisColor="blue", type="image", title="Equalized Image")
-        self.equalizedHistogramViewer = ImageViewer(axisExisting=True, axisColor="blue", type="hist", title="Histogram of Equalized Image")
-        equalizeLayout.addWidget(self.equalizedImageViewer)
-        equalizeLayout.addWidget(self.equalizedHistogramViewer)
-
-        self.equalizeTab.setLayout(equalizeLayout)
-
+   
     # Dock widget 
     def addDockLayout(self):   
         self.dockInfo = QDockWidget("Information", self)
@@ -318,7 +261,7 @@ class Window(QMainWindow):
         self.dataWidget = QTreeWidget()
         self.dataWidget.setColumnCount(2) # Att, Val
         self.dataWidget.setHeaderLabels(["Attribute", "Value"])
-        self.setInfo("dcm") # Default
+        self.setInfo("jpeg") # Default
 
         self.dockInfo.setWidget(self.dataWidget)
         self.dockInfo.setFloating(False)
@@ -369,7 +312,7 @@ class Window(QMainWindow):
     # Set the data of the tree
     def setDataOfTree(self, data):
         self.dataWidget.clear()
-        item = QTreeWidgetItem(["metadata"])
+        item = QTreeWidgetItem(["Data"])
         for key, value in data.items():
             child = QTreeWidgetItem([key, str(value)])
             item.addChild(child)
@@ -379,35 +322,51 @@ class Window(QMainWindow):
     def _connectActions(self):
         # Original Actions
         self.openAction.triggered.connect(self.browseImage) # When click on browse image action
-        self.defaultScaleAction.triggered.connect(self.currentViewer.toDefaultScale) # When click on grayscale image action
-        self.grayScaleAction.triggered.connect(self.currentViewer.toGrayScale) # When click on grayscale image action
-        self.clearAction.triggered.connect(self.currentViewer.clearImage) # When click on exit action
-        self.clearAction.triggered.connect(self.currentViewer.clearImage) # When click on exit action
         
+        self.clearAction.triggered.connect(lambda: self.currentTab.primaryViewer.reset()) # When click on clear action
+        self.clearAction.triggered.connect(lambda: self.currentTab.histogramViewer.reset()) # When click on clear action
+
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
         self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
 
         # Construct T
-        self.constructTAction.triggered.connect(lambda: self.originalViewer.constructT("white"))
-        self.constructTAction.triggered.connect(lambda: self.zoomViewer.constructT("white"))
-        self.constructTAction.triggered.connect(lambda: self.rotationShearingViewer.constructT("white"))
-        self.constructTAction.triggered.connect(lambda: self.histogramViewer.drawHistogram(self.originalViewer.defaultImage))
+        self.constructTAction.triggered.connect(lambda: self.currentTab.drawT())
 
         # Rotate image
         self.rotateNearestAction.triggered.connect(lambda: self.rotateImage(interpolationMode="nearest"))
         self.rotateLinearAction.triggered.connect(lambda: self.rotateImage(interpolationMode="linear"))
 
-        self.shearAction.triggered.connect(self.shearImage)
+        # Shear image
+        self.shearAction.triggered.connect(lambda: self.shearImage())
+        
+        # Equalize Image
+        self.showHistogramAction.triggered.connect(lambda: self.currentTab.addHistogram())
+        self.equalizeAction.triggered.connect(lambda: self.equalizeImage()) 
 
-        self.equalizeAction.triggered.connect(lambda: self.equalizedHistogramViewer.normalizeHistogram(self.equalizedImageViewer, self.originalViewer.grayImage)) 
-
-        self.tabs.currentChanged.connect(lambda: self.setCurrentTab(self.tabs.currentIndex()))
-        self.exitAction.triggered.connect(self.exit) # When click on exit action
+        self.addTabAction.triggered.connect(lambda: self.addNewTab())
+        
+        self.exitAction.triggered.connect(lambda: self.exit()) # When click on exit action
     
     def _connect(self):
         self._connectActions()
+        # Tabs
+        self.tabs.currentChanged.connect(self.setCurrentTab)
+        self.tabs.tabCloseRequested.connect(self.closeCurrentTab)
+        self.tabs.tabBarDoubleClicked.connect(self.tabOpenDoubleclick)
 
+    def tabOpenDoubleclick(self,i):
+        # checking index i.e
+        # No tab under the click
+        if i == -1:
+            # creating a new tab
+            self.addNewTab()
+
+    # Equalize
+    def equalizeImage(self):
+        self.currentTab.equalize()
+
+    # Shear Image
     def shearImage(self):
         try:
             shearFactor = float(self.factorInput.text())
@@ -417,13 +376,14 @@ class Window(QMainWindow):
         
         if -90 < shearFactor < 90:
             try:
-                self.rotationShearingViewer.shearImage(shearFactor)
+                self.currentTab.primaryViewer.shearImage(shearFactor)
             except:
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
                 return
         else:
             QMessageBox.critical(self , "Invalid shearing factor" , "Shear angle should be between -90° and 90°.")
 
+    # Zoom Image
     def zoomImage(self, interpolationMode):
         try:
             zoomingFactor = float(self.factorInput.text())
@@ -433,7 +393,7 @@ class Window(QMainWindow):
         
         if zoomingFactor > 0:
             try:
-                self.widthOfImage, self.heightOfImage = self.zoomViewer.zoomImage(zoomingFactor, interpolationMode)
+                self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, interpolationMode)
             except:
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
                 return
@@ -456,7 +416,7 @@ class Window(QMainWindow):
             return
 
         
-        self.widthOfImage, self.heightOfImage = self.rotationShearingViewer.rotateImage(rotationAngle, interpolationMode)
+        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.rotateImage(rotationAngle, interpolationMode)
 
         direction = "Clockwise"
         if rotationAngle >= 0:
@@ -469,7 +429,7 @@ class Window(QMainWindow):
         
         self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, abs(rotationAngle), direction)
         
-    # Open image
+    # Open Image
     def browseImage(self):
         # Browse Function
         path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
@@ -480,15 +440,13 @@ class Window(QMainWindow):
             return
 
         try:
-            data = self.currentViewer.setImage(path, self.fileExtension, gray=False)
-            # self.zoomViewer.setImage(path, self.fileExtension)
-            # self.rotationShearingViewer.setImage(path, self.fileExtension)
+            data = self.currentTab.setImage(path, self.fileExtension)
         except:
             # Error
             appLogger.exception("Can't open the file !")
             QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
         else:
-            self.histogramViewer.drawHistogram(self.originalViewer.grayImage)
+            self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
 
             self.statusbar.showMessage(path.split("/")[-1])
             if self.fileExtension == "dcm":
@@ -505,9 +463,6 @@ class Window(QMainWindow):
                 self.nameOfPatient = self.getAttr(data, "PatientName")
                 self.ageOfPatient = self.getAttr(data,"PatientAge")
                 self.bodyOfPatient = self.getAttr(data,"BodyPartExamined") 
-
-                # Set the information                 
-                self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
             else:
                 # If (jpeg, bitmap)
                 imageChannel = cv.imread(path)
@@ -522,8 +477,8 @@ class Window(QMainWindow):
                 self.depthOfImage = f"{self.depthOfImage} bit/pixel"
                 self.modeOfImage = self.getAttr(data,"mode")
                 
-                # Set the information
-                self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+            # Set the information
+            self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
 
     # Get Data
     def getAttr(self, variable, att):
@@ -549,20 +504,29 @@ class Window(QMainWindow):
             bitDepth = bitDepthForOneChannel * numOfChannels
             return bitDepth
 
-    def setCurrentTab(self, indexOfTab:int):
-        if indexOfTab == 0:
-            self.currentViewer = self.originalViewer
-        elif indexOfTab == 1:
-            self.currentViewer = self.originalViewer
-        elif indexOfTab == 2:
-            self.currentViewer = self.zoomViewer
-        elif indexOfTab == 3:
-            self.currentViewer = self.rotationShearingViewer
+    # Control the tabs
+    def setCurrentTab(self):
+        self.currentTab = self.tabs.currentWidget()
+    
+    # Close tab
+    def closeCurrentTab(self, i):
+        # if there is only one tab
+        if self.tabs.count() < 2:
+            # do nothing
+            return
+ 
+        # else remove the tab
+        self.tabs.removeTab(i)
 
-    def addTab(self):
-        # self.tabs.addTab
-        pass
-
+    # Add new tab to list of tabs
+    def addNewTab(self, title:str="Blank", color:str="black"):
+        # Initilize new tab
+        newTab = tabViewer(title, color)
+        # Add tab to list of tabs
+        self.tabs.addTab(newTab, title)
+        # Return new tab
+        return newTab
+                
     # Exit the application
     def exit(self):
         exitDialog = QMessageBox.critical(self,

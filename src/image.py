@@ -16,7 +16,6 @@ class ImageViewer(FigureCanvasQTAgg):
 
         # Variables
         self.loaded = False
-        self.defaultImage = np.array([])
         self.grayImage = np.array([])
         self.axisExisting = axisExisting
         self.axisColor = axisColor
@@ -51,7 +50,10 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Set Theme
     def setTheme(self):
-        self.axes.set_title(self.title)
+        fontStyle = {'fontsize': 17,
+                    'fontweight' : 900,
+                    'verticalalignment': 'top'}
+        self.axes.set_title(self.title,fontStyle)
         self.axes.set_xlabel(self.xlabel)
         self.axes.set_ylabel(self.ylabel)
 
@@ -66,46 +68,27 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.set_yticks([])
 
     # Set Image
-    def setImage(self, image_path, fileExtension, gray=True):
+    def setImage(self, image_path, fileExtension):
         # Reading the image
         if fileExtension == "dcm":
             imgData = dicom.dcmread(image_path, force=True)
-            self.defaultImage = imgData.pixel_array
-            self.axes.imshow(self.defaultImage)
+            downloadedImage = imgData.pixel_array
         else:
-            self.defaultImage = mpimg.imread(image_path)
+            downloadedImage = mpimg.imread(image_path)
             imgData = Image.open(image_path)
 
         # If image is RGB transform it to gray.
-        if self.defaultImage.ndim > 2:
-            self.grayImage = self.defaultImage[:,:,0]
+        if downloadedImage.ndim > 2:
+            self.grayImage = downloadedImage[:,:,0]
         else:
-            self.grayImage = self.defaultImage
-
-        if gray:
-            self.axes.imshow(self.grayImage, cmap="gray")
-        else:
-            self.axes.imshow(self.defaultImage)
+            self.grayImage = downloadedImage
 
         self.loaded = True
+        self.axes.imshow(self.grayImage, cmap="gray")
         self.draw()
 
         # Depends on extension of the file
         return imgData
-
-    # Return to default scale
-    def toDefaultScale(self):
-        if self.loaded:
-            # Load original Image
-            self.axes.imshow(self.defaultImage)
-            self.draw()
-
-    # Transform to gray scale
-    def toGrayScale(self):
-        # Load gray image
-        if self.loaded:
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
 
     # Zoom image
     def zoomImage(self, scaleFactor, mode):
@@ -167,22 +150,22 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Construct T shape
     def constructT(self, background="white"):
-        self.defaultImage = np.zeros((128,128), dtype=np.uint8)
+        self.grayImage = np.zeros((128,128), dtype=np.uint8)
         
         if background == "black":
-            self.defaultImage.fill(255)
+            self.grayImage.fill(255)
 
         for i in range(29,50):
             for j in range(29,100):
-                self.defaultImage[i,j] = 255
+                self.grayImage[i,j] = 255
         
         for i in range(49,100):
             for j in range(54,74):
-                self.defaultImage[i,j] = 255
+                self.grayImage[i,j] = 255
         
-        self.grayImage = self.defaultImage
+        self.grayImage = self.grayImage.astype(np.int64)
 
-        self.axes.imshow(self.defaultImage, cmap="gray", extent=(0, 128, 0, 128))
+        self.axes.imshow(self.grayImage, cmap="gray", extent=(0, 128, 0, 128))
         self.loaded = True
         self.draw()
     
@@ -319,24 +302,35 @@ class ImageViewer(FigureCanvasQTAgg):
     def drawHistogram(self, image:np.ndarray):
         self.clearImage()
 
-        histogram,_,_ = self.axes.hist(image.ravel(), 256, (0,256))
-        histogram = np.array(histogram)
+        if len(image) != 0:
+            L = 256
+            # Get histogram of image
+            histogram = np.bincount(image.flatten(), minlength=L)
 
-        cdf = histogram.cumsum()
-        cdf_normalized = cdf * float(histogram.max()) / cdf.max()
-        self.axes.plot(cdf_normalized, color = 'r')
-        
-        self.axes.legend(('cdf','histogram'), loc = 'upper left')
+            # Normalize
+            sumPixels = np.sum(histogram)
+            normalizedHistogram = histogram/sumPixels
 
-        self.draw()
+            cdf = normalizedHistogram.cumsum()
+            cdf_normalized = cdf * float(normalizedHistogram.max()) / cdf.max()
+
+            self.axes.bar(range(len(normalizedHistogram)), normalizedHistogram, color='red')
+            self.axes.plot(cdf_normalized, color = 'black')
+            
+            self.axes.legend(('cumulative histogram','histogram'), loc = 'upper left')
+
+            self.draw()
+        else:
+            return
 
     # Normalized Histogram
-    def normalizeHistogram(self, equalizedImageViewer, nonEqualizedImage):
-        if len(nonEqualizedImage) != 0:
-            self.clearImage() # Clear prev
+    def normalizeHistogram(self):
+        if len(self.grayImage) != 0:
+            self.clearImage() # Clear prev.
             L = 256
+          
             # Get histogram of nonEqualizedImage
-            nonEqualizedhistogram = np.bincount(nonEqualizedImage.flatten(), minlength=L)
+            nonEqualizedhistogram = np.bincount(self.grayImage.flatten(), minlength=L)
 
             # Normalize
             sumPixels = np.sum(nonEqualizedhistogram)
@@ -349,18 +343,15 @@ class ImageViewer(FigureCanvasQTAgg):
             transformMap = np.round((L-1) * cfdHistogram)
 
             # Flatten image array into 1D list
-            flatNonEqualizedImage = list(nonEqualizedImage.flatten())
+            flatNonEqualizedImage = list(self.grayImage.flatten())
             flatEqualizedImage = [transformMap[p] for p in flatNonEqualizedImage]
 
             # Reshape and write back into equalizedImage
-            equalizedImage = np.reshape(np.asarray(flatEqualizedImage), nonEqualizedImage.shape)
+            self.grayImage = np.reshape(np.asarray(flatEqualizedImage, dtype=np.int64), self.grayImage.shape)
 
             # Draw equalized image
-            equalizedImageViewer.axes.imshow(equalizedImage, cmap="gray")
-            equalizedImageViewer.draw()
-            
-            # Draw normalized hisotgram
-            self.drawHistogram(equalizedImage)
+            self.axes.imshow(self.grayImage, cmap="gray")
+            self.draw()
         else:
             return
 
@@ -370,6 +361,9 @@ class ImageViewer(FigureCanvasQTAgg):
         self.setTheme()
         self.draw()
 
+
+    def reset(self):
+        self.clearImage()
+
         self.loaded = False
-        self.defaultImage = np.array([])
         self.grayImage = np.array([])
