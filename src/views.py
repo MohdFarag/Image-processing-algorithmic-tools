@@ -105,15 +105,33 @@ class Window(QMainWindow):
         self.shearAction.setShortcut("ctrl+5")
         self.shearAction.setStatusTip('Shear the image')
         
-        # Equalize the image
+        # Show histogram of the image
         self.showHistogramAction = QAction(QIcon(":histogram.png"), "&Histogram", self)
         self.showHistogramAction.setShortcut("ctrl+H")
         self.showHistogramAction.setStatusTip('Show the histogram')
 
+        # Show histogram of the image
+        self.save = QAction(QIcon(":save.png"), "&Save image", self)
+        self.save.setShortcut("ctrl+s")
+        self.save.setStatusTip('Save the image')
+        
         # Equalize the image
         self.equalizeAction = QAction(QIcon(":equalize.png"), "&Equalize", self)
         self.equalizeAction.setShortcut("ctrl+E")
         self.equalizeAction.setStatusTip('Equalize the image')
+
+        # Box filter
+        self.unsharpAction = QAction(QIcon(":box.png"), "&Un-sharp Mask", self)
+        self.unsharpAction.setShortcut("ctrl+U")
+        self.unsharpAction.setStatusTip('Create a Unsharp Masking')
+
+        self.addSaltNoiseAction = QAction(QIcon(":salt.png"), "&Add salt and pepper", self)
+        self.addSaltNoiseAction.setShortcut("ctrl+P")
+        self.addSaltNoiseAction.setStatusTip('Add salt and pepper noise')
+
+        self.medianFilterAction = QAction(QIcon(":median.png"), "&Median filter", self)
+        self.medianFilterAction.setShortcut("ctrl+M")
+        self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
 
         # Exit Action
         self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
@@ -143,6 +161,7 @@ class Window(QMainWindow):
         ## File tap
         fileMenu = QMenu("&File", self)
         fileMenu.addAction(self.openAction) # Open file in menu
+        fileMenu.addAction(self.save)
         fileMenu.addSeparator() # Seperator
         fileMenu.addAction(self.clearAction) # Clear image in menu
         fileMenu.addSeparator() # Seperator
@@ -153,7 +172,11 @@ class Window(QMainWindow):
         editMenu.addAction(self.constructTAction) # Construct T in menu
         editMenu.addAction(self.showHistogramAction) # Show histogram in menu
         editMenu.addAction(self.equalizeAction) # Equalize image in menu
-        
+
+        ## Filter
+        filterMenu = QMenu("&Filter", self)
+        filterMenu.addAction(self.unsharpAction)
+
         ## View tap
         viewMenu = QMenu("&View", self)
         viewMenu.addAction(self.addTabAction) # Add tab in menu
@@ -169,6 +192,7 @@ class Window(QMainWindow):
         ## Append taps
         menuBar.addMenu(fileMenu)
         menuBar.addMenu(editMenu)
+        menuBar.addMenu(filterMenu)
         menuBar.addMenu(viewMenu)
         menuBar.addMenu(helpMenu)
 
@@ -186,11 +210,13 @@ class Window(QMainWindow):
                                                 font-size:16px; 
                                                 margin-right:5px""")
             self.toolBar.addWidget(self.factorInput)
+
+            self.toolBar.addAction(self.unsharpAction) 
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
             self.toolBar.addAction(self.rotateNearestAction)
             self.toolBar.addAction(self.rotateLinearAction)
-            self.toolBar.addAction(self.shearAction)         
+            self.toolBar.addAction(self.shearAction)        
         
         elif type == "original":
             # Using a title
@@ -198,6 +224,8 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.openAction)
             self.toolBar.addAction(self.showHistogramAction)
             self.toolBar.addAction(self.equalizeAction)
+            self.toolBar.addAction(self.addSaltNoiseAction)
+            self.toolBar.addAction(self.medianFilterAction)
             self.toolBar.addAction(self.clearAction)
         elif type == "T":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
@@ -209,6 +237,7 @@ class Window(QMainWindow):
         menu = QMenu(self)
         # Populating the menu with actions
         menu.addAction(self.openAction)
+        menu.addAction(self.save)
         self.addSeperator(menu)
         menu.addAction(self.equalizeAction)
         menu.addAction(self.clearAction)
@@ -346,6 +375,11 @@ class Window(QMainWindow):
 
         self.addTabAction.triggered.connect(lambda: self.addNewTab())
         
+        self.unsharpAction.triggered.connect(self.applyFilter)
+        self.addSaltNoiseAction.triggered.connect(self.addNoise)
+        self.medianFilterAction.triggered.connect(self.applyMedian)
+
+        self.save.triggered.connect(self.saveImage)
         self.exitAction.triggered.connect(lambda: self.exit()) # When click on exit action
     
     def _connect(self):
@@ -355,6 +389,33 @@ class Window(QMainWindow):
         self.tabs.tabCloseRequested.connect(self.closeCurrentTab)
         self.tabs.tabBarDoubleClicked.connect(self.tabOpenDoubleclick)
 
+    def addNoise(self):
+        self.currentTab.primaryViewer.addSaltAndPepper()
+    
+    def applyMedian(self):
+        self.currentTab.primaryViewer.medianMask()
+
+    def applyFilter(self):
+        try:
+            filterSize = int(self.factorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
+            return
+
+        if filterSize > 0:
+            try:
+                if filterSize % 2 == 0:
+                    filterSize += 1
+
+                self.currentTab.primaryViewer.unsharpMask(filterSize,filterSize)
+            except:
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+                
+            # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+        else:
+            QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
+        
     def tabOpenDoubleclick(self,i):
         # checking index i.e
         # No tab under the click
@@ -503,6 +564,13 @@ class Window(QMainWindow):
         finally:
             bitDepth = bitDepthForOneChannel * numOfChannels
             return bitDepth
+
+    def saveImage(self):
+        output_file, _ = QFileDialog.getSaveFileName(self, 'Save image', None, 'jpeg files (.jpeg)')
+        if output_file != '':
+            if QFileInfo(output_file).suffix() == "" : output_file += '.jpeg'
+        
+        self.currentTab.primaryViewer.saveImage(output_file)
 
     # Control the tabs
     def setCurrentTab(self):

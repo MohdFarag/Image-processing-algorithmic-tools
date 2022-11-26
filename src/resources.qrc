@@ -22,6 +22,10 @@
     <file alias="equalize.png">assets/icons/equalize.png</file>
     <file alias="histogram.png">assets/icons/histogram.png</file>
 
+    <file alias="box.png">assets/icons/box.png</file>
+    <file alias="salt.png">assets/icons/salt.png</file>
+    <file alias="median.png">assets/icons/median.png</file>
+
     <file alias="clear.png">assets/icons/clear.png</file>   
     <file alias="exit.svg">assets/icons/exit.svg</file>
 </qresource>

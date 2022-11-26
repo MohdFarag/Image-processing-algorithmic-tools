@@ -9,6 +9,8 @@ import matplotlib.image as mpimg
 import pydicom as dicom
 from PIL import Image
 
+import random
+
 class ImageViewer(FigureCanvasQTAgg):
     def __init__(self, parent=None, axisExisting=False, axisColor="#329da8", type="image", title=""):
         self.fig = Figure(figsize = (6, 6), dpi = 80)
@@ -327,7 +329,7 @@ class ImageViewer(FigureCanvasQTAgg):
     def normalizeHistogram(self):
         if len(self.grayImage) != 0:
             self.clearImage() # Clear prev.
-            L = 256
+            L = self.grayImage.max()
           
             # Get histogram of nonEqualizedImage
             nonEqualizedhistogram = np.bincount(self.grayImage.flatten(), minlength=L)
@@ -340,7 +342,7 @@ class ImageViewer(FigureCanvasQTAgg):
             cfdHistogram = np.cumsum(nonEqualizedhistogram)
 
             # Initilized transform map
-            transformMap = np.round((L-1) * cfdHistogram)
+            transformMap = np.floor((L-1) * cfdHistogram)
 
             # Flatten image array into 1D list
             flatNonEqualizedImage = list(self.grayImage.flatten())
@@ -355,12 +357,147 @@ class ImageViewer(FigureCanvasQTAgg):
         else:
             return
 
+    # Add 0 padding to image
+    def addPadding(self, val, image, paddSize):
+        addedPadd = 2 * paddSize
+
+        resultImage = np.zeros((image.shape[0] + addedPadd,image.shape[1] + addedPadd))
+        resultImage.fill(val)
+
+        for i in range(paddSize, resultImage.shape[0] - paddSize):
+            for j in range(paddSize, resultImage.shape[1] - paddSize):
+                resultImage[i][j] = image[i-paddSize][j-paddSize]
+        
+        return resultImage
+
+    # Convoluotion function
+    def convolution(self, filter:np.ndarray):
+        filterWidth = filter.shape[0]
+        filterHeight = filter.shape[1]
+
+        width = self.grayImage.shape[0]
+        height = self.grayImage.shape[1]
+
+        resultWidth = width + filterWidth - 1
+        resultHeight = height + filterHeight - 1
+
+        resultImage = np.zeros((resultWidth, resultHeight))
+
+        paddSize = math.floor(max(filterWidth,filterHeight) / 2)
+        self.grayImage = self.addPadding(0, self.grayImage, paddSize)
+
+        for i in range(paddSize,resultWidth-paddSize):
+            for j in range(paddSize,resultHeight-paddSize):
+                for s in range(filterWidth):
+                    for t in range(filterHeight):
+                        resultImage[i,j] += filter[s,t] * self.grayImage[i-s,j-t]
+        
+        
+        return resultImage
+
+    # Box filter
+    def boxFilter(self, size:int):
+        filter = np.zeros((size,size))
+        filter.fill(1/(size*size))
+
+        resImage = self.convolution(filter)
+        return resImage
+    
+    # Subtract blurred image from original
+    def subtractBluredFromOriginal(self, bluredImage):
+        resultImage = np.subtract(self.grayImage, bluredImage)
+        return resultImage
+    
+    # Multiply by a factor K Then added to the original image
+    def multByFactor(self, image, k):
+        resultImage = np.multiply(image,k)
+        resultImage = np.add(resultImage, self.grayImage)
+
+        return resultImage
+    
+    # Scale functoion
+    def scaleImage(self,image:np.ndarray):
+        image = image - image.min()
+        resultImage = 255*(image/image.max())
+
+        print(resultImage.min(),resultImage.max())
+        return resultImage
+
+    # Perform un-sharp masking
+    def unsharpMask(self, size, k):
+        if len(self.grayImage) != 0:
+            self.clearImage()
+            bluredImage = self.boxFilter(size)
+            subtractedImage = self.subtractBluredFromOriginal(bluredImage)
+            resultImage = self.multByFactor(subtractedImage, k)
+
+            scaledImage = self.scaleImage(resultImage)
+            self.grayImage = scaledImage
+
+            # Draw image
+            self.axes.imshow(subtractedImage, cmap="gray")
+            self.draw()
+
+    # Add salt and pepper noise to the image
+    def addSaltAndPepper(self):
+        if len(self.grayImage) != 0:
+            self.clearImage()
+
+            width, height = self.grayImage.shape
+
+            # Randomly pick some pixels in the image for coloring them white
+            number_of_pixels = random.randint(0, max(width,height))
+            for _ in range(number_of_pixels):        
+                # Color that pixel to white
+                self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 255
+                
+            # Randomly pick some pixels in the image for coloring them black
+            number_of_pixels = random.randint(0, max(width,height))
+            for _ in range(number_of_pixels):        
+                # Color that pixel to black
+                self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 0
+            
+            # Draw image
+            self.axes.imshow(self.grayImage, cmap="gray")
+            self.draw() 
+
+    def medianMask(self):
+        filterWidth = 3
+        filterHeight = 3
+
+        width = self.grayImage.shape[0]
+        height = self.grayImage.shape[1]
+
+        resultWidth = width + filterWidth - 1
+        resultHeight = height + filterHeight - 1
+
+        resultImage = np.zeros((resultWidth, resultHeight))
+
+        paddSize = math.floor(3 / 2)
+        self.grayImage = self.addPadding(0, self.grayImage, paddSize)
+
+        for i in range(paddSize,resultWidth-paddSize):
+            for j in range(paddSize,resultHeight-paddSize):
+                valuesFilter = []
+                for s in range(filterWidth):
+                    for t in range(filterHeight):
+                        valuesFilter.append(self.grayImage[i-s,j-t])
+
+                resultImage[i,j] = np.median(valuesFilter)
+        
+        self.grayImage = resultImage
+        # Draw image
+        self.axes.imshow(self.grayImage, cmap="gray")
+        self.draw() 
+
+    def saveImage(self,path):
+        self.fig.savefig(path, bbox_inches='tight')
+
     # Clear figure
     def clearImage(self):
         self.axes.clear()
         self.setTheme()
         self.draw()
-
 
     def reset(self):
         self.clearImage()
