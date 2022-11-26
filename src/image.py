@@ -8,6 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.image as mpimg
 import pydicom as dicom
 from PIL import Image
+import time
 
 import random
 
@@ -84,6 +85,8 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = downloadedImage[:,:,0]
         else:
             self.grayImage = downloadedImage
+
+        self.grayImage = self.scaleImage(self.grayImage)
 
         self.loaded = True
         self.axes.imshow(self.grayImage, cmap="gray")
@@ -306,8 +309,9 @@ class ImageViewer(FigureCanvasQTAgg):
 
         if len(image) != 0:
             L = 256
+            
             # Get histogram of image
-            histogram = np.bincount(image.flatten(), minlength=L)
+            histogram = np.bincount(np.asarray(np.round(image),np.int64).flatten(), minlength=L)
 
             # Normalize
             sumPixels = np.sum(histogram)
@@ -375,25 +379,24 @@ class ImageViewer(FigureCanvasQTAgg):
         filterWidth = filter.shape[0]
         filterHeight = filter.shape[1]
 
-        width = self.grayImage.shape[0]
-        height = self.grayImage.shape[1]
+        filterSize = max(filterWidth,filterHeight)
+        paddSize = math.floor(filterSize / 2)
+        paddedImage = self.addPadding(0, self.grayImage, paddSize)
 
-        resultWidth = width + filterWidth - 1
-        resultHeight = height + filterHeight - 1
+        convolvedImage = []
+        for i in range(self.grayImage.shape[0]):
+            endpointVerical= i + filterSize
+            
+            rowArray = []
+            for j in range(self.grayImage.shape[1]):
+                endPointHorizontal = j + filterSize
+                rowArray.append(np.sum(np.multiply(paddedImage[i:endpointVerical,j:endPointHorizontal], filter)))
 
-        resultImage = np.zeros((resultWidth, resultHeight))
-
-        paddSize = math.floor(max(filterWidth,filterHeight) / 2)
-        self.grayImage = self.addPadding(0, self.grayImage, paddSize)
-
-        for i in range(paddSize,resultWidth-paddSize):
-            for j in range(paddSize,resultHeight-paddSize):
-                for s in range(filterWidth):
-                    for t in range(filterHeight):
-                        resultImage[i,j] += filter[s,t] * self.grayImage[i-s,j-t]
+            convolvedImage.append(rowArray)
         
-        
-        return resultImage
+        convolvedImage = np.array(convolvedImage)
+
+        return convolvedImage
 
     # Box filter
     def boxFilter(self, size:int):
@@ -417,9 +420,9 @@ class ImageViewer(FigureCanvasQTAgg):
     
     # Scale functoion
     def scaleImage(self,image:np.ndarray):
-        image = image - image.min()
+        image = np.subtract(image, image.min())
         resultImage = 255*(image/image.max())
-
+        
         print(resultImage.min(),resultImage.max())
         return resultImage
 
@@ -432,12 +435,12 @@ class ImageViewer(FigureCanvasQTAgg):
             resultImage = self.multByFactor(subtractedImage, k)
 
             scaledImage = self.scaleImage(resultImage)
-            self.grayImage = scaledImage
+            self.grayImage = self.addPadding(0,scaledImage,math.floor(size/2))
 
             # Draw image
-            self.axes.imshow(subtractedImage, cmap="gray")
+            self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
-
+        
     # Add salt and pepper noise to the image
     def addSaltAndPepper(self):
         if len(self.grayImage) != 0:
@@ -461,31 +464,26 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.imshow(self.grayImage, cmap="gray")
             self.draw() 
 
+    # Median mask
     def medianMask(self):
-        filterWidth = 3
-        filterHeight = 3
+        filterSize = 3
+        paddSize = math.floor(filterSize / 2)
+        paddedImage = self.addPadding(0, self.grayImage, paddSize)
 
-        width = self.grayImage.shape[0]
-        height = self.grayImage.shape[1]
+        resultImage = []
+        for i in range(self.grayImage.shape[0]):
+            endpointVerical= i + filterSize
+            
+            rowArray = []
+            for j in range(self.grayImage.shape[1]):
+                endPointHorizontal = j + filterSize
+                rowArray.append(np.median(paddedImage[i:endpointVerical,j:endPointHorizontal]))
 
-        resultWidth = width + filterWidth - 1
-        resultHeight = height + filterHeight - 1
-
-        resultImage = np.zeros((resultWidth, resultHeight))
-
-        paddSize = math.floor(3 / 2)
-        self.grayImage = self.addPadding(0, self.grayImage, paddSize)
-
-        for i in range(paddSize,resultWidth-paddSize):
-            for j in range(paddSize,resultHeight-paddSize):
-                valuesFilter = []
-                for s in range(filterWidth):
-                    for t in range(filterHeight):
-                        valuesFilter.append(self.grayImage[i-s,j-t])
-
-                resultImage[i,j] = np.median(valuesFilter)
+            resultImage.append(rowArray)
         
-        self.grayImage = resultImage
+        resultImage = np.array(resultImage)
+        self.grayImage = self.addPadding(0,resultImage,paddSize)
+
         # Draw image
         self.axes.imshow(self.grayImage, cmap="gray")
         self.draw() 

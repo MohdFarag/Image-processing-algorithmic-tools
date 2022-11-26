@@ -202,16 +202,27 @@ class Window(QMainWindow):
         if type == "zoom":
             self.addToolBar(Qt.TopToolBarArea,self.toolBar)
             self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+
+            self.sizeInput = QLineEdit("1")
+            self.sizeInput.setStyleSheet("""border:1px solid #00d; 
+                                                height:18px; 
+                                                padding:2px; 
+                                                border-radius:5px; 
+                                                font-size:16px; 
+                                                margin-right:5px""")
+            self.toolBar.addWidget(self.sizeInput)
+            
             self.factorInput = QLineEdit("0")
             self.factorInput.setStyleSheet("""border:1px solid #00d; 
-                                                height:20px; 
-                                                padding:3px; 
-                                                border-radius:7px; 
+                                                height:18px; 
+                                                padding:2px; 
+                                                border-radius:5px; 
                                                 font-size:16px; 
                                                 margin-right:5px""")
             self.toolBar.addWidget(self.factorInput)
 
             self.toolBar.addAction(self.unsharpAction) 
+
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
             self.toolBar.addAction(self.rotateNearestAction)
@@ -397,9 +408,12 @@ class Window(QMainWindow):
 
     def applyFilter(self):
         try:
-            filterSize = int(self.factorInput.text())
-        except:
-            QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
+            filterSize = int(self.sizeInput.text())
+            factorSize = int(self.factorInput.text())
+
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
             return
 
         if filterSize > 0:
@@ -407,8 +421,9 @@ class Window(QMainWindow):
                 if filterSize % 2 == 0:
                     filterSize += 1
 
-                self.currentTab.primaryViewer.unsharpMask(filterSize,filterSize)
-            except:
+                self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
+            except Exception as e:
+                print(e)
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
                 return
                 
