@@ -23,19 +23,6 @@ class TableView(QTableWidget):
     def clearAllData(self):
         self.setRowCount(0)
 
-class QHLine(QFrame):
-    def __init__(self):
-        super(QHLine, self).__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
-
-class QVLine(QFrame):
-    def __init__(self):
-        super(QVLine, self).__init__()
-        self.setFrameShape(QFrame.VLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class tabViewer(QWidget):
     def __init__(self, title:str="", color:str="red"):
         super(tabViewer, self).__init__()
@@ -43,17 +30,27 @@ class tabViewer(QWidget):
         self.title = title
         self.color = color
         self.showHist = False
+        self.showMag = False
+        self.showPhase = False
         
         # Initilize new layout
-        self.tabLayout = QHBoxLayout()
+        self.tabLayout = QGridLayout()
         
         # Initilize the viewers
         self.primaryViewer = ImageViewer(type="image", title=self.title)
-        self.tabLayout.addWidget(self.primaryViewer)
+        self.tabLayout.addWidget(self.primaryViewer,0,0)
 
         self.histogramViewer = ImageViewer(axisExisting=True, axisColor=self.color, type="hist", title=f"Histogram of {self.title}")
-        self.tabLayout.addWidget(self.histogramViewer)
+        self.tabLayout.addWidget(self.histogramViewer,0,1)
         self.histogramViewer.hide()
+
+        self.magnitudeViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Magnitude of {self.title}")
+        self.tabLayout.addWidget(self.magnitudeViewer,1,0)
+        self.magnitudeViewer.hide()
+
+        self.phaseViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Phase of {self.title}")
+        self.tabLayout.addWidget(self.phaseViewer,1,1)
+        self.phaseViewer.hide()
 
         # Set layout to new tab
         self.setLayout(self.tabLayout)
@@ -69,10 +66,29 @@ class tabViewer(QWidget):
         else:
             self.showHist = False
             self.histogramViewer.hide()
+    
+    def addMagnitude(self):
+        if not self.showMag:
+            self.showMag = True
+            self.magnitudeViewer.show()
+        else:
+            self.showMag = False
+            self.magnitudeViewer.hide()
+    
+    def addPhase(self):
+        if not self.showPhase:
+            self.showPhase = True
+            self.phaseViewer.show()
+        else:
+            self.showPhase = False
+            self.phaseViewer.hide()
 
     def setImage(self, path, fileExtension):
         data = self.primaryViewer.setImage(path, fileExtension)
         self.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
+        self.magnitudeViewer.fourierTransform(self.primaryViewer.grayImage,"magnitude")
+        self.phaseViewer.fourierTransform(self.primaryViewer.grayImage,"phase")
+
         return data
 
     def drawT(self):

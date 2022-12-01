@@ -26,6 +26,9 @@
     <file alias="salt.png">assets/icons/salt.png</file>
     <file alias="median.png">assets/icons/median.png</file>
 
+    <file alias="fourier.png">assets/icons/fourier.png</file>
+    <file alias="log.png">assets/icons/log.png</file>
+
     <file alias="clear.png">assets/icons/clear.png</file>   
     <file alias="exit.svg">assets/icons/exit.svg</file>
 </qresource>

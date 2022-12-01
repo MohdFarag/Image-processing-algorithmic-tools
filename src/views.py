@@ -111,6 +111,16 @@ class Window(QMainWindow):
         self.showHistogramAction.setStatusTip('Show the histogram')
 
         # Show histogram of the image
+        self.showfourierAction = QAction(QIcon(":fourier.png"), "&Fourier", self)
+        self.showfourierAction.setShortcut("ctrl+F")
+        self.showfourierAction.setStatusTip('Show the magnitude and phase')
+        
+        # Show histogram of the image
+        self.logImageAction = QAction(QIcon(":log.png"), "&Log magnitude", self)
+        self.logImageAction.setShortcut("ctrl+L")
+        self.logImageAction.setStatusTip('Log the image')
+
+        # Show histogram of the image
         self.save = QAction(QIcon(":save.png"), "&Save image", self)
         self.save.setShortcut("ctrl+s")
         self.save.setStatusTip('Save the image')
@@ -171,11 +181,15 @@ class Window(QMainWindow):
         editMenu = QMenu("&Edit", self)
         editMenu.addAction(self.constructTAction) # Construct T in menu
         editMenu.addAction(self.showHistogramAction) # Show histogram in menu
+        editMenu.addAction(self.showfourierAction) # Show histogram in menu
         editMenu.addAction(self.equalizeAction) # Equalize image in menu
+        editMenu.addAction(self.logImageAction)
 
         ## Filter
         filterMenu = QMenu("&Filter", self)
         filterMenu.addAction(self.unsharpAction)
+        filterMenu.addAction(self.medianFilterAction)
+        filterMenu.addAction(self.addSaltNoiseAction)
 
         ## View tap
         viewMenu = QMenu("&View", self)
@@ -234,9 +248,11 @@ class Window(QMainWindow):
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.openAction)
             self.toolBar.addAction(self.showHistogramAction)
+            self.toolBar.addAction(self.showfourierAction)
             self.toolBar.addAction(self.equalizeAction)
             self.toolBar.addAction(self.addSaltNoiseAction)
             self.toolBar.addAction(self.medianFilterAction)
+            self.toolBar.addAction(self.logImageAction)
             self.toolBar.addAction(self.clearAction)
         elif type == "T":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
@@ -365,6 +381,8 @@ class Window(QMainWindow):
         
         self.clearAction.triggered.connect(lambda: self.currentTab.primaryViewer.reset()) # When click on clear action
         self.clearAction.triggered.connect(lambda: self.currentTab.histogramViewer.reset()) # When click on clear action
+        self.clearAction.triggered.connect(lambda: self.currentTab.magnitudeViewer.reset()) # When click on clear action
+        self.clearAction.triggered.connect(lambda: self.currentTab.phaseViewer.reset()) # When click on clear action
 
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
@@ -386,9 +404,12 @@ class Window(QMainWindow):
 
         self.addTabAction.triggered.connect(lambda: self.addNewTab())
         
-        self.unsharpAction.triggered.connect(self.applyFilter)
+        self.unsharpAction.triggered.connect(self.applyUnsharp)
         self.addSaltNoiseAction.triggered.connect(self.addNoise)
         self.medianFilterAction.triggered.connect(self.applyMedian)
+
+        self.showfourierAction.triggered.connect(self.showFourier)
+        self.logImageAction.triggered.connect(self.logImage)
 
         self.save.triggered.connect(self.saveImage)
         self.exitAction.triggered.connect(lambda: self.exit()) # When click on exit action
@@ -400,13 +421,39 @@ class Window(QMainWindow):
         self.tabs.tabCloseRequested.connect(self.closeCurrentTab)
         self.tabs.tabBarDoubleClicked.connect(self.tabOpenDoubleclick)
 
+    # Show magnitude and phase of image
+    def showFourier(self):
+        self.currentTab.addMagnitude()
+        self.currentTab.addPhase()
+
+    # Log the image
+    def logImage(self):
+        self.updateImage(True)
+        self.currentTab.primaryViewer.logImage()
+
+    # Update magnitude and phase and histogram for the image after every update
+    def updateImage(self,log=False):
+        if log:
+            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude",True)
+            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase",True)
+        else:
+            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude")
+            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
+
+        self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
+
+    # Add random noise to the image
     def addNoise(self):
         self.currentTab.primaryViewer.addSaltAndPepper()
+        self.updateImage()
     
-    def applyMedian(self):
-        self.currentTab.primaryViewer.medianMask()
+    # Apply median masking
+    def applyMedian(self): 
+        self.currentTab.primaryViewer.medianMask(int(self.sizeInput.text()))
+        self.updateImage()
 
-    def applyFilter(self):
+    # Apply unsharp masking
+    def applyUnsharp(self):
         try:
             filterSize = int(self.sizeInput.text())
             factorSize = int(self.factorInput.text())
@@ -422,6 +469,7 @@ class Window(QMainWindow):
                     filterSize += 1
 
                 self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
+                self.updateImage()
             except Exception as e:
                 print(e)
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
@@ -431,16 +479,14 @@ class Window(QMainWindow):
         else:
             QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
         
-    def tabOpenDoubleclick(self,i):
-        # checking index i.e
-        # No tab under the click
-        if i == -1:
-            # creating a new tab
-            self.addNewTab()
-
     # Equalize
     def equalizeImage(self):
-        self.currentTab.equalize()
+        try:
+            self.currentTab.equalize()
+            self.updateImage()
+        except:
+            QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+            return
 
     # Shear Image
     def shearImage(self):
@@ -453,6 +499,7 @@ class Window(QMainWindow):
         if -90 < shearFactor < 90:
             try:
                 self.currentTab.primaryViewer.shearImage(shearFactor)
+                self.updateImage()
             except:
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
                 return
@@ -470,6 +517,7 @@ class Window(QMainWindow):
         if zoomingFactor > 0:
             try:
                 self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, interpolationMode)
+                self.updateImage()
             except:
                 QMessageBox.critical(self,"Error","Sorry, Error occurred.")
                 return
@@ -504,7 +552,31 @@ class Window(QMainWindow):
             self.interpolationMode = "Rotate Bilinear"
         
         self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, abs(rotationAngle), direction)
+
+    # Get Data
+    def getAttr(self, variable, att):
+        if hasattr(variable, att):
+            # If attribute is found.
+            return getattr(variable, att)
+        else:
+            # If attribute is not found.
+            return "N/A"
+
+    # Get depth of image
+    def getDepth(self, image, imageChannel):
+        image_sequence = image.getdata()
+        image_array = np.asarray(image_sequence) 
+        range = image_array.max() - image_array.min()
+        bitDepthForOneChannel = ceil(log2(range))
         
+        try:
+            _ , _ , numOfChannels = imageChannel.shape
+        except:
+            numOfChannels = 1
+        finally:
+            bitDepth = bitDepthForOneChannel * numOfChannels
+            return bitDepth
+
     # Open Image
     def browseImage(self):
         # Browse Function
@@ -522,7 +594,7 @@ class Window(QMainWindow):
             appLogger.exception("Can't open the file !")
             QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
         else:
-            self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
+            self.updateImage()
 
             self.statusbar.showMessage(path.split("/")[-1])
             if self.fileExtension == "dcm":
@@ -556,36 +628,21 @@ class Window(QMainWindow):
             # Set the information
             self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
 
-    # Get Data
-    def getAttr(self, variable, att):
-        if hasattr(variable, att):
-            # If attribute is found.
-            return getattr(variable, att)
-        else:
-            # If attribute is not found.
-            return "N/A"
-
-    # TODO: Check: Right or Wrong
-    def getDepth(self, image, imageChannel):
-        image_sequence = image.getdata()
-        image_array = np.asarray(image_sequence) 
-        range = image_array.max() - image_array.min()
-        bitDepthForOneChannel = ceil(log2(range))
-        
-        try:
-            _ , _ , numOfChannels = imageChannel.shape
-        except:
-            numOfChannels = 1
-        finally:
-            bitDepth = bitDepthForOneChannel * numOfChannels
-            return bitDepth
-
+    # Save Image
     def saveImage(self):
         output_file, _ = QFileDialog.getSaveFileName(self, 'Save image', None, 'jpeg files (.jpeg)')
         if output_file != '':
             if QFileInfo(output_file).suffix() == "" : output_file += '.jpeg'
         
         self.currentTab.primaryViewer.saveImage(output_file)
+
+    # Open new tap when double click
+    def tabOpenDoubleclick(self,i):
+        # checking index i.e
+        # No tab under the click
+        if i == -1:
+            # creating a new tab
+            self.addNewTab()
 
     # Control the tabs
     def setCurrentTab(self):

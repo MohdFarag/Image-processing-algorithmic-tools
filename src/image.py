@@ -1,6 +1,7 @@
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 import numpy as np
+np.seterr(divide = 'ignore') 
 import math
 
 import matplotlib as mpl
@@ -8,7 +9,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.image as mpimg
 import pydicom as dicom
 from PIL import Image
-import time
 
 import random
 
@@ -148,14 +148,15 @@ class ImageViewer(FigureCanvasQTAgg):
         zoomWidth = int(resizedImage.shape[0]/scaleFactor)
         zoomHeight = int(resizedImage.shape[1]/scaleFactor)
         
-        self.axes.imshow(resizedImage[:zoomWidth,:zoomHeight], cmap="gray")
+        self.grayImage = resizedImage[:zoomWidth,:zoomHeight]
+        self.axes.imshow(self.grayImage, cmap="gray")
         self.draw()
 
         return resizedImage.shape[0], resizedImage.shape[1]
 
     # Construct T shape
     def constructT(self, background="white"):
-        self.grayImage = np.zeros((128,128), dtype=np.uint8)
+        self.grayImage = np.zeros((128,128), dtype=np.int64)
         
         if background == "black":
             self.grayImage.fill(255)
@@ -167,10 +168,8 @@ class ImageViewer(FigureCanvasQTAgg):
         for i in range(49,100):
             for j in range(54,74):
                 self.grayImage[i,j] = 255
-        
-        self.grayImage = self.grayImage.astype(np.int64)
 
-        self.axes.imshow(self.grayImage, cmap="gray", extent=(0, 128, 0, 128))
+        self.axes.imshow(self.grayImage, cmap="gray")
         self.loaded = True
         self.draw()
     
@@ -243,8 +242,9 @@ class ImageViewer(FigureCanvasQTAgg):
                                 q = q1 * (x_ceil - x) + q2 * (x - x_floor)
 
                             rotatedImage[j][i] = q
-
-            self.axes.imshow(rotatedImage, cmap="gray", extent=(0, 128, 0, 128))
+            
+            self.grayImage = rotatedImage
+            self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
 
             return rotatedImage.shape[0],rotatedImage.shape[1]
@@ -285,7 +285,8 @@ class ImageViewer(FigureCanvasQTAgg):
                     if (new_x >= 0 and new_y >= 0 and new_x < oldWidth and new_y < oldHeight):
                         shearedImage[j][i] = self.grayImage[new_y,new_x]
 
-            self.axes.imshow(shearedImage, cmap="gray", extent=(0, 128, 0, 128))
+            self.grayImage = shearedImage
+            self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
 
     # Build histogram of the image
@@ -309,9 +310,12 @@ class ImageViewer(FigureCanvasQTAgg):
 
         if len(image) != 0:
             L = 256
-            
+          
             # Get histogram of image
-            histogram = np.bincount(np.asarray(np.round(image),np.int64).flatten(), minlength=L)
+            try:
+                histogram = np.bincount(np.asarray(np.round(image),np.int64).flatten(), minlength=L)
+            except:
+                histogram = np.bincount(np.arange(L).flatten(), minlength=L)
 
             # Normalize
             sumPixels = np.sum(histogram)
@@ -336,7 +340,7 @@ class ImageViewer(FigureCanvasQTAgg):
             L = self.grayImage.max()
           
             # Get histogram of nonEqualizedImage
-            nonEqualizedhistogram = np.bincount(self.grayImage.flatten(), minlength=L)
+            nonEqualizedhistogram = np.bincount(np.asarray(np.round(self.grayImage),np.int64).flatten(), minlength=L)
 
             # Normalize
             sumPixels = np.sum(nonEqualizedhistogram)
@@ -418,12 +422,13 @@ class ImageViewer(FigureCanvasQTAgg):
 
         return resultImage
     
-    # Scale functoion
+    # Scale function
     def scaleImage(self,image:np.ndarray):
         image = np.subtract(image, image.min())
         resultImage = 255*(image/image.max())
-        
-        print(resultImage.min(),resultImage.max())
+
+        resultImage = np.array(resultImage, dtype = np.int64)
+
         return resultImage
 
     # Perform un-sharp masking
@@ -435,10 +440,10 @@ class ImageViewer(FigureCanvasQTAgg):
             resultImage = self.multByFactor(subtractedImage, k)
 
             scaledImage = self.scaleImage(resultImage)
-            self.grayImage = self.addPadding(0,scaledImage,math.floor(size/2))
+            # self.grayImage = self.addPadding(0,scaledImage,math.floor(size/2))
 
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
+            self.axes.imshow(scaledImage, cmap="gray")
             self.draw()
         
     # Add salt and pepper noise to the image
@@ -449,24 +454,62 @@ class ImageViewer(FigureCanvasQTAgg):
             width, height = self.grayImage.shape
 
             # Randomly pick some pixels in the image for coloring them white
-            number_of_pixels = random.randint(0, max(width,height))
+            number_of_pixels = int((random.randint(2,7)/100) * (width*height))
             for _ in range(number_of_pixels):        
-                # Color that pixel to white
                 self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 255
                 
-            # Randomly pick some pixels in the image for coloring them black
-            number_of_pixels = random.randint(0, max(width,height))
             for _ in range(number_of_pixels):        
-                # Color that pixel to black
                 self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 0
             
             # Draw image
             self.axes.imshow(self.grayImage, cmap="gray")
             self.draw() 
 
+    def logTransformation(self, r:np.ndarray):
+        maxPixelValue = np.max(r)
+        c = 255 / (np.log(1 + maxPixelValue))        
+        result = c * np.log(1+ r)
+
+        return result
+
+    def logImage(self):
+        loggedImage = self.logTransformation(self.grayImage)
+        scaledImage = self.scaleImage(loggedImage)
+
+        self.axes.imshow(scaledImage, cmap="gray")
+        self.draw() 
+    
+    # Fourier transform
+    def fourierTransform(self, imageAtSpatialDomain, partShow, log=False):
+        f = np.fft.fft2(imageAtSpatialDomain)
+        fshift = np.fft.fftshift(f)
+
+        if partShow == "magnitude":
+            if not log:
+                magnitudeSpectrum = np.abs(fshift)
+            else:
+                magnitudeSpectrum = self.logTransformation(np.abs(fshift))
+            self.axes.imshow(magnitudeSpectrum, cmap="gray")
+        else:
+            if not log:
+                phaseSpectrum = np.angle(fshift) 
+            else:
+                phaseSpectrum = self.logTransformation(np.angle(fshift))
+
+            self.axes.imshow(phaseSpectrum, cmap="gray")
+
+        self.draw() 
+    
+    # inverse Fourier transform
+    def inversefourierTransform(self, magnitudeImage, phaseImage):
+        combinedImage = np.multiply(magnitudeImage, np.exp(1j * phaseImage))
+        resultImage = np.fft.ifft2(combinedImage).astype(np.int16)
+
+        return resultImage
+
     # Median mask
-    def medianMask(self):
-        filterSize = 3
+    def medianMask(self, size):
+        filterSize = size
         paddSize = math.floor(filterSize / 2)
         paddedImage = self.addPadding(0, self.grayImage, paddSize)
 
@@ -488,6 +531,7 @@ class ImageViewer(FigureCanvasQTAgg):
         self.axes.imshow(self.grayImage, cmap="gray")
         self.draw() 
 
+    # Save Image
     def saveImage(self,path):
         self.fig.savefig(path, bbox_inches='tight')
 
