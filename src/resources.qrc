@@ -9,6 +9,7 @@
     <file alias="folder.ico">assets/icons/folder.ico</file>
     <file alias="image.ico">assets/icons/image.ico</file>
     <file alias="T.png">assets/icons/T.png</file>
+    <file alias="triangle.png">assets/icons/triangle.png</file>
 
     <file alias="menu.ico">assets/icons/menu.ico</file>
     <file alias="color.png">assets/icons/color.png</file>

@@ -172,7 +172,24 @@ class ImageViewer(FigureCanvasQTAgg):
         self.axes.imshow(self.grayImage, cmap="gray")
         self.loaded = True
         self.draw()
-    
+
+    # Construct Triangle shape
+    def constructTriangle(self, background="white"):
+        self.grayImage = np.zeros((128,128), dtype=np.int64)
+        
+        if background == "black":
+            self.grayImage.fill(255)
+
+        k = 100 - 29
+        for i in range(29,100):
+            for j in range(k,127-k):
+                self.grayImage[i,j] = 255
+            k -= 1
+
+        self.axes.imshow(self.grayImage, cmap="gray")
+        self.loaded = True
+        self.draw()
+
     # Rotate T image
     def rotateImage(self, angle, mode):
         if self.loaded:
@@ -423,11 +440,20 @@ class ImageViewer(FigureCanvasQTAgg):
         return resultImage
     
     # Scale function
-    def scaleImage(self,image:np.ndarray):
-        image = np.subtract(image, image.min())
-        resultImage = 255*(image/image.max())
-
-        resultImage = np.array(resultImage, dtype = np.int64)
+    def scaleImage(self, image:np.ndarray, mode="scale"):
+        resultImage = np.zeros(image.shape)
+        if mode == "scale":
+            image = np.subtract(image, image.min())
+            resultImage = 255*(image/image.max())
+        elif mode == "clip":
+            for i in range(image.shape[0]):
+                for j in range(image.shape[1]):
+                    if image[i,j] < 0:
+                        resultImage[i,j] = 0
+                    elif image[i,j] > 255:
+                        resultImage[i,j] = 255
+                    else:
+                        resultImage[i,j] = resultImage[i,j]
 
         return resultImage
 
@@ -440,10 +466,10 @@ class ImageViewer(FigureCanvasQTAgg):
             resultImage = self.multByFactor(subtractedImage, k)
 
             scaledImage = self.scaleImage(resultImage)
-            # self.grayImage = self.addPadding(0,scaledImage,math.floor(size/2))
-
+            self.grayImage = scaledImage
+            
             # Draw image
-            self.axes.imshow(scaledImage, cmap="gray")
+            self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
         
     # Add salt and pepper noise to the image
@@ -465,6 +491,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.imshow(self.grayImage, cmap="gray")
             self.draw() 
 
+    # Log transformation
     def logTransformation(self, r:np.ndarray):
         maxPixelValue = np.max(r)
         c = 255 / (np.log(1 + maxPixelValue))        
@@ -472,33 +499,35 @@ class ImageViewer(FigureCanvasQTAgg):
 
         return result
 
+    # Draw logged image
     def logImage(self):
-        loggedImage = self.logTransformation(self.grayImage)
-        scaledImage = self.scaleImage(loggedImage)
-
-        self.axes.imshow(scaledImage, cmap="gray")
+        self.axes.imshow(self.grayImage, cmap="gray")
         self.draw() 
     
     # Fourier transform
     def fourierTransform(self, imageAtSpatialDomain, partShow, log=False):
-        f = np.fft.fft2(imageAtSpatialDomain)
-        fshift = np.fft.fftshift(f)
+        if len(imageAtSpatialDomain) != 0:
+            f = np.fft.fft2(imageAtSpatialDomain)
+            fshift = np.fft.fftshift(f)
 
-        if partShow == "magnitude":
-            if not log:
-                magnitudeSpectrum = np.abs(fshift)
+            if partShow == "magnitude":
+                if not log:
+                    magnitudeSpectrum = np.abs(fshift)
+                else:
+                    magnitudeSpectrum = self.logTransformation(np.abs(fshift))
+                
+                magnitudeSpectrum = self.scaleImage(magnitudeSpectrum)
+                self.axes.imshow(magnitudeSpectrum, cmap="gray")
+
             else:
-                magnitudeSpectrum = self.logTransformation(np.abs(fshift))
-            self.axes.imshow(magnitudeSpectrum, cmap="gray")
-        else:
-            if not log:
-                phaseSpectrum = np.angle(fshift) 
-            else:
-                phaseSpectrum = self.logTransformation(np.angle(fshift))
+                if not log:
+                    phaseSpectrum = self.scaleImage(np.angle(fshift))
 
-            self.axes.imshow(phaseSpectrum, cmap="gray")
+                else:
+                    phaseSpectrum = self.logTransformation(self.scaleImage(np.angle(fshift)))
+                self.axes.imshow(phaseSpectrum, cmap="gray")
 
-        self.draw() 
+            self.draw() 
     
     # inverse Fourier transform
     def inversefourierTransform(self, magnitudeImage, phaseImage):

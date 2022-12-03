@@ -94,3 +94,7 @@ class tabViewer(QWidget):
     def drawT(self):
         self.primaryViewer.constructT("white")
         self.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
+
+    def drawTriangle(self):
+        self.primaryViewer.constructTriangle("white")
+        self.histogramViewer.drawHistogram(self.primaryViewer.grayImage)

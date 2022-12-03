@@ -90,6 +90,11 @@ class Window(QMainWindow):
         self.constructTAction.setShortcut("ctrl+T")
         self.constructTAction.setStatusTip('Construct an image with a T letter in the center')
 
+        # Construct triangle image Action
+        self.constructTriangleAction = QAction(QIcon(":triangle.png"), "&Construct Triangle", self)
+        self.constructTriangleAction.setShortcut("ctrl+M")
+        self.constructTriangleAction.setStatusTip('Construct an Triangle')
+
         # Rotate the image
         self.rotateNearestAction = QAction(QIcon(":rotate.png"), "&Rotate T Nearest", self)
         self.rotateNearestAction.setShortcut("ctrl+3")
@@ -217,7 +222,8 @@ class Window(QMainWindow):
             self.addToolBar(Qt.TopToolBarArea,self.toolBar)
             self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
-            self.sizeInput = QLineEdit("1")
+            self.sizeInput = QLineEdit()
+            self.sizeInput.setPlaceholderText("Filter Size")
             self.sizeInput.setStyleSheet("""border:1px solid #00d; 
                                                 height:18px; 
                                                 padding:2px; 
@@ -226,7 +232,8 @@ class Window(QMainWindow):
                                                 margin-right:5px""")
             self.toolBar.addWidget(self.sizeInput)
             
-            self.factorInput = QLineEdit("0")
+            self.factorInput = QLineEdit()
+            self.factorInput.setPlaceholderText("Factor")
             self.factorInput.setStyleSheet("""border:1px solid #00d; 
                                                 height:18px; 
                                                 padding:2px; 
@@ -257,6 +264,7 @@ class Window(QMainWindow):
         elif type == "T":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.constructTAction)
+            self.toolBar.addAction(self.constructTriangleAction)
 
     # Context Menu Event
     def contextMenuEvent(self, event):
@@ -390,6 +398,9 @@ class Window(QMainWindow):
 
         # Construct T
         self.constructTAction.triggered.connect(lambda: self.currentTab.drawT())
+
+        # Construct triangle
+        self.constructTriangleAction.triggered.connect(lambda: self.currentTab.drawTriangle())
 
         # Rotate image
         self.rotateNearestAction.triggered.connect(lambda: self.rotateImage(interpolationMode="nearest"))
