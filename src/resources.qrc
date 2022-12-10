@@ -1,36 +1,32 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-    <file alias="icon.svg">assets/icons/icon.svg</file>
-
-    <file alias="bmp.ico">assets/icons/bmp.ico</file>
-    <file alias="jpeg.ico">assets/icons/jpeg.ico</file>
+    <file alias="icon">assets/icons/icon.svg</file>
     
-    <file alias="file.ico">assets/icons/file.ico</file>
-    <file alias="folder.ico">assets/icons/folder.ico</file>
-    <file alias="image.ico">assets/icons/image.ico</file>
-    <file alias="T.png">assets/icons/T.png</file>
-    <file alias="triangle.png">assets/icons/triangle.png</file>
+    <file alias="image">assets/icons/image.ico</file>
+    <file alias="folder">assets/icons/folder.ico</file>
+    <file alias="T">assets/icons/T.png</file>
+    <file alias="triangle">assets/icons/triangle.png</file>
 
-    <file alias="menu.ico">assets/icons/menu.ico</file>
-    <file alias="color.png">assets/icons/color.png</file>
-    <file alias="gray.png">assets/icons/grayscale.png</file>
+    <file alias="color">assets/icons/color.png</file>
+    <file alias="gray">assets/icons/grayScale.png</file>
 
-    <file alias="zoom.png">assets/icons/zoom.png</file>
-    <file alias="paxiliteZoom.png">assets/icons/paxilateZoom.png</file>
-    <file alias="rotate.png">assets/icons/rotate.png</file>
-    <file alias="shear.png">assets/icons/shear.png</file>
+    <file alias="equalize">assets/icons/equalize.png</file>
+    <file alias="histogram">assets/icons/histogram.png</file>
+    <file alias="showFourier">assets/icons/fourier.png</file>
+    <file alias="log">assets/icons/log.png</file>
+    
+    <file alias="LZoom">assets/icons/zoom.png</file>
+    <file alias="NNZoom">assets/icons/pixilateZoom.png</file>
+    <file alias="rotate">assets/icons/rotate.png</file>
+    <file alias="shear">assets/icons/shear.png</file>
 
-    <file alias="equalize.png">assets/icons/equalize.png</file>
-    <file alias="histogram.png">assets/icons/histogram.png</file>
+    <file alias="box">assets/icons/box.png</file>
+    <file alias="salt">assets/icons/salt.png</file>
+    <file alias="median">assets/icons/median.png</file>
+    <file alias="blur">assets/icons/blur.png</file>
+    <file alias="blurFourier">assets/icons/blurF.png</file>
 
-    <file alias="box.png">assets/icons/box.png</file>
-    <file alias="salt.png">assets/icons/salt.png</file>
-    <file alias="median.png">assets/icons/median.png</file>
-
-    <file alias="fourier.png">assets/icons/fourier.png</file>
-    <file alias="log.png">assets/icons/log.png</file>
-
-    <file alias="clear.png">assets/icons/clear.png</file>   
-    <file alias="exit.svg">assets/icons/exit.svg</file>
+    <file alias="clear">assets/icons/clear.png</file>   
+    <file alias="exit">assets/icons/exit.svg</file>
 </qresource>
 </RCC>

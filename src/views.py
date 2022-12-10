@@ -9,8 +9,7 @@ from .rcIcon import *
 import sys
 
 # Import Classes
-from .additionsQt import *
-from .image import ImageViewer
+from .tabViewer import tabViewer
 
 # Importing Qt widgets
 from PyQt5.QtWidgets import *
@@ -28,6 +27,8 @@ class Window(QMainWindow):
         super(Window, self).__init__(*args, **kwargs)
 
         ### Variables
+        self.images = []
+
         self.widthOfImage = 0
         self.heightOfImage = 0
         self.sizeOfImage = 0
@@ -41,7 +42,7 @@ class Window(QMainWindow):
         self.interpolationMode = "N/A"
         
         ### Setting Icon
-        self.setWindowIcon(QIcon(":icon.svg"))
+        self.setWindowIcon(QIcon(":icon"))
 
         ### Setting title
         self.setWindowTitle("Image Processing Algorithms")
@@ -49,120 +50,191 @@ class Window(QMainWindow):
         ### UI contents
         self._createActions()
         self._createMenuBar()
-        self._createToolBar("original")
-        self._createToolBar("zoom")
-        self._createToolBar("T")
+        self._createToolBar("main")
+        self._createToolBar("transformations")
+        self._createToolBar("shapes")
+        self._createToolBar("filters")
+        self._createToolBar("inputs")
         self._createStatusBar()
         # Central area
         self._initUI()
         # Connect signals
         self._connect()
    
+    ##########################################
+
     # Actions
     def _createActions(self):
+        # Actions
+        self.fileActions()
+        self.imageActions()
+        self.fourierActions()
+        self.filtersActions()
+        self.transformationsActions()
+        self.operationsActions()
+        self.constructionShapesActions()
+        self.noisesActions()
+        self.viewActions()
+        self.helpActions()
+
+    # File Actions
+    def fileActions(self):
+        # Add new tab Action
+        self.addTabAction = QAction(QIcon(":add"), "&New...", self)
+        self.addTabAction.setShortcut("Ctrl+N")
+        self.addTabAction.setStatusTip('Add a new tab')
+
         # Open Action
-        self.openAction = QAction(QIcon(":file.ico"), "&Open Image...", self)
+        self.openAction = QAction(QIcon(":image"), "&Open Image...", self)
         self.openAction.setShortcut("Ctrl+O")
         self.openAction.setStatusTip('Open a new image')
 
-        # Add tab Action
-        self.addTabAction = QAction(QIcon(":add.ico"), "&Add new tab...", self)
-        self.addTabAction.setShortcut("Ctrl+A")
-        self.addTabAction.setStatusTip('Add a new tab')
+        # Save the image Action
+        self.saveAction = QAction(QIcon(":save"), "&Save image", self)
+        self.saveAction.setShortcut("ctrl+S")
+        self.saveAction.setStatusTip('Save the image')
 
         # Clear Action
-        self.clearAction = QAction(QIcon(":clear.png"), "&Close Image", self)
+        self.clearAction = QAction(QIcon(":clear"), "&Close Image", self)
         self.clearAction.setShortcut("Ctrl+C")
         self.clearAction.setStatusTip('Close the image')
 
+        # Exit Action
+        self.exitAction = QAction(QIcon(":exit"), "&Exit", self)
+        self.exitAction.setShortcut("Ctrl+Q")
+        self.exitAction.setStatusTip('Exit application')
+
+    # Image Actions
+    def imageActions(self):
+        # Equalize the image
+        self.equalizeAction = QAction(QIcon(":equalize"), "&Equalize", self)
+        self.equalizeAction.setShortcut("ctrl+E")
+        self.equalizeAction.setStatusTip('Equalize the image')
+
+    # Edit Actions
+    def fourierActions(self):
+        # Log the magnitude of the image
+        self.logMagnitudeAction = QAction(QIcon(":log"), "&Log magnitude", self)
+        self.logMagnitudeAction.setShortcut("ctrl+L")
+        self.logMagnitudeAction.setStatusTip('Log the image')
+
+    # Filters Actions
+    def filtersActions(self):
+        # Unsharp masking Action
+        self.unsharpMaskAction = QAction(QIcon(":box"), "&Un-sharp Mask", self)
+        self.unsharpMaskAction.setShortcut("ctrl+U")
+        self.unsharpMaskAction.setStatusTip('Create a Unsharp Masking')
+
+        # box filter Action
+        self.boxFilteringAction = QAction(QIcon(":blur"), "&Blur", self)
+        self.boxFilteringAction.setShortcut("ctrl+j")
+        self.boxFilteringAction.setStatusTip('Blur image in spatial domain')
+
+        # box filter Action
+        self.boxFilteringByFourierAction = QAction(QIcon(":blurFourier"), "&Blur using fourier", self)
+        self.boxFilteringByFourierAction.setShortcut("ctrl+k")
+        self.boxFilteringByFourierAction.setStatusTip('Blur image in frequency domain using fourier transform')
+
+        # Median filter (50th percentile)
+        self.medianFilterAction = QAction(QIcon(":median"), "&Median filter", self)
+        self.medianFilterAction.setShortcut("ctrl+M")
+        self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
+
+    # Transformation Actions
+    def transformationsActions(self):
         # Zoom Nearest Neighbor Interpolation Action
-        self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":paxiliteZoom.png"), "&Zoom Nearest Neighbor", self)
+        self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":NNZoom"), "&Zoom by Nearest Neighbor", self)
         self.zoomNearestNeighborInterpolationAction.setShortcut("Ctrl+1")
         self.zoomNearestNeighborInterpolationAction.setStatusTip('Zoom in/out by Nearest Neighbor Interpolation method based on input')
 
         # Zoom Linear Interpolation Action
-        self.zoomLinearInterpolationAction = QAction(QIcon(":zoom.png"), "&Zoom Linear", self)
+        self.zoomLinearInterpolationAction = QAction(QIcon(":LZoom"), "&Zoom by Linear", self)
         self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
         self.zoomLinearInterpolationAction.setStatusTip('Zoom in/out by Linear Interpolation method based on input')
 
+        # Rotate the image by nearest neighbour interpolation
+        self.rotateNearestAction = QAction(QIcon(":rotate"), "&Rotate by Nearest Neighbor", self)
+        self.rotateNearestAction.setShortcut("ctrl+3")
+        self.rotateNearestAction.setStatusTip('Rotate the image')
+
+        # Rotate the image by linear interpolation
+        self.rotateLinearAction = QAction(QIcon(":rotate"), "&Rotate by Linear", self)
+        self.rotateLinearAction.setShortcut("ctrl+4")
+        self.rotateLinearAction.setStatusTip('Rotate the image')
+
+        # Shear the image horizontally
+        self.shearActionHorizontal = QAction(QIcon(":shear"), "&Shear horizontally", self)
+        self.shearActionHorizontal.setShortcut("ctrl+5")
+        self.shearActionHorizontal.setStatusTip('Shear the image')
+
+        # Shear the image horizontally
+        self.shearActionVertical = QAction(QIcon(":shear"), "&Shear vertically", self)
+        self.shearActionVertical.setShortcut("ctrl+6")
+        self.shearActionVertical.setStatusTip('Shear the image')
+
+    # Operations Actions
+    def operationsActions(self):
+        # Subtraction two image
+        self.subtractionAction = QAction(QIcon(":subtraction"), "&Subtraction", self)
+        self.subtractionAction.setShortcut("ctrl+D")
+        self.subtractionAction.setStatusTip('Subtract two images')
+
+        # Addition two image
+        self.additionAction = QAction(QIcon(":addition"), "&Additions", self)
+        self.additionAction.setShortcut("ctrl+A")
+        self.additionAction.setStatusTip('Sum two images')
+
+        # Add to the comparing list
+        self.addToCompareListAction = QAction(QIcon(":compare"), "&Compare...", self)
+        self.addToCompareListAction.setShortcut("Ctrl+B")
+        self.addToCompareListAction.setStatusTip('Add to compare list')
+
+    # Shapes Constructions Actions
+    def constructionShapesActions(self):
         # Construct T image Action
-        self.constructTAction = QAction(QIcon(":T.png"), "&Construct T", self)
+        self.constructTAction = QAction(QIcon(":T"), "&Construct T", self)
         self.constructTAction.setShortcut("ctrl+T")
         self.constructTAction.setStatusTip('Construct an image with a T letter in the center')
 
         # Construct triangle image Action
-        self.constructTriangleAction = QAction(QIcon(":triangle.png"), "&Construct Triangle", self)
+        self.constructTriangleAction = QAction(QIcon(":triangle"), "&Construct Triangle", self)
         self.constructTriangleAction.setShortcut("ctrl+M")
         self.constructTriangleAction.setStatusTip('Construct an Triangle')
-
-        # Rotate the image
-        self.rotateNearestAction = QAction(QIcon(":rotate.png"), "&Rotate T Nearest", self)
-        self.rotateNearestAction.setShortcut("ctrl+3")
-        self.rotateNearestAction.setStatusTip('Rotate the image')
-
-        # Rotate the image
-        self.rotateLinearAction = QAction(QIcon(":rotate.png"), "&Rotate T Linear", self)
-        self.rotateLinearAction.setShortcut("ctrl+4")
-        self.rotateLinearAction.setStatusTip('Rotate the image')
-
-        # Shear the image
-        self.shearAction = QAction(QIcon(":shear.png"), "&Shear T", self)
-        self.shearAction.setShortcut("ctrl+5")
-        self.shearAction.setStatusTip('Shear the image')
-        
+    
+    # Noises Actions
+    def noisesActions(self):
+        # Add salt and pepper noise action
+        self.addSaltPepperNoiseAction = QAction(QIcon(":salt"), "&Add salt and pepper", self)
+        self.addSaltPepperNoiseAction.setShortcut("ctrl+P")
+        self.addSaltPepperNoiseAction.setStatusTip('Add salt and pepper noise')
+    
+    # View Actions
+    def viewActions(self):
         # Show histogram of the image
-        self.showHistogramAction = QAction(QIcon(":histogram.png"), "&Histogram", self)
+        self.showHistogramAction = QAction(QIcon(":histogram"), "&Histogram", self)
         self.showHistogramAction.setShortcut("ctrl+H")
         self.showHistogramAction.setStatusTip('Show the histogram')
 
         # Show histogram of the image
-        self.showfourierAction = QAction(QIcon(":fourier.png"), "&Fourier", self)
-        self.showfourierAction.setShortcut("ctrl+F")
-        self.showfourierAction.setStatusTip('Show the magnitude and phase')
-        
-        # Show histogram of the image
-        self.logImageAction = QAction(QIcon(":log.png"), "&Log magnitude", self)
-        self.logImageAction.setShortcut("ctrl+L")
-        self.logImageAction.setStatusTip('Log the image')
+        self.showFourierAction = QAction(QIcon(":showFourier"), "&Fourier", self)
+        self.showFourierAction.setShortcut("ctrl+F")
+        self.showFourierAction.setStatusTip('Show the magnitude and phase')
 
-        # Show histogram of the image
-        self.save = QAction(QIcon(":save.png"), "&Save image", self)
-        self.save.setShortcut("ctrl+s")
-        self.save.setStatusTip('Save the image')
-        
-        # Equalize the image
-        self.equalizeAction = QAction(QIcon(":equalize.png"), "&Equalize", self)
-        self.equalizeAction.setShortcut("ctrl+E")
-        self.equalizeAction.setStatusTip('Equalize the image')
-
-        # Box filter
-        self.unsharpAction = QAction(QIcon(":box.png"), "&Un-sharp Mask", self)
-        self.unsharpAction.setShortcut("ctrl+U")
-        self.unsharpAction.setStatusTip('Create a Unsharp Masking')
-
-        self.addSaltNoiseAction = QAction(QIcon(":salt.png"), "&Add salt and pepper", self)
-        self.addSaltNoiseAction.setShortcut("ctrl+P")
-        self.addSaltNoiseAction.setStatusTip('Add salt and pepper noise')
-
-        self.medianFilterAction = QAction(QIcon(":median.png"), "&Median filter", self)
-        self.medianFilterAction.setShortcut("ctrl+M")
-        self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
-
-        # Exit Action
-        self.exitAction = QAction(QIcon(":exit.svg"), "&Exit", self)
-        self.exitAction.setShortcut("Ctrl+Q")
-        self.exitAction.setStatusTip('Exit application')
-
-        # Help Actions
+    # Help Actions
+    def helpActions(self):
         self.helpContentAction = QAction("&Help Content", self)
         self.helpContentAction.setStatusTip('Help')
+        
         self.checkUpdatesAction = QAction("&Check For Updates", self)
         self.checkUpdatesAction.setStatusTip('Check Updates')
-        self.aboutAction = QAction("&About...", self)
+        
+        self.aboutAction = QAction("&About", self)
         self.aboutAction.setStatusTip('About')
 
-    # Add seperator
-    def addSeperator(self, parent):
+    ##########################################
+    
+    # Add separator
+    def addSeparator(self, parent):
         # Creating a separator action
         self.separator = QAction(self)
         self.separator.setSeparator(True)
@@ -175,125 +247,142 @@ class Window(QMainWindow):
 
         ## File tap
         fileMenu = QMenu("&File", self)
-        fileMenu.addAction(self.openAction) # Open file in menu
-        fileMenu.addAction(self.save)
-        fileMenu.addSeparator() # Seperator
-        fileMenu.addAction(self.clearAction) # Clear image in menu
-        fileMenu.addSeparator() # Seperator
-        fileMenu.addAction(self.exitAction) # Exit file in menu
-
-        ## Edit tap
+        fileMenu.addAction(self.addTabAction)
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.openAction)
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.saveAction)
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.clearAction)
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.exitAction)
+    
         editMenu = QMenu("&Edit", self)
-        editMenu.addAction(self.constructTAction) # Construct T in menu
-        editMenu.addAction(self.showHistogramAction) # Show histogram in menu
-        editMenu.addAction(self.showfourierAction) # Show histogram in menu
-        editMenu.addAction(self.equalizeAction) # Equalize image in menu
-        editMenu.addAction(self.logImageAction)
+        editMenu.addAction(self.equalizeAction)
+        editMenu.addSeparator()
+        editMenu.addAction(self.logMagnitudeAction)
 
-        ## Filter
-        filterMenu = QMenu("&Filter", self)
-        filterMenu.addAction(self.unsharpAction)
-        filterMenu.addAction(self.medianFilterAction)
-        filterMenu.addAction(self.addSaltNoiseAction)
-
-        ## View tap
         viewMenu = QMenu("&View", self)
-        viewMenu.addAction(self.addTabAction) # Add tab in menu
+        viewMenu.addAction(self.showHistogramAction)
+        viewMenu.addAction(self.showFourierAction)
         
-        ## Help tap
+        transformationMenu = QMenu("&Transformation", self)
+        transformationMenu.addAction(self.zoomNearestNeighborInterpolationAction)
+        transformationMenu.addAction(self.zoomLinearInterpolationAction)
+        transformationMenu.addSeparator()
+        transformationMenu.addAction(self.rotateNearestAction)
+        transformationMenu.addAction(self.rotateLinearAction)
+        transformationMenu.addSeparator()
+        transformationMenu.addAction(self.shearActionHorizontal)
+        transformationMenu.addAction(self.shearActionVertical)
+
+        operationMenu = QMenu("&Operation", self)
+        operationMenu.addAction(self.subtractionAction)
+        operationMenu.addSeparator()
+        operationMenu.addAction(self.addToCompareListAction)
+
+        filterMenu = QMenu("&Filter", self)
+        filterMenu.addAction(self.unsharpMaskAction)
+        filterMenu.addAction(self.boxFilteringAction)
+        filterMenu.addAction(self.boxFilteringByFourierAction)
+        filterMenu.addAction(self.medianFilterAction)        
+
+        shapeMenu = QMenu("&Shape", self)
+        shapeMenu.addAction(self.constructTAction)
+        shapeMenu.addAction(self.constructTriangleAction)
+
+        noiseMenu = QMenu("&Noise", self)
+        noiseMenu.addAction(self.addSaltPepperNoiseAction)
+
         helpMenu = QMenu("&Help", self)
         helpMenu.addAction(self.helpContentAction)
-        helpMenu.addSeparator() # Seperator
+        helpMenu.addSeparator()
         helpMenu.addAction(self.checkUpdatesAction)
-        helpMenu.addSeparator() # Seperator
+        helpMenu.addSeparator()
         helpMenu.addAction(self.aboutAction)
         
         ## Append taps
         menuBar.addMenu(fileMenu)
         menuBar.addMenu(editMenu)
+        menuBar.addMenu(transformationMenu)
+        menuBar.addMenu(operationMenu)
         menuBar.addMenu(filterMenu)
+        menuBar.addMenu(shapeMenu)
+        menuBar.addMenu(noiseMenu)
         menuBar.addMenu(viewMenu)
         menuBar.addMenu(helpMenu)
 
     # Tool Bar
     def _createToolBar(self, type=""):
         self.toolBar = QToolBar("Tool Bar")
-        if type == "zoom":
-            self.addToolBar(Qt.TopToolBarArea,self.toolBar)
-            self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-
-            self.sizeInput = QLineEdit()
-            self.sizeInput.setPlaceholderText("Filter Size")
-            self.sizeInput.setStyleSheet("""border:1px solid #00d; 
-                                                height:18px; 
-                                                padding:2px; 
-                                                border-radius:5px; 
-                                                font-size:16px; 
-                                                margin-right:5px""")
-            self.toolBar.addWidget(self.sizeInput)
+        
+        if type == "main":
+            # Using a title
+            self.addToolBar(Qt.LeftToolBarArea, self.toolBar)  # type: ignore
+            self.toolBar.addAction(self.openAction)
             
-            self.factorInput = QLineEdit()
-            self.factorInput.setPlaceholderText("Factor")
-            self.factorInput.setStyleSheet("""border:1px solid #00d; 
-                                                height:18px; 
-                                                padding:2px; 
-                                                border-radius:5px; 
-                                                font-size:16px; 
-                                                margin-right:5px""")
-            self.toolBar.addWidget(self.factorInput)
+            self.toolBar.addAction(self.showHistogramAction)
+            self.toolBar.addAction(self.showFourierAction)
+            self.toolBar.addAction(self.equalizeAction)
+            self.toolBar.addAction(self.logMagnitudeAction)
+            self.toolBar.addAction(self.addToCompareListAction)
+            self.toolBar.addAction(self.clearAction)       
 
-            self.toolBar.addAction(self.unsharpAction) 
-
+        elif type == "transformations":
+            self.addToolBar(Qt.TopToolBarArea,self.toolBar) # type: ignore
+            self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon) # type: ignore
+            
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
             self.toolBar.addAction(self.rotateNearestAction)
             self.toolBar.addAction(self.rotateLinearAction)
-            self.toolBar.addAction(self.shearAction)        
-        
-        elif type == "original":
-            # Using a title
+            self.toolBar.addAction(self.shearActionHorizontal)     
+
+        elif type == "shapes":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
-            self.toolBar.addAction(self.openAction)
-            self.toolBar.addAction(self.showHistogramAction)
-            self.toolBar.addAction(self.showfourierAction)
-            self.toolBar.addAction(self.equalizeAction)
-            self.toolBar.addAction(self.addSaltNoiseAction)
-            self.toolBar.addAction(self.medianFilterAction)
-            self.toolBar.addAction(self.logImageAction)
-            self.toolBar.addAction(self.clearAction)
-        elif type == "T":
-            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
+            
             self.toolBar.addAction(self.constructTAction)
             self.toolBar.addAction(self.constructTriangleAction)
 
+        elif type == "filters":
+            self.addToolBar(Qt.TopToolBarArea, self.toolBar)  # type: ignore
+            
+            self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon) # type: ignore
+            self.toolBar.addAction(self.unsharpMaskAction) 
+            self.toolBar.addAction(self.boxFilteringAction)
+            self.toolBar.addAction(self.boxFilteringByFourierAction)
+            self.toolBar.addAction(self.addSaltPepperNoiseAction)
+            self.toolBar.addAction(self.medianFilterAction)
+            self.toolBar.addAction(self.subtractionAction)
+            
+        elif type == "inputs":
+            self.addToolBar(Qt.BottomToolBarArea, self.toolBar)  # type: ignore
+            
+            self.sizeInput = self.addInput("Filter Size")
+            self.factorInput = self.addInput("Factor or Highboost")
+            self.toolBar.addWidget(self.sizeInput)
+            self.toolBar.addWidget(self.factorInput)
+    
     # Context Menu Event
     def contextMenuEvent(self, event):
         # Creating a menu object with the central widget as parent
         menu = QMenu(self)
         # Populating the menu with actions
         menu.addAction(self.openAction)
-        menu.addAction(self.save)
-        self.addSeperator(menu)
+        menu.addAction(self.saveAction)
+        self.addSeparator(menu)
         menu.addAction(self.equalizeAction)
         menu.addAction(self.clearAction)
-        self.addSeperator(menu)
+        self.addSeparator(menu)
         menu.addAction(self.constructTAction)
-        self.addSeperator(menu)
+        self.addSeparator(menu)
         menu.addAction(self.helpContentAction)
         menu.addAction(self.checkUpdatesAction)
         menu.addAction(self.aboutAction)
         # Launching the menu
         menu.exec(event.globalPos())
     
-    # Status Bar
-    def _createStatusBar(self):
-        self.statusbar = self.statusBar()
-        self.statusbar.setStyleSheet(f"""font-size:15px;
-                                 padding: 4px;""")
-        self.statusbar.showMessage("Ready", 3000)
-
-        # Adding a permanent message
-        self.statusbar.addPermanentWidget(QLabel("Image processing algorithms"))
+    ##########################################
 
     # GUI
     def _initUI(self):
@@ -317,7 +406,17 @@ class Window(QMainWindow):
         ### GUI ###
 
         centralMainWindow.setLayout(outerLayout)
-   
+
+    # Status Bar
+    def _createStatusBar(self):
+        self.statusbar = self.statusBar()
+        self.statusbar.setStyleSheet(f"""font-size:15px;
+                                 padding: 4px;""")
+        self.statusbar.showMessage("Ready", 3000)
+
+        # Adding a permanent message
+        self.statusbar.addPermanentWidget(QLabel("Image processing algorithms"))
+
     # Dock widget 
     def addDockLayout(self):   
         self.dockInfo = QDockWidget("Information", self)
@@ -373,6 +472,15 @@ class Window(QMainWindow):
         # Update the tree
         self.setDataOfTree(info)
 
+    # Get Data
+    def getAttr(self, variable, att):
+        if hasattr(variable, att):
+            # If attribute is found.
+            return getattr(variable, att)
+        else:
+            # If attribute is not found.
+            return "N/A"
+
     # Set the data of the tree
     def setDataOfTree(self, data):
         self.dataWidget.clear()
@@ -384,45 +492,51 @@ class Window(QMainWindow):
     
     # Connect
     def _connectActions(self):
-        # Original Actions
-        self.openAction.triggered.connect(self.browseImage) # When click on browse image action
-        
-        self.clearAction.triggered.connect(lambda: self.currentTab.primaryViewer.reset()) # When click on clear action
-        self.clearAction.triggered.connect(lambda: self.currentTab.histogramViewer.reset()) # When click on clear action
-        self.clearAction.triggered.connect(lambda: self.currentTab.magnitudeViewer.reset()) # When click on clear action
-        self.clearAction.triggered.connect(lambda: self.currentTab.phaseViewer.reset()) # When click on clear action
+        # File Actions
+        self.addTabAction.triggered.connect(self.addNewTab)
+        self.openAction.triggered.connect(self.browseImage) 
+        self.clearAction.triggered.connect(self.clearImage) 
 
+        "Transformation image"
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
         self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
+        # Rotate image
+        self.rotateNearestAction.triggered.connect(lambda: self.rotateImage(mode="nearest"))
+        self.rotateLinearAction.triggered.connect(lambda: self.rotateImage(mode="linear"))
+        # Shear image
+        self.shearActionHorizontal.triggered.connect(lambda: self.shearImage(mode="horizontal"))
+        self.shearActionVertical.triggered.connect(lambda: self.shearImage(mode="vertical"))
 
+        "Shapes construction"
         # Construct T
         self.constructTAction.triggered.connect(lambda: self.currentTab.drawT())
-
         # Construct triangle
         self.constructTriangleAction.triggered.connect(lambda: self.currentTab.drawTriangle())
-
-        # Rotate image
-        self.rotateNearestAction.triggered.connect(lambda: self.rotateImage(interpolationMode="nearest"))
-        self.rotateLinearAction.triggered.connect(lambda: self.rotateImage(interpolationMode="linear"))
-
-        # Shear image
-        self.shearAction.triggered.connect(lambda: self.shearImage())
+        
+        
+        self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
         
         # Equalize Image
-        self.showHistogramAction.triggered.connect(lambda: self.currentTab.addHistogram())
         self.equalizeAction.triggered.connect(lambda: self.equalizeImage()) 
-
-        self.addTabAction.triggered.connect(lambda: self.addNewTab())
         
-        self.unsharpAction.triggered.connect(self.applyUnsharp)
-        self.addSaltNoiseAction.triggered.connect(self.addNoise)
+        "Filters"
+        self.unsharpMaskAction.triggered.connect(self.applyUnsharp)
         self.medianFilterAction.triggered.connect(self.applyMedian)
+        self.boxFilteringAction.triggered.connect(lambda: self.applyBoxFilter("spatial"))
+        self.boxFilteringByFourierAction.triggered.connect(lambda: self.applyBoxFilter("frequency"))
 
-        self.showfourierAction.triggered.connect(self.showFourier)
-        self.logImageAction.triggered.connect(self.logImage)
+        self.addSaltPepperNoiseAction.triggered.connect(self.addNoise)
 
-        self.save.triggered.connect(self.saveImage)
+        self.subtractionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        # .triggered.connect(lambda: self.subtractionTwoImage(self.images))
+
+        self.addToCompareListAction.triggered.connect(self.addToCompare)
+
+        self.showFourierAction.triggered.connect(self.showFourier)
+        self.logMagnitudeAction.triggered.connect(self.logMagnitude)
+
+        self.saveAction.triggered.connect(self.saveImage)
         self.exitAction.triggered.connect(lambda: self.exit()) # When click on exit action
     
     def _connect(self):
@@ -430,148 +544,19 @@ class Window(QMainWindow):
         # Tabs
         self.tabs.currentChanged.connect(self.setCurrentTab)
         self.tabs.tabCloseRequested.connect(self.closeCurrentTab)
-        self.tabs.tabBarDoubleClicked.connect(self.tabOpenDoubleclick)
+        self.tabs.tabBarDoubleClicked.connect(self.tabOpenDoubleClick)
 
-    # Show magnitude and phase of image
-    def showFourier(self):
-        self.currentTab.addMagnitude()
-        self.currentTab.addPhase()
-
-    # Log the image
-    def logImage(self):
-        self.updateImage(True)
-        self.currentTab.primaryViewer.logImage()
-
-    # Update magnitude and phase and histogram for the image after every update
-    def updateImage(self,log=False):
-        if log:
-            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude",True)
-            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase",True)
-        else:
-            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude")
-            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
-
-        self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
-
-    # Add random noise to the image
-    def addNoise(self):
-        self.currentTab.primaryViewer.addSaltAndPepper()
-        self.updateImage()
-    
-    # Apply median masking
-    def applyMedian(self): 
-        self.currentTab.primaryViewer.medianMask(int(self.sizeInput.text()))
-        self.updateImage()
-
-    # Apply unsharp masking
-    def applyUnsharp(self):
-        try:
-            filterSize = int(self.sizeInput.text())
-            factorSize = int(self.factorInput.text())
-
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
-            return
-
-        if filterSize > 0:
-            try:
-                if filterSize % 2 == 0:
-                    filterSize += 1
-
-                self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
-                self.updateImage()
-            except Exception as e:
-                print(e)
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-                
-            # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-        else:
-            QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
-        
-    # Equalize
-    def equalizeImage(self):
-        try:
-            self.currentTab.equalize()
-            self.updateImage()
-        except:
-            QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-            return
-
-    # Shear Image
-    def shearImage(self):
-        try:
-            shearFactor = float(self.factorInput.text())
-        except:
-            QMessageBox.critical(self , "Invalid shearing factor" , "Please enter valid factor.")
-            return
-        
-        if -90 < shearFactor < 90:
-            try:
-                self.currentTab.primaryViewer.shearImage(shearFactor)
-                self.updateImage()
-            except:
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-        else:
-            QMessageBox.critical(self , "Invalid shearing factor" , "Shear angle should be between -90° and 90°.")
-
-    # Zoom Image
-    def zoomImage(self, interpolationMode):
-        try:
-            zoomingFactor = float(self.factorInput.text())
-        except:
-            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
-            return
-        
-        if zoomingFactor > 0:
-            try:
-                self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, interpolationMode)
-                self.updateImage()
-            except:
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-                
-            if interpolationMode == "nearest":
-                self.interpolationMode = "Zoom Nearest Neighbor"
-            elif interpolationMode == "linear":
-                self.interpolationMode = "Zoom Bilinear"
-
-            self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-        else:
-            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
-
-    # Rotate Image
-    def rotateImage(self, interpolationMode):
-        try:
-            rotationAngle = float(self.factorInput.text())
-        except:
-            QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
-            return
-
-        
-        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.rotateImage(rotationAngle, interpolationMode)
-
-        direction = "Clockwise"
-        if rotationAngle >= 0:
-            direction = "Counterclockwise"
-                
-        if interpolationMode == "nearest":
-            self.interpolationMode = "Rotate Nearest Neighbor"
-        else :
-            self.interpolationMode = "Rotate Bilinear"
-        
-        self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, abs(rotationAngle), direction)
-
-    # Get Data
-    def getAttr(self, variable, att):
-        if hasattr(variable, att):
-            # If attribute is found.
-            return getattr(variable, att)
-        else:
-            # If attribute is not found.
-            return "N/A"
+    # Add input
+    def addInput(self, placeholderText):
+        inputField = QLineEdit()
+        inputField.setPlaceholderText(placeholderText)
+        inputField.setStyleSheet("""border:1px solid #00d; 
+                                            height:18px; 
+                                            padding:2px; 
+                                            border-radius:5px; 
+                                            font-size:16px; 
+                                            margin-right:5px""")
+        return inputField
 
     # Get depth of image
     def getDepth(self, image, imageChannel):
@@ -588,13 +573,17 @@ class Window(QMainWindow):
             bitDepth = bitDepthForOneChannel * numOfChannels
             return bitDepth
 
+    ##########################################
+    #         """File Functions"""           #
+    ##########################################
+
     # Open Image
     def browseImage(self):
         # Browse Function
         path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
         self.fileExtension = path.split(".")[-1] # get ext.
         
-        # If no image choosed
+        # If no image chosen
         if path == "":
             return
 
@@ -647,8 +636,266 @@ class Window(QMainWindow):
         
         self.currentTab.primaryViewer.saveImage(output_file)
 
+    # Clear image
+    def clearImage(self):
+        self.currentTab.primaryViewer.reset()
+        self.currentTab.histogramViewer.reset()
+        self.currentTab.magnitudeViewer.reset()
+        self.currentTab.phaseViewer.reset() 
+
+    # Exit the application
+    def exit(self):
+        exitDialog = QMessageBox.critical(self,
+        "Exit the application",
+        "Are you sure you want to exit the application?",
+        buttons=QMessageBox.Yes | QMessageBox.No,
+        defaultButton=QMessageBox.No)
+
+        if exitDialog == QMessageBox.Yes:
+            # Exit the application
+            sys.exit()
+
+    ##########################################
+    #         """Image Functions"""          #
+    ##########################################
+
+    # Equalize
+    def equalizeImage(self):
+        try:
+            self.currentTab.equalize()
+            self.updateImage()
+        except:
+            QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+            return
+
+    ##########################################
+    #         """Fourier Functions"""          #
+    ##########################################
+
+    # Log the magnitude of fourier transformed image
+    def logMagnitude(self):
+        self.updateImage(True)
+        self.currentTab.primaryViewer.logImage()
+
+    ##########################################
+    #       """Filters Functions"""          #
+    ##########################################
+    
+    # Apply box filter
+    def applyBoxFilter(self, mode="spatial"):
+        try:
+            filterSize = int(self.sizeInput.text())
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
+            return
+
+        if filterSize > 0:
+            if filterSize % 2 == 0:
+                filterSize += 1
+
+            try:
+                if mode == "frequency":
+                    self.currentTab.primaryViewer.boxFilteringUsingFourier(filterSize)
+                else:
+                    self.currentTab.primaryViewer.boxFiltering(filterSize)
+                self.updateImage()
+
+            except Exception as e:
+                print(e)
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+        
+    # Apply median masking
+    def applyMedian(self): 
+        try:
+            filterSize = int(self.sizeInput.text())
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
+            return
+
+        if filterSize > 0:
+            if filterSize % 2 == 0:
+                filterSize += 1
+            try:
+                self.currentTab.primaryViewer.medianMask(filterSize)
+                self.updateImage()
+            except Exception as e:
+                print(e)
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+
+    # Apply un-sharp masking
+    def applyUnsharp(self):
+        try:
+            filterSize = int(self.sizeInput.text())
+            factorSize = int(self.factorInput.text())
+
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
+            return
+
+        if filterSize > 0:
+            try:
+                if filterSize % 2 == 0:
+                    filterSize += 1
+
+                self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
+                self.updateImage()
+            except Exception as e:
+                print(e)
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+                
+            # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+        else:
+            QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
+        
+    ##########################################
+    #     """Transformations Functions"""    #
+    ##########################################
+
+    # Shear Image
+    def shearImage(self, mode="horizontal"):
+        try:
+            shearFactor = float(self.factorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid shearing factor" , "Please enter valid factor.")
+            return
+        
+        if -90 < shearFactor < 90:
+            try:
+                self.currentTab.primaryViewer.shearImage(shearFactor, mode)
+                self.updateImage()
+            except:
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+        else:
+            QMessageBox.critical(self , "Invalid shearing factor" , "Shear angle should be between -90° and 90°.")
+
+    # Zoom Image
+    def zoomImage(self, mode="linear"):
+        try:
+            zoomingFactor = float(self.factorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
+            return
+        
+        if zoomingFactor > 0:
+            try:
+                self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
+                self.updateImage()
+            except:
+                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+                return
+                
+            if mode == "nearest":
+                self.interpolationMode = "Zoom Nearest Neighbor"
+            elif mode == "linear":
+                self.interpolationMode = "Zoom Bilinear"
+
+            self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
+        else:
+            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
+
+    # Rotate Image
+    def rotateImage(self, mode="linear"):
+        try:
+            rotationAngle = float(self.factorInput.text())
+        except:
+            QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
+            return
+
+        
+        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.rotateImage(rotationAngle, mode)
+
+        direction = "Clockwise"
+        if rotationAngle >= 0:
+            direction = "Counterclockwise"
+                
+        if mode == "nearest":
+            self.interpolationMode = "Rotate Nearest Neighbor"
+        else :
+            self.interpolationMode = "Rotate Bilinear"
+        
+        self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, abs(rotationAngle), direction)
+
+    ##########################################
+    #       """Operations Functions"""       #
+    ##########################################
+    
+    # Add to comparing list
+    def addToCompare(self):
+        image = self.currentTab.primaryViewer.grayImage
+        if len(self.images) > 1:
+            self.images = []
+        
+        self.images.append(image)
+
+    # get subtraction of images
+    def subtractionTwoImage(self, images):
+        if len(images) == 2:
+            titleOfNewWindow = f"Subtraction of images"
+            newTab = self.addNewTab(titleOfNewWindow,type="compare")
+            newTab.primaryViewer.subtractionTwoImage(images[0], images[1])
+            newTab.secondaryViewer.subtractionTwoImage(images[1], images[0])
+
+    # get addition of images
+    def additionTwoImage(self, images):
+        if len(images) == 2:
+            titleOfNewWindow = f"Addition of images"
+            newTab = self.addNewTab(titleOfNewWindow)
+            newTab.primaryViewer.additionTwoImage(images[0], images[1])
+
+    ##########################################
+    #    """Construct Shapes Functions"""    #
+    ##########################################
+
+    # Draw T shape
+    def drawT(self):
+        self.currentTab.primaryViewer.constructT("white")
+        self.currentTab.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
+
+    # Draw triangle shape
+    def drawTriangle(self):
+        self.currentTab.primaryViewer.constructTriangle("white")
+        self.currentTab.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
+
+    ##########################################
+    #         """Noise Functions"""          #
+    ##########################################
+
+    # Add random noise to the image
+    def addNoise(self):
+        self.currentTab.primaryViewer.addSaltAndPepper()
+        self.updateImage()
+
+    ##########################################
+    #         """View Functions"""           #
+    ##########################################
+
+    # Show magnitude and phase of image
+    def showFourier(self):
+        self.currentTab.showHideMagnitude()
+        self.currentTab.showHidePhase()
+
+    ##########################################
+    
+    # Update magnitude and phase and histogram for the image after every update
+    def updateImage(self,log=False):
+        if log:
+            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude",True)
+            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase",True)
+        else:
+            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude")
+            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
+
+        self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
+    
     # Open new tap when double click
-    def tabOpenDoubleclick(self,i):
+    def tabOpenDoubleClick(self,i):
         # checking index i.e
         # No tab under the click
         if i == -1:
@@ -670,22 +917,10 @@ class Window(QMainWindow):
         self.tabs.removeTab(i)
 
     # Add new tab to list of tabs
-    def addNewTab(self, title:str="Blank", color:str="black"):
-        # Initilize new tab
-        newTab = tabViewer(title, color)
+    def addNewTab(self, title:str="Blank", color:str="black", type="normal"):
+        # Initialize new tab
+        newTab = tabViewer(title, color, type)
         # Add tab to list of tabs
         self.tabs.addTab(newTab, title)
         # Return new tab
         return newTab
-                
-    # Exit the application
-    def exit(self):
-        exitDialog = QMessageBox.critical(self,
-        "Exit the application",
-        "Are you sure you want to exit the application?",
-        buttons=QMessageBox.Yes | QMessageBox.No,
-        defaultButton=QMessageBox.No)
-
-        if exitDialog == QMessageBox.Yes:
-            # Exit the application
-            sys.exit()
