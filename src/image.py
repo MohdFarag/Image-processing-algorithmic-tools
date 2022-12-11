@@ -3,6 +3,8 @@ import math
 import numpy as np
 import random
 
+import cv2
+
 # Matplotlib
 import matplotlib as mpl
 import matplotlib.image as mpimg
@@ -78,7 +80,7 @@ class ImageViewer(FigureCanvasQTAgg):
     """Image Functions"""
     ###############################################
 
-    # Set Image
+    # Set image
     def setImage(self, image_path, fileExtension):
         # Reading the image
         if fileExtension == "dcm":
@@ -103,14 +105,20 @@ class ImageViewer(FigureCanvasQTAgg):
         # Depends on extension of the file
         return imgData
 
+    # Get image
+    def getImage(self):
+        return self.grayImage
+
     # Scale function
     def scaleImage(self, image, mode="scale", a_min=0, a_max=255):
         resultImage = np.zeros(image.shape)        
         
         if mode == "scale":
             image = image - image.min()
-            resultImage = a_max * (image / image.max())
-            
+            if image.max() == 0 and image.min() == 0:
+                resultImage = a_max * (image / 1)   
+            else:            
+                resultImage = a_max * (image / image.max())   
         elif mode == "clip":
             for i in range(image.shape[0]):
                 for j in range(image.shape[1]):
@@ -140,23 +148,41 @@ class ImageViewer(FigureCanvasQTAgg):
         self.loaded = False
         self.grayImage = np.array([])
     
-    # Log transformation
-    def logTransformation(self, r:np.ndarray):
-        maxPixelValue = np.max(r)
-        c = 255 / (np.log(1 + maxPixelValue))        
-        result = np.log(1 + r)
-
-        return result
-
     ###############################################
-    """Edit Functions"""
+    """Image Functions"""
     ###############################################
 
     # Draw logged image
     def logImage(self):
-        self.grayImage = self.logTransformation(self.grayImage)
+        self.grayImage = logTransformation(self.grayImage)
         self.axes.imshow(self.grayImage, cmap="gray")
         self.draw() 
+
+    # Apply negative on image
+    def negativeImage(self):
+        self.grayImage = negativeImage(self.grayImage, 256)
+        self.axes.imshow(self.grayImage, cmap="gray")
+        self.draw()
+
+    # Apply gamma correction on image
+    def gammaCorrectionImage(self, Y):
+        self.grayImage = gammaCorrectionImage(self.grayImage, Y)
+        self.axes.imshow(self.grayImage, cmap="gray")
+        self.draw()
+
+    ###############################################
+    """Piecewise-Linear Intensity Transformation Functions"""
+    ###############################################
+
+    def contrastStretching(self, r, s):
+        r1, r2 = r
+        s1, s2 = s
+    
+    def intensityLevelSlicing(self, mode="two"):
+        pass
+
+    def bitPlaneSlicing(self, k):
+        pass
 
     ###############################################
     """Transformations Functions"""
@@ -172,7 +198,7 @@ class ImageViewer(FigureCanvasQTAgg):
             # Set size of zoomed image
             newWidth = round(oldWidth * scaleFactor)
             newHeight = round(oldHeight * scaleFactor)
-            # Initilize resized image
+            # Initialize resized image
             resizedImage = np.zeros([newWidth, newHeight])
 
             if mode == "nearest":
@@ -237,12 +263,11 @@ class ImageViewer(FigureCanvasQTAgg):
 
             sizeImage = min(oldWidth,oldHeight)
           
-            # Initilize rotated image 
+            # Initialize rotated image 
             rotatedImage = np.zeros((sizeImage,sizeImage)) 
 
-            # Find the center of the Rotated T image
-            centerHeight = int( (sizeImage+1)/2) # mid row
-            centerWidth = int( (sizeImage+1)/2 ) # mid col
+            # Find the center of the rotated image
+            (centerWidth, centerHeight), _= getCenter(rotatedImage)
 
             for i in range(sizeImage):
                 for j in range(sizeImage):
@@ -439,16 +464,16 @@ class ImageViewer(FigureCanvasQTAgg):
             L = self.grayImage.max()
           
             # Get histogram of nonEqualizedImage
-            nonEqualizedhistogram = np.bincount(self.grayImage.flatten(), minlength=L)
+            nonEqualizedHistogram = np.bincount(self.grayImage.flatten(), minlength=L)
 
             # Normalize
-            sumPixels = np.sum(nonEqualizedhistogram)
-            nonEqualizedhistogram = nonEqualizedhistogram/sumPixels
+            sumPixels = np.sum(nonEqualizedHistogram)
+            nonEqualizedHistogram = nonEqualizedHistogram/sumPixels
 
             # Normalized cumulative histogram
-            cfdHistogram = np.cumsum(nonEqualizedhistogram)
+            cfdHistogram = np.cumsum(nonEqualizedHistogram)
 
-            # Initilized transform map
+            # Initialized transform map
             transformMap = np.floor((L-1) * cfdHistogram)
 
             # Flatten image array into 1D list
@@ -470,14 +495,22 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Add padding to image
     def addPadding(self, image, paddingSize, mode="same", value=0):
-        addedPadding = 2 * paddingSize
-        resultImage = np.zeros((image.shape[0] + addedPadding,image.shape[1] + addedPadding))
+        if type(paddingSize) == tuple:
+            xPaddingSize, yPaddingSize = paddingSize
+        else:
+            xPaddingSize = paddingSize
+            yPaddingSize = paddingSize
+        
+        xAddedPadding = 2 * xPaddingSize
+        yAddedPadding = 2 * yPaddingSize
+
+        resultImage = np.zeros((image.shape[0] + xAddedPadding, image.shape[1] + yAddedPadding))
         
         if mode == "same":
             resultImage.fill(value)
-            for i in range(paddingSize, resultImage.shape[0] - paddingSize):
-                for j in range(paddingSize, resultImage.shape[1] - paddingSize):
-                    resultImage[i][j] = image[i-paddingSize][j-paddingSize] 
+            for i in range(xPaddingSize, resultImage.shape[0] - xPaddingSize):
+                for j in range(yPaddingSize, resultImage.shape[1] - yPaddingSize):
+                    resultImage[i][j] = image[i-xPaddingSize][j-yPaddingSize] 
         
         return resultImage
 
@@ -512,7 +545,7 @@ class ImageViewer(FigureCanvasQTAgg):
         if shape == None:
             shape = (size, size)
 
-        filter = np.zeros(shape)
+        filter = np.ones(shape)
         filter.fill(1/(size*size))
 
         return filter
@@ -557,7 +590,8 @@ class ImageViewer(FigureCanvasQTAgg):
     def unsharpMask(self, size, k):
         if len(self.grayImage) != 0:
             self.clearImage()
-            blurredImage = self.boxFiltering(size, True)
+            boxFilter = self.boxKernel(size)
+            blurredImage = self.applyFilter(self.grayImage, boxFilter)
 
             subtractedImage = self.subtractBlurredFromOriginal(blurredImage)
             resultImage = self.multiplyByFactor(subtractedImage, k)
@@ -568,54 +602,102 @@ class ImageViewer(FigureCanvasQTAgg):
             # Draw image
             self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
+
+    # Apply specific filter
+    def applyFilter(self, image, kernel, domain="spatial"):
+        if len(self.grayImage) != 0:
+            rows = self.grayImage.shape[0] + kernel.shape[0] - 1
+            cols = self.grayImage.shape[1] + kernel.shape[1] - 1
+            size = (rows,cols)
+
+            xPadding = kernel.shape[0] // 2
+            yPadding = kernel.shape[1] // 2
+            blurredImage = np.zeros((rows,cols))
+
+            if domain == "spatial":
+                blurredImage = self.convolution(kernel)
+            elif domain == "frequency":                
+                boxFilterInFreqDomain = self.fourierTransform(kernel, draw=False, s=size)
+                grayImageInFreqDomain = self.fourierTransform(image, draw=False, s=size)
+
+                filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
+
+                blurredImage = self.inverseFourierTransform(filteredImageInFreqDomain)
+                self.grayImage = np.fft.fftshift(blurredImage)
+
+                blurredImage = np.abs(blurredImage)
+                blurredImage = blurredImage[xPadding:rows-xPadding,yPadding:cols-yPadding]
+                
+            blurredImage = self.scaleImage(blurredImage)
+
+            return blurredImage
     
     # Perform box filtering
-    def boxFiltering(self, size, output=False):
+    def boxFiltering(self, size):
         if len(self.grayImage) != 0:
             self.clearImage()
-
             boxFilter = self.boxKernel(size)
-            blurredImage = self.convolution(boxFilter)
-            
-            if output:
-                return blurredImage
-            else:
-                # Scale
-                scaledImage = self.scaleImage(blurredImage)
-                self.grayImage = scaledImage
-                # Draw image
-                self.axes.imshow(self.grayImage, cmap="gray")
-                self.draw()
+            self.grayImage = self.applyFilter(self.grayImage, boxFilter)
+                       
+            # Draw image
+            self.axes.imshow(self.grayImage, cmap="gray")
+            self.draw()
 
     # Perform box filtering in frequency domain
     def boxFilteringUsingFourier(self, filterSize):
         if len(self.grayImage) != 0:
             self.clearImage()
-
-            paddingSize = filterSize // 2
-
-            fftRows = self.grayImage.shape[0] + filterSize - 1
-            fftCols = self.grayImage.shape[1] + filterSize - 1
-            fftShape = (fftRows, fftCols)
-
             boxFilter = self.boxKernel(filterSize)
-
-            boxFilterInFreqDomain = np.fft.fft2(boxFilter, fftShape)
-            grayImageInFreqDomain = np.fft.fft2(self.grayImage, fftShape)
-
-            filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
-
-            invertedImage = self.inverseFourierTransform(filteredImageInFreqDomain)
-            resultImage = np.abs(invertedImage)
+            paddingSize = (self.grayImage.shape[0]-boxFilter.shape[0],self.grayImage.shape[1]-boxFilter.shape[1])
+            # boxFilter = self.addPadding(boxFilter, paddingSize)
+            self.grayImage = self.applyFilter(self.grayImage, boxFilter, domain="frequency")
             
-            resultImage = resultImage[paddingSize:fftRows-paddingSize,paddingSize:fftCols-paddingSize]
-            scaledImage = self.scaleImage(resultImage)
-            self.grayImage = scaledImage
-
             # Draw image
             self.axes.imshow(self.grayImage, cmap="gray")
             self.draw()
 
+    # Notch Reject Filter
+    def notchRejectFilter(self, shape, d0=9, u_k=0, v_k=0):
+        P, Q = shape
+        # Initialize filter with zeros
+        H = np.zeros((P, Q))
+
+        # Traverse through filter
+        for u in range(0, P):
+            for v in range(0, Q):
+                # Get euclidean distance from point D(u,v) to the center
+                D_uv = np.sqrt((u - P / 2 + u_k) ** 2 + (v - Q / 2 + v_k) ** 2)
+                D_muv = np.sqrt((u - P / 2 - u_k) ** 2 + (v - Q / 2 - v_k) ** 2)
+
+                if D_uv <= d0 or D_muv <= d0:
+                    H[u, v] = 0.0
+                else:
+                    H[u, v] = 1.0
+
+        return H
+
+    # Remove periodic noise
+    def notchRejectFilters(self, magnitudeSpectrum, points, d0=9):
+        if len(self.grayImage) != 0:
+            m = magnitudeSpectrum.shape[0]
+            n = magnitudeSpectrum.shape[1]
+            for u in range(m):
+                for v in range(n):
+                    for d in range(len(points)):
+                        v0 = points[d][0]
+                        u0 = points[d][1]
+                        d1 = (u - u0)**2 + (v - v0)**2
+                        d2 = (u + u0)**2 + (v + v0)**2
+                        if d1 <= d0 or d2 <= d0:
+                            magnitudeSpectrum[u][v] *= 0.0
+        
+            resultSpectrum = self.inverseFourierTransform(magnitudeSpectrum)
+            self.grayImage = np.abs(resultSpectrum)
+
+            # Draw image
+            self.axes.imshow(self.grayImage, cmap="gray")
+            self.draw()
+            
     ###############################################
     """Noise Functions"""
     ###############################################
@@ -644,8 +726,23 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
 
     def subtractionTwoImage(self, image1, image2):
-        if len(image1) != 0 and len(image2) != 0:
+        if len(image1) != 0 and len(image2) != 0 and image1.shape == image2.shape:
             subtractedImage = np.subtract(image1, image2)
+            
+            # Scale
+            scaledImage = self.scaleImage(subtractedImage, "clip")
+            self.grayImage = scaledImage
+
+            # Draw image
+            self.axes.imshow(self.grayImage, cmap="gray")
+            self.draw()
+        
+        return
+
+    def additionTwoImage(self, image1, image2):
+        if len(image1) != 0 and len(image2) != 0 and image1.shape == image2.shape:
+            subtractedImage = np.add(image1, image2)
+            
             # Scale
             scaledImage = self.scaleImage(subtractedImage)
             self.grayImage = scaledImage
@@ -656,11 +753,26 @@ class ImageViewer(FigureCanvasQTAgg):
         
         return
 
-    def additionTwoImage(self, image1, image2):
-        if len(image1) != 0 and len(image2) != 0:
-            subtractedImage = np.add(image1, image2)
+    def multiplicationTwoImage(self, image1, image2):
+        if len(image1) != 0 and len(image2) != 0 and image1.shape == image2.shape:
+            multipliedImage = np.multiply(image1, image2)
+            
             # Scale
-            scaledImage = self.scaleImage(subtractedImage)
+            scaledImage = self.scaleImage(multipliedImage)
+            self.grayImage = scaledImage
+
+            # Draw image
+            self.axes.imshow(self.grayImage, cmap="gray")
+            self.draw()
+        
+        return
+
+    def divisionTwoImage(self, image1, image2):
+        if len(image1) != 0 and len(image2) != 0 and image1.shape == image2.shape:
+            dividedImage = np.divide(image1, image2)
+            
+            # Scale
+            scaledImage = self.scaleImage(dividedImage)
             self.grayImage = scaledImage
 
             # Draw image
@@ -674,9 +786,13 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
     
     # Fourier transform
-    def fourierTransform(self, imageAtSpatialDomain, mode="fourier", log=False, draw=True, s=(3,3)):
+    def fourierTransform(self, imageAtSpatialDomain, mode="fourier", log=False, draw=True, s=None):
         if len(imageAtSpatialDomain) != 0:
-            f = np.fft.fft2(imageAtSpatialDomain)
+            if s == None:
+                f = np.fft.fft2(imageAtSpatialDomain)
+            else:
+                f = np.fft.fft2(imageAtSpatialDomain, s)
+
             fshift = np.fft.fftshift(f)
             spectrum = None
 
@@ -684,11 +800,11 @@ class ImageViewer(FigureCanvasQTAgg):
                 if not log:
                     spectrum = np.abs(fshift)
                 else:
-                    spectrum = self.logTransformation(np.abs(fshift))
+                    spectrum = logTransformation(np.abs(fshift))
             elif mode == "phase":
                 spectrum  = np.angle(fshift)
             else:
-                spectrum = f
+                spectrum = fshift
 
             if draw:
                 scaledSpectrum = self.scaleImage(spectrum)
@@ -702,5 +818,6 @@ class ImageViewer(FigureCanvasQTAgg):
         if mode=="separate":
             combinedImage = np.multiply(combinedImage[0], np.exp(1j * combinedImage[1]))
 
+        resultImage = np.fft.ifftshift(combinedImage)
         resultImage = np.fft.ifft2(combinedImage)
         return resultImage

@@ -4,6 +4,5 @@
 from src.app import main
 
 """This module provides the entry-point script."""
-
 if __name__ == "__main__":
     main()

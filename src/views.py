@@ -10,11 +10,14 @@ import sys
 
 # Import Classes
 from .tabViewer import tabViewer
-
+from .popup import popWindow
 # Importing Qt widgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
+
+import matplotlib
+import matplotlib.pyplot as plt
 
 # Importing Logging
 from .log import appLogger
@@ -77,147 +80,198 @@ class Window(QMainWindow):
         self.viewActions()
         self.helpActions()
 
+        self.setShortcuts()
+
     # File Actions
     def fileActions(self):
         # Add new tab Action
         self.addTabAction = QAction(QIcon(":add"), "&New...", self)
-        self.addTabAction.setShortcut("Ctrl+N")
         self.addTabAction.setStatusTip('Add a new tab')
 
         # Open Action
         self.openAction = QAction(QIcon(":image"), "&Open Image...", self)
-        self.openAction.setShortcut("Ctrl+O")
         self.openAction.setStatusTip('Open a new image')
 
         # Save the image Action
         self.saveAction = QAction(QIcon(":save"), "&Save image", self)
-        self.saveAction.setShortcut("ctrl+S")
         self.saveAction.setStatusTip('Save the image')
 
         # Clear Action
         self.clearAction = QAction(QIcon(":clear"), "&Close Image", self)
-        self.clearAction.setShortcut("Ctrl+C")
         self.clearAction.setStatusTip('Close the image')
 
         # Exit Action
         self.exitAction = QAction(QIcon(":exit"), "&Exit", self)
-        self.exitAction.setShortcut("Ctrl+Q")
         self.exitAction.setStatusTip('Exit application')
 
     # Image Actions
     def imageActions(self):
         # Equalize the image
         self.equalizeAction = QAction(QIcon(":equalize"), "&Equalize", self)
-        self.equalizeAction.setShortcut("ctrl+E")
         self.equalizeAction.setStatusTip('Equalize the image')
+
+        # Transform to binary
+        self.binaryAction = QAction(QIcon(":binary"), "&Binary image", self)
+        self.binaryAction.setStatusTip('Transform to binary image')
+
+        # Negative image
+        self.negativeAction = QAction(QIcon(":negative"), "&Negative image", self)
+        self.negativeAction.setStatusTip('Negative image')
+
+        # Log image
+        self.logImageAction = QAction(QIcon(":log"), "&Log", self)
+        self.logImageAction.setStatusTip('Log image')
+
+        # Gamma image
+        self.gammaAction = QAction(QIcon(":gamma"), "&Gamma Correction", self)
+        self.gammaAction.setStatusTip('Gamma image')
 
     # Edit Actions
     def fourierActions(self):
         # Log the magnitude of the image
         self.logMagnitudeAction = QAction(QIcon(":log"), "&Log magnitude", self)
-        self.logMagnitudeAction.setShortcut("ctrl+L")
         self.logMagnitudeAction.setStatusTip('Log the image')
 
     # Filters Actions
     def filtersActions(self):
-        # Unsharp masking Action
+        # Unsharp masking
         self.unsharpMaskAction = QAction(QIcon(":box"), "&Un-sharp Mask", self)
         self.unsharpMaskAction.setShortcut("ctrl+U")
         self.unsharpMaskAction.setStatusTip('Create a Unsharp Masking')
 
-        # box filter Action
+        # Box filter
         self.boxFilteringAction = QAction(QIcon(":blur"), "&Blur", self)
         self.boxFilteringAction.setShortcut("ctrl+j")
         self.boxFilteringAction.setStatusTip('Blur image in spatial domain')
 
-        # box filter Action
+        # Box filter (fourier)
         self.boxFilteringByFourierAction = QAction(QIcon(":blurFourier"), "&Blur using fourier", self)
         self.boxFilteringByFourierAction.setShortcut("ctrl+k")
         self.boxFilteringByFourierAction.setStatusTip('Blur image in frequency domain using fourier transform')
 
         # Median filter (50th percentile)
         self.medianFilterAction = QAction(QIcon(":median"), "&Median filter", self)
-        self.medianFilterAction.setShortcut("ctrl+M")
         self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
 
+        # Band reject filter
+        self.notchRejectFilterAction = QAction(QIcon(":bandReject"), "&band Reject", self)
+        self.notchRejectFilterAction.setStatusTip('Apply band reject filter on image')
+    
     # Transformation Actions
     def transformationsActions(self):
         # Zoom Nearest Neighbor Interpolation Action
         self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":NNZoom"), "&Zoom by Nearest Neighbor", self)
-        self.zoomNearestNeighborInterpolationAction.setShortcut("Ctrl+1")
         self.zoomNearestNeighborInterpolationAction.setStatusTip('Zoom in/out by Nearest Neighbor Interpolation method based on input')
 
         # Zoom Linear Interpolation Action
         self.zoomLinearInterpolationAction = QAction(QIcon(":LZoom"), "&Zoom by Linear", self)
-        self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
         self.zoomLinearInterpolationAction.setStatusTip('Zoom in/out by Linear Interpolation method based on input')
 
         # Rotate the image by nearest neighbour interpolation
         self.rotateNearestAction = QAction(QIcon(":rotate"), "&Rotate by Nearest Neighbor", self)
-        self.rotateNearestAction.setShortcut("ctrl+3")
         self.rotateNearestAction.setStatusTip('Rotate the image')
 
         # Rotate the image by linear interpolation
         self.rotateLinearAction = QAction(QIcon(":rotate"), "&Rotate by Linear", self)
-        self.rotateLinearAction.setShortcut("ctrl+4")
         self.rotateLinearAction.setStatusTip('Rotate the image')
 
         # Shear the image horizontally
         self.shearActionHorizontal = QAction(QIcon(":shear"), "&Shear horizontally", self)
-        self.shearActionHorizontal.setShortcut("ctrl+5")
-        self.shearActionHorizontal.setStatusTip('Shear the image')
+        self.shearActionHorizontal.setStatusTip('Shear the image horizontally')
 
         # Shear the image horizontally
         self.shearActionVertical = QAction(QIcon(":shear"), "&Shear vertically", self)
-        self.shearActionVertical.setShortcut("ctrl+6")
-        self.shearActionVertical.setStatusTip('Shear the image')
+        self.shearActionVertical.setStatusTip('Shear the image vertically')
 
     # Operations Actions
     def operationsActions(self):
-        # Subtraction two image
+        """ Arithmetic Operations """
+        # Subtract two image
         self.subtractionAction = QAction(QIcon(":subtraction"), "&Subtraction", self)
-        self.subtractionAction.setShortcut("ctrl+D")
         self.subtractionAction.setStatusTip('Subtract two images')
 
-        # Addition two image
-        self.additionAction = QAction(QIcon(":addition"), "&Additions", self)
-        self.additionAction.setShortcut("ctrl+A")
+        # Add two image
+        self.additionAction = QAction(QIcon(":addition"), "&Addition", self)
         self.additionAction.setStatusTip('Sum two images')
+
+        # Multiply two image
+        self.multiplicationAction = QAction(QIcon(":multiplication"), "&Multiplication", self)
+        self.multiplicationAction.setStatusTip('multiply two images')
+
+        # Divide two image
+        self.divisionAction = QAction(QIcon(":division"), "&division", self)
+        self.divisionAction.setStatusTip('divide two images')
+
+        """ Set Operations """
+        # Complement
+        self.complementAction = QAction(QIcon(":complement"), "&Complement", self)
+        self.complementAction.setStatusTip('Complement operator')
+
+        # Union
+        self.unionAction = QAction(QIcon(":union"), "&Union", self)
+        self.unionAction.setStatusTip('Union operator')
+
+        # Intersect
+        self.intersectAction = QAction(QIcon(":intersect"), "&Intersect", self)
+        self.intersectAction.setStatusTip('Intersect operator')
+
+        """ Logical Operations """
+        # Not
+        self.notAction = QAction(QIcon(":not"), "&Not", self)
+        self.notAction.setStatusTip('Not operator')
+
+        # And
+        self.andAction = QAction(QIcon(":and"), "&And", self)
+        self.andAction.setStatusTip('And operator')
+
+        # Nand
+        self.nandAction = QAction(QIcon(":nand"), "&Nand", self)
+        self.nandAction.setStatusTip('Nand operator')
+
+        # Or
+        self.orAction = QAction(QIcon(":or"), "&Or", self)
+        self.orAction.setStatusTip('Or operator')
+
+        # Nor
+        self.norAction = QAction(QIcon(":nor"), "&Nor", self)
+        self.norAction.setStatusTip('Nor operator')
+
+        # Xor
+        self.xorAction = QAction(QIcon(":xor"), "&Xor", self)
+        self.xorAction.setStatusTip('Xor operator')
+
+        # Xnor
+        self.xnorAction = QAction(QIcon(":xnor"), "&Xnor", self)
+        self.xnorAction.setStatusTip('Xnor operator')
 
         # Add to the comparing list
         self.addToCompareListAction = QAction(QIcon(":compare"), "&Compare...", self)
-        self.addToCompareListAction.setShortcut("Ctrl+B")
         self.addToCompareListAction.setStatusTip('Add to compare list')
 
     # Shapes Constructions Actions
     def constructionShapesActions(self):
         # Construct T image Action
         self.constructTAction = QAction(QIcon(":T"), "&Construct T", self)
-        self.constructTAction.setShortcut("ctrl+T")
         self.constructTAction.setStatusTip('Construct an image with a T letter in the center')
 
         # Construct triangle image Action
         self.constructTriangleAction = QAction(QIcon(":triangle"), "&Construct Triangle", self)
-        self.constructTriangleAction.setShortcut("ctrl+M")
         self.constructTriangleAction.setStatusTip('Construct an Triangle')
     
     # Noises Actions
     def noisesActions(self):
         # Add salt and pepper noise action
         self.addSaltPepperNoiseAction = QAction(QIcon(":salt"), "&Add salt and pepper", self)
-        self.addSaltPepperNoiseAction.setShortcut("ctrl+P")
         self.addSaltPepperNoiseAction.setStatusTip('Add salt and pepper noise')
     
     # View Actions
     def viewActions(self):
         # Show histogram of the image
         self.showHistogramAction = QAction(QIcon(":histogram"), "&Histogram", self)
-        self.showHistogramAction.setShortcut("ctrl+H")
         self.showHistogramAction.setStatusTip('Show the histogram')
 
         # Show histogram of the image
         self.showFourierAction = QAction(QIcon(":showFourier"), "&Fourier", self)
-        self.showFourierAction.setShortcut("ctrl+F")
         self.showFourierAction.setStatusTip('Show the magnitude and phase')
 
     # Help Actions
@@ -230,6 +284,76 @@ class Window(QMainWindow):
         
         self.aboutAction = QAction("&About", self)
         self.aboutAction.setStatusTip('About')
+
+    # Shortcuts
+    def setShortcuts(self):
+        "File Actions"
+        self.addTabAction.setShortcut("Ctrl+N")
+        self.openAction.setShortcut("Ctrl+O")
+        self.saveAction.setShortcut("ctrl+S")
+        self.clearAction.setShortcut("Ctrl+C")
+        self.exitAction.setShortcut("Ctrl+Q")
+
+        "Image Actions"
+        self.equalizeAction.setShortcut("ctrl+E")
+        self.binaryAction.setShortcut("ctrl+G")
+        self.negativeAction.setShortcut("ctrl+n")
+        self.logImageAction.setShortcut("ctrl+l")
+        self.gammaAction.setShortcut("ctrl+g")
+        
+        "Fourier Actions"
+        self.logMagnitudeAction.setShortcut("ctrl+L")
+
+        "Filters Actions"
+        self.unsharpMaskAction.setShortcut("ctrl+U")
+        self.boxFilteringAction.setShortcut("ctrl+j")
+        self.boxFilteringByFourierAction.setShortcut("ctrl+k")
+        self.medianFilterAction.setShortcut("ctrl+M")
+        self.notchRejectFilterAction.setShortcut("ctrl+B")
+        
+        "Transformations Actions"
+        self.zoomNearestNeighborInterpolationAction.setShortcut("Ctrl+1")
+        self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
+        self.rotateNearestAction.setShortcut("ctrl+3")
+        self.rotateLinearAction.setShortcut("ctrl+4")
+        self.shearActionHorizontal.setShortcut("ctrl+5")
+        self.shearActionVertical.setShortcut("ctrl+6")
+
+        "Operations Actions"
+        self.subtractionAction.setShortcut("ctrl+D")
+        self.additionAction.setShortcut("ctrl+A")
+        self.multiplicationAction.setShortcut("ctrl+*")
+        self.divisionAction.setShortcut("ctrl+/")
+
+        self.complementAction.setShortcut("ctrl+c")
+        self.unionAction.setShortcut("ctrl+u")
+        self.intersectAction.setShortcut("ctrl+i")
+
+        self.notAction.setShortcut("ctrl+n")
+        self.andAction.setShortcut("ctrl+d")
+        self.nandAction.setShortcut("ctrl+d")
+        self.orAction.setShortcut("ctrl+r")
+        self.norAction.setShortcut("ctrl+[")
+        self.xorAction.setShortcut("ctrl+x")
+        self.xnorAction.setShortcut("ctrl+z")
+
+        self.addToCompareListAction.setShortcut("Ctrl+B")
+
+        "Construction Shapes Actions"
+        self.constructTAction.setShortcut("ctrl+T")
+        self.constructTriangleAction.setShortcut("ctrl+M")
+
+        "Noises Actions"
+        self.addSaltPepperNoiseAction.setShortcut("ctrl+P")
+
+        "View Actions"
+        self.showHistogramAction.setShortcut("ctrl+H")
+        self.showFourierAction.setShortcut("ctrl+F")
+
+        "HelpActions"
+        self.helpContentAction.setShortcut("alt+H")
+        self.checkUpdatesAction.setShortcut("alt+Z")
+        self.aboutAction.setShortcut("alt+X") 
 
     ##########################################
     
@@ -245,7 +369,7 @@ class Window(QMainWindow):
         # Menu bar
         menuBar = self.menuBar()
 
-        ## File tap
+        """File"""
         fileMenu = QMenu("&File", self)
         fileMenu.addAction(self.addTabAction)
         fileMenu.addSeparator()
@@ -256,16 +380,19 @@ class Window(QMainWindow):
         fileMenu.addAction(self.clearAction)
         fileMenu.addSeparator()
         fileMenu.addAction(self.exitAction)
-    
+
+        """Edit"""
         editMenu = QMenu("&Edit", self)
         editMenu.addAction(self.equalizeAction)
         editMenu.addSeparator()
         editMenu.addAction(self.logMagnitudeAction)
 
+        """View"""
         viewMenu = QMenu("&View", self)
         viewMenu.addAction(self.showHistogramAction)
         viewMenu.addAction(self.showFourierAction)
         
+        """Transformation"""
         transformationMenu = QMenu("&Transformation", self)
         transformationMenu.addAction(self.zoomNearestNeighborInterpolationAction)
         transformationMenu.addAction(self.zoomLinearInterpolationAction)
@@ -276,24 +403,30 @@ class Window(QMainWindow):
         transformationMenu.addAction(self.shearActionHorizontal)
         transformationMenu.addAction(self.shearActionVertical)
 
+        """Operation"""
         operationMenu = QMenu("&Operation", self)
         operationMenu.addAction(self.subtractionAction)
         operationMenu.addSeparator()
         operationMenu.addAction(self.addToCompareListAction)
 
+        """Filter"""
         filterMenu = QMenu("&Filter", self)
         filterMenu.addAction(self.unsharpMaskAction)
         filterMenu.addAction(self.boxFilteringAction)
         filterMenu.addAction(self.boxFilteringByFourierAction)
-        filterMenu.addAction(self.medianFilterAction)        
+        filterMenu.addAction(self.medianFilterAction)
+        filterMenu.addAction(self.notchRejectFilterAction) 
 
+        """Shape"""
         shapeMenu = QMenu("&Shape", self)
         shapeMenu.addAction(self.constructTAction)
         shapeMenu.addAction(self.constructTriangleAction)
 
+        """Noise"""
         noiseMenu = QMenu("&Noise", self)
         noiseMenu.addAction(self.addSaltPepperNoiseAction)
 
+        """Help"""
         helpMenu = QMenu("&Help", self)
         helpMenu.addAction(self.helpContentAction)
         helpMenu.addSeparator()
@@ -432,7 +565,7 @@ class Window(QMainWindow):
 
     # Set information
     def setInfo(self, ext, width="", height="", size="", depth="", color="", Modality="", PatientName="", PatientAge="", BodyPartExamined=""):
-        info = dict() # Initilize the dicom
+        info = dict() # Initialize the dicom
         if ext == "dcm":
             info = {
                     "Width":width, 
@@ -492,12 +625,14 @@ class Window(QMainWindow):
     
     # Connect
     def _connectActions(self):
-        # File Actions
+        " File "
         self.addTabAction.triggered.connect(self.addNewTab)
         self.openAction.triggered.connect(self.browseImage) 
         self.clearAction.triggered.connect(self.clearImage) 
+        self.saveAction.triggered.connect(self.saveImage)
+        self.exitAction.triggered.connect(self.exit)
 
-        "Transformation image"
+        " Transformation image "
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
         self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
@@ -508,36 +643,35 @@ class Window(QMainWindow):
         self.shearActionHorizontal.triggered.connect(lambda: self.shearImage(mode="horizontal"))
         self.shearActionVertical.triggered.connect(lambda: self.shearImage(mode="vertical"))
 
-        "Shapes construction"
+        " Shapes construction "
         # Construct T
-        self.constructTAction.triggered.connect(lambda: self.currentTab.drawT())
+        self.constructTAction.triggered.connect(lambda: self.drawT())
         # Construct triangle
-        self.constructTriangleAction.triggered.connect(lambda: self.currentTab.drawTriangle())
+        self.constructTriangleAction.triggered.connect(lambda: self.drawTriangle())
         
-        
+        " View "
         self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
+        self.showFourierAction.triggered.connect(self.showFourier)
         
         # Equalize Image
         self.equalizeAction.triggered.connect(lambda: self.equalizeImage()) 
         
-        "Filters"
+        " Filters "
         self.unsharpMaskAction.triggered.connect(self.applyUnsharp)
         self.medianFilterAction.triggered.connect(self.applyMedian)
         self.boxFilteringAction.triggered.connect(lambda: self.applyBoxFilter("spatial"))
         self.boxFilteringByFourierAction.triggered.connect(lambda: self.applyBoxFilter("frequency"))
-
+        self.notchRejectFilterAction.triggered.connect(self.notchRejectFilter)
+        
+        " Noise "
         self.addSaltPepperNoiseAction.triggered.connect(self.addNoise)
 
+        " Operation "
         self.subtractionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        # .triggered.connect(lambda: self.subtractionTwoImage(self.images))
-
         self.addToCompareListAction.triggered.connect(self.addToCompare)
-
-        self.showFourierAction.triggered.connect(self.showFourier)
+        
+        " Fourier "
         self.logMagnitudeAction.triggered.connect(self.logMagnitude)
-
-        self.saveAction.triggered.connect(self.saveImage)
-        self.exitAction.triggered.connect(lambda: self.exit()) # When click on exit action
     
     def _connect(self):
         self._connectActions()
@@ -752,7 +886,46 @@ class Window(QMainWindow):
             # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
         else:
             QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
-        
+    
+    def set_plot_title(self, title, fs = 16):
+       plt.title(title, fontsize = fs)
+
+    def notchRejectFilter(self):
+        image = self.currentTab.primaryViewer.getImage()
+
+        if len(image) != 0:
+
+            requirements = {
+                "Number of points":"",
+                "Radius":""
+            }
+
+            inputWindow = popWindow("Notch Reject Filter", requirements)
+            inputWindow.exec_()
+            
+            output = inputWindow.getValues()
+            if output != None:
+                n = int(output.get("Number of points"))
+                frequency = int(output.get("Radius"))
+            else:
+                return
+
+            plt.clf()
+
+            spectrum = self.currentTab.primaryViewer.fourierTransform(image, draw=False)            
+            magnitudeSpectrum = self.currentTab.primaryViewer.fourierTransform(image, mode="magnitude", log=True, draw=False)
+            
+            plt.imshow(magnitudeSpectrum, cmap = "gray")
+            
+            self.set_plot_title("Click on image to choose points. (Press any key to Start)")
+            plt.waitforbuttonpress()
+            self.set_plot_title(f'Select {n} points with mouse click')
+            
+            points = np.asarray(plt.ginput(n, timeout = -1))
+            plt.close()
+
+            self.currentTab.primaryViewer.notchRejectFilters(spectrum, points, frequency)
+            
     ##########################################
     #     """Transformations Functions"""    #
     ##########################################
@@ -833,6 +1006,8 @@ class Window(QMainWindow):
             self.images = []
         
         self.images.append(image)
+        print(len(self.images))
+        
 
     # get subtraction of images
     def subtractionTwoImage(self, images):
@@ -856,12 +1031,12 @@ class Window(QMainWindow):
     # Draw T shape
     def drawT(self):
         self.currentTab.primaryViewer.constructT("white")
-        self.currentTab.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
+        self.updateImage()
 
     # Draw triangle shape
     def drawTriangle(self):
         self.currentTab.primaryViewer.constructTriangle("white")
-        self.currentTab.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
+        self.updateImage()
 
     ##########################################
     #         """Noise Functions"""          #
