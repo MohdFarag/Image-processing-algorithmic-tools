@@ -472,6 +472,7 @@ MigrationBackup/
 # Others
 src/__pycache__/
 src/.vscode/
+.vscode/
 src/.vs/
 .vs/
 

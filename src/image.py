@@ -3,8 +3,6 @@ import math
 import numpy as np
 import random
 
-import cv2
-
 # Matplotlib
 import matplotlib as mpl
 import matplotlib.image as mpimg
@@ -25,6 +23,7 @@ class ImageViewer(FigureCanvasQTAgg):
 
         # Variables
         self.loaded = False
+        self.originalImage = np.array([])
         self.grayImage = np.array([])
         self.axisExisting = axisExisting
         self.axisColor = axisColor
@@ -85,34 +84,44 @@ class ImageViewer(FigureCanvasQTAgg):
         # Reading the image
         if fileExtension == "dcm":
             imgData = dicom.dcmread(image_path, force=True)
-            downloadedImage = imgData.pixel_array
+            self.originalImage = imgData.pixel_array
         else:
-            downloadedImage = mpimg.imread(image_path)
+            self.originalImage = mpimg.imread(image_path)
             imgData = Image.open(image_path)
 
         # If image is RGB transform it to gray.
-        if downloadedImage.ndim > 2:
-            self.grayImage = downloadedImage[:,:,0]
+
+        if self.originalImage.ndim > 2:
+            self.grayImage = self.originalImage[:,:,0]
         else:
-            self.grayImage = downloadedImage
+            self.grayImage = self.originalImage
 
         self.grayImage = self.scaleImage(self.grayImage)
-
         self.loaded = True
-        self.axes.imshow(self.grayImage, cmap="gray")
-        self.draw()
+
+        self.drawImage(self.grayImage)
 
         # Depends on extension of the file
         return imgData
 
     # Get image
-    def getImage(self):
+    def getGrayImage(self):
         return self.grayImage
+    
+    # Get image
+    def getOriginalImage(self):
+        return self.originalImage
+    
+    # Draw image with matplotlib
+    def drawImage(self, image, title="Blank", cmap="gray"):
+        self.axes.set_title(title, fontsize = 16)
+        self.axes.imshow(image, cmap=cmap)
+        self.draw()
 
     # Scale function
     def scaleImage(self, image, mode="scale", a_min=0, a_max=255):
         resultImage = np.zeros(image.shape)        
-        
+
         if mode == "scale":
             image = image - image.min()
             if image.max() == 0 and image.min() == 0:
@@ -129,6 +138,7 @@ class ImageViewer(FigureCanvasQTAgg):
                     else:
                         resultImage[i,j] = image[i,j]
 
+        resultImage = np.round(np.asarray(resultImage, np.int64))
         return resultImage
 
     # Save Image
@@ -155,20 +165,17 @@ class ImageViewer(FigureCanvasQTAgg):
     # Draw logged image
     def logImage(self):
         self.grayImage = logTransformation(self.grayImage)
-        self.axes.imshow(self.grayImage, cmap="gray")
-        self.draw() 
+        self.drawImage(self.grayImage)
 
     # Apply negative on image
     def negativeImage(self):
         self.grayImage = negativeImage(self.grayImage, 256)
-        self.axes.imshow(self.grayImage, cmap="gray")
-        self.draw()
+        self.drawImage(self.grayImage)
 
     # Apply gamma correction on image
     def gammaCorrectionImage(self, Y):
         self.grayImage = gammaCorrectionImage(self.grayImage, Y)
-        self.axes.imshow(self.grayImage, cmap="gray")
-        self.draw()
+        self.drawImage(self.grayImage)
 
     ###############################################
     """Piecewise-Linear Intensity Transformation Functions"""
@@ -242,8 +249,7 @@ class ImageViewer(FigureCanvasQTAgg):
         zoomHeight = int(resizedImage.shape[1]/scaleFactor)
         
         self.grayImage = resizedImage[:zoomWidth,:zoomHeight]
-        self.axes.imshow(self.grayImage, cmap="gray")
-        self.draw()
+        self.drawImage(self.grayImage)
 
         return resizedImage.shape[0], resizedImage.shape[1]
 
@@ -317,8 +323,7 @@ class ImageViewer(FigureCanvasQTAgg):
                             rotatedImage[j][i] = q
             
             self.grayImage = rotatedImage
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
 
             return rotatedImage.shape[0],rotatedImage.shape[1]
         else:
@@ -366,8 +371,7 @@ class ImageViewer(FigureCanvasQTAgg):
                         shearedImage[j][i] = self.grayImage[new_y,new_x]
 
             self.grayImage = shearedImage
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
 
     ###############################################
     """Shapes construction Functions"""
@@ -388,9 +392,8 @@ class ImageViewer(FigureCanvasQTAgg):
             for j in range(54,74):
                 self.grayImage[i,j] = 255
 
-        self.axes.imshow(self.grayImage, cmap="gray")
         self.loaded = True
-        self.draw()
+        self.drawImage(self.grayImage)
 
     # Construct Triangle shape
     def constructTriangle(self, background="white"):
@@ -405,9 +408,8 @@ class ImageViewer(FigureCanvasQTAgg):
                 self.grayImage[i,j] = 255
             k -= 1
 
-        self.axes.imshow(self.grayImage, cmap="gray")
         self.loaded = True
-        self.draw()
+        self.drawImage(self.grayImage)
 
     ###############################################
     """Histogram Functions"""
@@ -433,7 +435,7 @@ class ImageViewer(FigureCanvasQTAgg):
         self.clearImage()
 
         if len(image) != 0:
-            L = 256
+            L = image.max()
           
             # Get histogram of image
             try:
@@ -461,8 +463,13 @@ class ImageViewer(FigureCanvasQTAgg):
     def normalizeHistogram(self):
         if len(self.grayImage) != 0:
             self.clearImage() # Clear prev.
-            L = self.grayImage.max()
-          
+            
+            # Calculate max intensity value to equalize to it 
+            try:
+                L = self.grayImage.max()
+            except:
+                L = 256        
+
             # Get histogram of nonEqualizedImage
             nonEqualizedHistogram = np.bincount(self.grayImage.flatten(), minlength=L)
 
@@ -484,8 +491,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = np.reshape(np.asarray(flatEqualizedImage, dtype=np.int64), self.grayImage.shape)
 
             # Draw equalized image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
         else:
             return
 
@@ -583,8 +589,7 @@ class ImageViewer(FigureCanvasQTAgg):
             scaledImage = self.scaleImage(np.array(resultImage))
             self.grayImage = scaledImage
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw() 
+            self.drawImage(self.grayImage)
 
     # Perform un-sharp masking
     def unsharpMask(self, size, k):
@@ -600,8 +605,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = scaledImage
             
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
 
     # Apply specific filter
     def applyFilter(self, image, kernel, domain="spatial"):
@@ -640,8 +644,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = self.applyFilter(self.grayImage, boxFilter)
                        
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
 
     # Perform box filtering in frequency domain
     def boxFilteringUsingFourier(self, filterSize):
@@ -653,8 +656,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = self.applyFilter(self.grayImage, boxFilter, domain="frequency")
             
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
 
     # Notch Reject Filter
     def notchRejectFilter(self, shape, d0=9, u_k=0, v_k=0):
@@ -695,8 +697,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = np.abs(resultSpectrum)
 
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
             
     ###############################################
     """Noise Functions"""
@@ -718,8 +719,7 @@ class ImageViewer(FigureCanvasQTAgg):
                 self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 0
             
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw() 
+            self.drawImage(self.grayImage)
 
     ###############################################
     """Operations Functions"""
@@ -734,8 +734,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = scaledImage
 
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
         
         return
 
@@ -748,8 +747,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = scaledImage
 
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
         
         return
 
@@ -762,8 +760,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = scaledImage
 
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
         
         return
 
@@ -776,8 +773,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = scaledImage
 
             # Draw image
-            self.axes.imshow(self.grayImage, cmap="gray")
-            self.draw()
+            self.drawImage(self.grayImage)
         
         return
 
@@ -808,8 +804,7 @@ class ImageViewer(FigureCanvasQTAgg):
 
             if draw:
                 scaledSpectrum = self.scaleImage(spectrum)
-                self.axes.imshow(scaledSpectrum, cmap="gray")
-                self.draw() 
+                self.drawImage(scaledSpectrum, mode)
 
             return spectrum
 

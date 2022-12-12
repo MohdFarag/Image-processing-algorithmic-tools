@@ -11,6 +11,8 @@ import sys
 # Import Classes
 from .tabViewer import tabViewer
 from .popup import popWindow
+from .utilities import *
+
 # Importing Qt widgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -354,7 +356,7 @@ class Window(QMainWindow):
         self.helpContentAction.setShortcut("alt+H")
         self.checkUpdatesAction.setShortcut("alt+Z")
         self.aboutAction.setShortcut("alt+X") 
-
+      
     ##########################################
     
     # Add separator
@@ -627,51 +629,74 @@ class Window(QMainWindow):
     def _connectActions(self):
         " File "
         self.addTabAction.triggered.connect(self.addNewTab)
-        self.openAction.triggered.connect(self.browseImage) 
-        self.clearAction.triggered.connect(self.clearImage) 
+        self.openAction.triggered.connect(lambda: self.baseBehavior(self.browseImage)) 
+        self.clearAction.triggered.connect(lambda: self.baseBehavior(self.clearImage)) 
         self.saveAction.triggered.connect(self.saveImage)
         self.exitAction.triggered.connect(self.exit)
 
         " Transformation image "
         # Zoom image
-        self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.zoomImage("nearest"))
-        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.zoomImage("linear"))
+        self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"nearest"))
+        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"linear"))
         # Rotate image
-        self.rotateNearestAction.triggered.connect(lambda: self.rotateImage(mode="nearest"))
-        self.rotateLinearAction.triggered.connect(lambda: self.rotateImage(mode="linear"))
+        # self.rotateNearestAction.triggered.connect(self.rotateImage(mode="nearest"))
+        self.rotateNearestAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"nearest"))
+        self.rotateLinearAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"linear"))
         # Shear image
-        self.shearActionHorizontal.triggered.connect(lambda: self.shearImage(mode="horizontal"))
-        self.shearActionVertical.triggered.connect(lambda: self.shearImage(mode="vertical"))
+        self.shearActionHorizontal.triggered.connect(lambda: self.baseBehavior(self.shearImage,"horizontal"))
+        self.shearActionVertical.triggered.connect(lambda: self.baseBehavior(self.shearImage,"vertical"))
 
         " Shapes construction "
         # Construct T
-        self.constructTAction.triggered.connect(lambda: self.drawT())
+        self.constructTAction.triggered.connect(lambda: self.baseBehavior(self.drawT))
         # Construct triangle
-        self.constructTriangleAction.triggered.connect(lambda: self.drawTriangle())
+        self.constructTriangleAction.triggered.connect(lambda: self.baseBehavior(self.drawTriangle))
         
         " View "
-        self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
-        self.showFourierAction.triggered.connect(self.showFourier)
+        self.showHistogramAction.triggered.connect(self.currentTab.showHideHistogram)
+        self.showFourierAction.triggered.connect(self.showHideFourier)
         
-        # Equalize Image
-        self.equalizeAction.triggered.connect(lambda: self.equalizeImage()) 
-        
+        "Image"
+        self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.equalizeImage))
+        self.binaryAction.triggered.connect(self.equalizeImage)
+        self.negativeAction.triggered.connect(self.equalizeImage)
+        self.logImageAction.triggered.connect(self.equalizeImage)
+        self.negativeAction.triggered.connect(self.equalizeImage)
+        self.gammaAction.triggered.connect(self.equalizeImage)
+
         " Filters "
-        self.unsharpMaskAction.triggered.connect(self.applyUnsharp)
-        self.medianFilterAction.triggered.connect(self.applyMedian)
-        self.boxFilteringAction.triggered.connect(lambda: self.applyBoxFilter("spatial"))
-        self.boxFilteringByFourierAction.triggered.connect(lambda: self.applyBoxFilter("frequency"))
-        self.notchRejectFilterAction.triggered.connect(self.notchRejectFilter)
+        self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
+        self.medianFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMedian))
+        self.boxFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter, "spatial"))
+        self.boxFilteringByFourierAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter, "frequency"))
+        self.notchRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.notchRejectFilter))
         
         " Noise "
-        self.addSaltPepperNoiseAction.triggered.connect(self.addNoise)
+        self.addSaltPepperNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "salt and pepper"))
 
         " Operation "
+        # Arithmetic Operations
         self.subtractionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.additionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.multiplicationAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.divisionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        # Set Operations
+        self.complementAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.unionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.intersectAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        # Logical Operations
+        self.notAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.andAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.nandAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))        
+        self.orAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.norAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.xorAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))        
+        self.xnorAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))        
+
         self.addToCompareListAction.triggered.connect(self.addToCompare)
-        
+
         " Fourier "
-        self.logMagnitudeAction.triggered.connect(self.logMagnitude)
+        self.logMagnitudeAction.triggered.connect(lambda: self.updateImage(True))
     
     def _connect(self):
         self._connectActions()
@@ -692,21 +717,6 @@ class Window(QMainWindow):
                                             margin-right:5px""")
         return inputField
 
-    # Get depth of image
-    def getDepth(self, image, imageChannel):
-        image_sequence = image.getdata()
-        image_array = np.asarray(image_sequence) 
-        range = image_array.max() - image_array.min()
-        bitDepthForOneChannel = ceil(log2(range))
-        
-        try:
-            _ , _ , numOfChannels = imageChannel.shape
-        except:
-            numOfChannels = 1
-        finally:
-            bitDepth = bitDepthForOneChannel * numOfChannels
-            return bitDepth
-
     ##########################################
     #         """File Functions"""           #
     ##########################################
@@ -714,7 +724,7 @@ class Window(QMainWindow):
     # Open Image
     def browseImage(self):
         # Browse Function
-        path, _ = QFileDialog.getOpenFileName(None, "Load Image File", filter="Custom files (*.bmp *.jpeg *.jpg *.dcm);;All files (*.*)")            
+        path, _ = QFileDialog.getOpenFileName(self, "Load Image File", directory="./src/assets/testInputs/", filter="Custom files (*.bmp *.png *.jpeg *.jpg *.dcm);;All files (*.*)")            
         self.fileExtension = path.split(".")[-1] # get ext.
         
         # If no image chosen
@@ -723,12 +733,13 @@ class Window(QMainWindow):
 
         try:
             data = self.currentTab.setImage(path, self.fileExtension)
-        except:
+        except Exception as e:
+            print(e)
             # Error
             appLogger.exception("Can't open the file !")
             QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
         else:
-            self.updateImage()
+            
 
             self.statusbar.showMessage(path.split("/")[-1])
             if self.fileExtension == "dcm":
@@ -746,13 +757,12 @@ class Window(QMainWindow):
                 self.ageOfPatient = self.getAttr(data,"PatientAge")
                 self.bodyOfPatient = self.getAttr(data,"BodyPartExamined") 
             else:
-                # If (jpeg, bitmap)
-                imageChannel = cv.imread(path)
+                # If (jpeg, bitmap etc..)
+                image = self.currentTab.primaryViewer.getOriginalImage()
 
                 self.widthOfImage = self.getAttr(data,'width')
                 self.heightOfImage = self.getAttr(data,'height')
-                self.depthOfImage = self.getDepth(data, imageChannel)
-
+                self.depthOfImage = getDepth(image)
                 self.sizeOfImage = f"{self.widthOfImage * self.heightOfImage * self.depthOfImage} bits" 
                 self.widthOfImage =  f"{self.widthOfImage} px"
                 self.heightOfImage = f"{self.heightOfImage} px"
@@ -795,21 +805,14 @@ class Window(QMainWindow):
 
     # Equalize
     def equalizeImage(self):
-        try:
-            self.currentTab.equalize()
-            self.updateImage()
-        except:
-            QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-            return
+        self.currentTab.equalize()
+            
+
 
     ##########################################
     #         """Fourier Functions"""          #
     ##########################################
 
-    # Log the magnitude of fourier transformed image
-    def logMagnitude(self):
-        self.updateImage(True)
-        self.currentTab.primaryViewer.logImage()
 
     ##########################################
     #       """Filters Functions"""          #
@@ -828,18 +831,11 @@ class Window(QMainWindow):
             if filterSize % 2 == 0:
                 filterSize += 1
 
-            try:
-                if mode == "frequency":
-                    self.currentTab.primaryViewer.boxFilteringUsingFourier(filterSize)
-                else:
-                    self.currentTab.primaryViewer.boxFiltering(filterSize)
-                self.updateImage()
-
-            except Exception as e:
-                print(e)
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-        
+            if mode == "frequency":
+                self.currentTab.primaryViewer.boxFilteringUsingFourier(filterSize)
+            else:
+                self.currentTab.primaryViewer.boxFiltering(filterSize)
+                
     # Apply median masking
     def applyMedian(self): 
         try:
@@ -852,14 +848,9 @@ class Window(QMainWindow):
         if filterSize > 0:
             if filterSize % 2 == 0:
                 filterSize += 1
-            try:
-                self.currentTab.primaryViewer.medianMask(filterSize)
-                self.updateImage()
-            except Exception as e:
-                print(e)
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-
+            
+            self.currentTab.primaryViewer.medianMask(filterSize)               
+            
     # Apply un-sharp masking
     def applyUnsharp(self):
         try:
@@ -872,17 +863,11 @@ class Window(QMainWindow):
             return
 
         if filterSize > 0:
-            try:
-                if filterSize % 2 == 0:
-                    filterSize += 1
+            if filterSize % 2 == 0:
+                filterSize += 1
 
-                self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
-                self.updateImage()
-            except Exception as e:
-                print(e)
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-                
+            self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
+                 
             # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
         else:
             QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
@@ -891,7 +876,7 @@ class Window(QMainWindow):
        plt.title(title, fontsize = fs)
 
     def notchRejectFilter(self):
-        image = self.currentTab.primaryViewer.getImage()
+        image = self.currentTab.primaryViewer.getGrayImage()
 
         if len(image) != 0:
 
@@ -934,17 +919,13 @@ class Window(QMainWindow):
     def shearImage(self, mode="horizontal"):
         try:
             shearFactor = float(self.factorInput.text())
-        except:
+        except Exception as e:
+            print(e)
             QMessageBox.critical(self , "Invalid shearing factor" , "Please enter valid factor.")
             return
         
         if -90 < shearFactor < 90:
-            try:
-                self.currentTab.primaryViewer.shearImage(shearFactor, mode)
-                self.updateImage()
-            except:
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
+            self.currentTab.primaryViewer.shearImage(shearFactor, mode)
         else:
             QMessageBox.critical(self , "Invalid shearing factor" , "Shear angle should be between -90° and 90°.")
 
@@ -952,18 +933,14 @@ class Window(QMainWindow):
     def zoomImage(self, mode="linear"):
         try:
             zoomingFactor = float(self.factorInput.text())
-        except:
+        except Exception as e:
+            print(e)
             QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
             return
         
         if zoomingFactor > 0:
-            try:
-                self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
-                self.updateImage()
-            except:
-                QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-                return
-                
+            self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
+                                
             if mode == "nearest":
                 self.interpolationMode = "Zoom Nearest Neighbor"
             elif mode == "linear":
@@ -977,7 +954,8 @@ class Window(QMainWindow):
     def rotateImage(self, mode="linear"):
         try:
             rotationAngle = float(self.factorInput.text())
-        except:
+        except Exception as e:
+            print(e)
             QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
             return
 
@@ -1008,7 +986,6 @@ class Window(QMainWindow):
         self.images.append(image)
         print(len(self.images))
         
-
     # get subtraction of images
     def subtractionTwoImage(self, images):
         if len(images) == 2:
@@ -1031,35 +1008,43 @@ class Window(QMainWindow):
     # Draw T shape
     def drawT(self):
         self.currentTab.primaryViewer.constructT("white")
-        self.updateImage()
-
+        
     # Draw triangle shape
     def drawTriangle(self):
         self.currentTab.primaryViewer.constructTriangle("white")
-        self.updateImage()
-
+        
     ##########################################
     #         """Noise Functions"""          #
     ##########################################
 
     # Add random noise to the image
-    def addNoise(self):
-        self.currentTab.primaryViewer.addSaltAndPepper()
-        self.updateImage()
-
+    def addNoise(self, mode="salt and pepper"):
+        if mode == "salt and pepper":
+            self.currentTab.primaryViewer.addSaltAndPepper()
+        
     ##########################################
     #         """View Functions"""           #
     ##########################################
 
     # Show magnitude and phase of image
-    def showFourier(self):
+    def showHideFourier(self):
         self.currentTab.showHideMagnitude()
         self.currentTab.showHidePhase()
 
     ##########################################
-    
+
+    # Base function  
+    def baseBehavior(self, func, *args, **kwargs):
+        # try:
+            func(*args, **kwargs)
+            self.updateImage(True)
+        # except Exception as e:
+        #         print(e)
+        #         QMessageBox.critical(self,"Error","Sorry, Error occurred.")
+        #         return  
+                
     # Update magnitude and phase and histogram for the image after every update
-    def updateImage(self,log=False):
+    def updateImage(self, log=False):
         if log:
             self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude",True)
             self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase",True)

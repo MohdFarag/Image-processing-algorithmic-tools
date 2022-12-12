@@ -51,10 +51,6 @@ class tabViewer(QWidget):
         # Set layout to new tab
         self.setLayout(self.tabLayout)
 
-    def equalize(self):
-            self.primaryViewer.normalizeHistogram()
-            self.histogramViewer.drawHistogram(self.primaryViewer.grayImage)
-
     def showHideHistogram(self):
         if not self.showHist:
             self.showHist = True
@@ -78,6 +74,9 @@ class tabViewer(QWidget):
         else:
             self.showPhase = False
             self.phaseViewer.hide()
+
+    def equalize(self):
+        self.primaryViewer.normalizeHistogram()
 
     def setImage(self, path, fileExtension):
         data = self.primaryViewer.setImage(path, fileExtension)

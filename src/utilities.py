@@ -1,5 +1,15 @@
 import numpy as np
-import math
+from math import *
+
+# Get depth of image
+def getDepth(image:np.ndarray):
+    rangeOfImage = image.max() - image.min()
+    bitDepthForOneChannel = ceil(log2(rangeOfImage))
+    
+    _ , _ , numOfChannels = image.shape
+    bitDepth = bitDepthForOneChannel * numOfChannels
+
+    return bitDepth
 
 # Get index and value of image
 def getCenter(image):
