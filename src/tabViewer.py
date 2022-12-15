@@ -75,6 +75,10 @@ class tabViewer(QWidget):
             self.showPhase = False
             self.phaseViewer.hide()
 
+    def showHideFourier(self):
+        self.showHideMagnitude()
+        self.showHidePhase()
+
     def equalize(self):
         self.primaryViewer.normalizeHistogram()
 

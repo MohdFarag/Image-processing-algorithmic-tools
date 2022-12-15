@@ -4,8 +4,16 @@
     
     <file alias="image">assets/icons/image.ico</file>
     <file alias="folder">assets/icons/folder.ico</file>
+
     <file alias="T">assets/icons/T.png</file>
     <file alias="triangle">assets/icons/triangle.png</file>
+    <file alias="circle">assets/icons/circle.png</file>
+
+    <file alias="addition">assets/icons/addition.png</file>
+    <file alias="subtraction">assets/icons/subtraction.png</file>
+    <file alias="multiplication">assets/icons/multiplication.png</file>
+    <file alias="division">assets/icons/division.png</file>
+    <file alias="compare">assets/icons/compare.png</file>
 
     <file alias="color">assets/icons/color.png</file>
     <file alias="gray">assets/icons/grayScale.png</file>
@@ -21,10 +29,15 @@
     <file alias="shear">assets/icons/shear.png</file>
 
     <file alias="box">assets/icons/box.png</file>
-    <file alias="salt">assets/icons/salt.png</file>
     <file alias="median">assets/icons/median.png</file>
     <file alias="blur">assets/icons/blur.png</file>
     <file alias="blurFourier">assets/icons/blurF.png</file>
+
+    <file alias="salt">assets/icons/salt.png</file>
+    <file alias="pepper">assets/icons/pepper.png</file>
+    <file alias="saltPepper">assets/icons/saltPepper.png</file>
+    <file alias="uniform">assets/icons/uniform.png</file>
+    <file alias="gaussian">assets/icons/gaussian.png</file>
 
     <file alias="clear">assets/icons/clear.png</file>   
     <file alias="exit">assets/icons/exit.svg</file>

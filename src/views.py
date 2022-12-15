@@ -1,5 +1,3 @@
-from math import ceil, log2
-import cv2 as cv
 import numpy as np
 
 # Resources
@@ -18,11 +16,17 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
+# Matplotlib
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.widgets import RectangleSelector
 
 # Importing Logging
 from .log import appLogger
+
+# Constants
+INT = 0
+FLOAT = 0.0
 
 # Window class
 class Window(QMainWindow):
@@ -59,6 +63,7 @@ class Window(QMainWindow):
         self._createToolBar("transformations")
         self._createToolBar("shapes")
         self._createToolBar("filters")
+        self._createToolBar("operation")
         self._createToolBar("inputs")
         self._createStatusBar()
         # Central area
@@ -128,6 +133,9 @@ class Window(QMainWindow):
         self.gammaAction = QAction(QIcon(":gamma"), "&Gamma Correction", self)
         self.gammaAction.setStatusTip('Gamma image')
 
+        self.setROIAction = QAction(QIcon(":ROI"), "&ROI", self)
+        self.setROIAction.setStatusTip('Draw ROI')
+
     # Edit Actions
     def fourierActions(self):
         # Log the magnitude of the image
@@ -155,9 +163,9 @@ class Window(QMainWindow):
         self.medianFilterAction = QAction(QIcon(":median"), "&Median filter", self)
         self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
 
-        # Band reject filter
-        self.notchRejectFilterAction = QAction(QIcon(":bandReject"), "&band Reject", self)
-        self.notchRejectFilterAction.setStatusTip('Apply band reject filter on image')
+        # Notch reject filter
+        self.notchRejectFilterAction = QAction(QIcon(":bandReject"), "&Notch Reject", self)
+        self.notchRejectFilterAction.setStatusTip('Apply notch reject filter on image')
     
     # Transformation Actions
     def transformationsActions(self):
@@ -253,17 +261,49 @@ class Window(QMainWindow):
     # Shapes Constructions Actions
     def constructionShapesActions(self):
         # Construct T image Action
-        self.constructTAction = QAction(QIcon(":T"), "&Construct T", self)
+        self.constructTAction = QAction(QIcon(":T"), "&Letter T", self)
         self.constructTAction.setStatusTip('Construct an image with a T letter in the center')
 
         # Construct triangle image Action
-        self.constructTriangleAction = QAction(QIcon(":triangle"), "&Construct Triangle", self)
+        self.constructTriangleAction = QAction(QIcon(":triangle"), "&Triangle", self)
         self.constructTriangleAction.setStatusTip('Construct an Triangle')
+
+        # Construct triangle image Action
+        self.constructCircleBoxAction = QAction(QIcon(":circle"), "&Circle", self)
+        self.constructCircleBoxAction.setStatusTip('Construct an Circle in gray box')
     
     # Noises Actions
     def noisesActions(self):
+        # Add gaussian noise action
+        self.addUniformNoiseAction = QAction(QIcon(":uniform"), "&Uniform Noise", self)
+        self.addUniformNoiseAction.setStatusTip('Add uniform noise')
+
+        # Add gaussian noise action
+        self.addGaussianNoiseAction = QAction(QIcon(":gaussian"), "&Gaussian Noise", self)
+        self.addGaussianNoiseAction.setStatusTip('Add gaussian noise')
+
+        # Add rayleigh noise action
+        self.addRayleighNoiseAction = QAction(QIcon(":Rayleigh"), "&Rayleigh Noise", self)
+        self.addRayleighNoiseAction.setStatusTip('Add rayleigh noise')
+
+        # Add erlang noise action
+        self.addErlangNoiseAction = QAction(QIcon(":Erlang"), "&Erlang Noise", self)
+        self.addErlangNoiseAction.setStatusTip('Add erlang noise')
+
+        # Add gaussian noise action
+        self.addExponentialNoiseAction = QAction(QIcon(":Exponential"), "&Exponential Noise", self)
+        self.addExponentialNoiseAction.setStatusTip('Add exponential noise')
+
+        # Add salt noise action
+        self.addSaltNoiseAction = QAction(QIcon(":salt"), "&Salt Noise", self)
+        self.addSaltNoiseAction.setStatusTip('Add salt noise')
+
+        # Add pepper noise action
+        self.addPepperNoiseAction = QAction(QIcon(":pepper"), "&Pepper Noise", self)
+        self.addPepperNoiseAction.setStatusTip('Add pepper noise')
+
         # Add salt and pepper noise action
-        self.addSaltPepperNoiseAction = QAction(QIcon(":salt"), "&Add salt and pepper", self)
+        self.addSaltPepperNoiseAction = QAction(QIcon(":saltPepper"), "&Salt and Pepper Noise", self)
         self.addSaltPepperNoiseAction.setStatusTip('Add salt and pepper noise')
     
     # View Actions
@@ -356,7 +396,7 @@ class Window(QMainWindow):
         self.helpContentAction.setShortcut("alt+H")
         self.checkUpdatesAction.setShortcut("alt+Z")
         self.aboutAction.setShortcut("alt+X") 
-      
+
     ##########################################
     
     # Add separator
@@ -385,9 +425,18 @@ class Window(QMainWindow):
 
         """Edit"""
         editMenu = QMenu("&Edit", self)
-        editMenu.addAction(self.equalizeAction)
-        editMenu.addSeparator()
         editMenu.addAction(self.logMagnitudeAction)
+
+        """Image"""
+        imageMenu = QMenu("&Image", self)
+        imageMenu.addAction(self.equalizeAction)
+        imageMenu.addSeparator()
+        imageMenu.addAction(self.binaryAction)
+        imageMenu.addAction(self.negativeAction)
+        imageMenu.addAction(self.logImageAction)
+        imageMenu.addAction(self.gammaAction)
+        imageMenu.addSeparator()
+        imageMenu.addAction(self.setROIAction)
 
         """View"""
         viewMenu = QMenu("&View", self)
@@ -407,7 +456,22 @@ class Window(QMainWindow):
 
         """Operation"""
         operationMenu = QMenu("&Operation", self)
+        operationMenu.addAction(self.additionAction)
         operationMenu.addAction(self.subtractionAction)
+        operationMenu.addAction(self.multiplicationAction)
+        operationMenu.addAction(self.divisionAction)
+        operationMenu.addSeparator()
+        operationMenu.addAction(self.unionAction)
+        operationMenu.addAction(self.intersectAction)
+        operationMenu.addAction(self.complementAction)
+        operationMenu.addSeparator()
+        operationMenu.addAction(self.notAction)
+        operationMenu.addAction(self.andAction)
+        operationMenu.addAction(self.nandAction)
+        operationMenu.addAction(self.orAction)
+        operationMenu.addAction(self.norAction)
+        operationMenu.addAction(self.xorAction)
+        operationMenu.addAction(self.xnorAction)
         operationMenu.addSeparator()
         operationMenu.addAction(self.addToCompareListAction)
 
@@ -423,10 +487,19 @@ class Window(QMainWindow):
         shapeMenu = QMenu("&Shape", self)
         shapeMenu.addAction(self.constructTAction)
         shapeMenu.addAction(self.constructTriangleAction)
+        shapeMenu.addAction(self.constructCircleBoxAction)
 
         """Noise"""
         noiseMenu = QMenu("&Noise", self)
+        noiseMenu.addAction(self.addUniformNoiseAction)
+        noiseMenu.addAction(self.addGaussianNoiseAction)
+        noiseMenu.addAction(self.addRayleighNoiseAction)
+        noiseMenu.addAction(self.addErlangNoiseAction)
+        noiseMenu.addAction(self.addExponentialNoiseAction)
+        noiseMenu.addSeparator()
         noiseMenu.addAction(self.addSaltPepperNoiseAction)
+        noiseMenu.addAction(self.addSaltNoiseAction)
+        noiseMenu.addAction(self.addPepperNoiseAction)
 
         """Help"""
         helpMenu = QMenu("&Help", self)
@@ -439,6 +512,7 @@ class Window(QMainWindow):
         ## Append taps
         menuBar.addMenu(fileMenu)
         menuBar.addMenu(editMenu)
+        menuBar.addMenu(imageMenu)
         menuBar.addMenu(transformationMenu)
         menuBar.addMenu(operationMenu)
         menuBar.addMenu(filterMenu)
@@ -449,7 +523,7 @@ class Window(QMainWindow):
 
     # Tool Bar
     def _createToolBar(self, type=""):
-        self.toolBar = QToolBar("Tool Bar")
+        self.toolBar = QToolBar("Toolbar")
         
         if type == "main":
             # Using a title
@@ -458,7 +532,6 @@ class Window(QMainWindow):
             
             self.toolBar.addAction(self.showHistogramAction)
             self.toolBar.addAction(self.showFourierAction)
-            self.toolBar.addAction(self.equalizeAction)
             self.toolBar.addAction(self.logMagnitudeAction)
             self.toolBar.addAction(self.addToCompareListAction)
             self.toolBar.addAction(self.clearAction)       
@@ -472,23 +545,40 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.rotateNearestAction)
             self.toolBar.addAction(self.rotateLinearAction)
             self.toolBar.addAction(self.shearActionHorizontal)     
+            self.toolBar.addAction(self.shearActionVertical)     
 
         elif type == "shapes":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             
             self.toolBar.addAction(self.constructTAction)
             self.toolBar.addAction(self.constructTriangleAction)
+            self.toolBar.addAction(self.constructCircleBoxAction)
 
-        elif type == "filters":
-            self.addToolBar(Qt.TopToolBarArea, self.toolBar)  # type: ignore
+        elif type == "operation":
+            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             
-            self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon) # type: ignore
-            self.toolBar.addAction(self.unsharpMaskAction) 
+            self.toolBar.addAction(self.additionAction)
+            self.toolBar.addAction(self.subtractionAction)
+            self.toolBar.addAction(self.multiplicationAction)
+            self.toolBar.addAction(self.divisionAction)
+
+            # self.toolBar.addAction(self.unionAction)
+            # self.toolBar.addAction(self.intersectAction)
+            # self.toolBar.addAction(self.complementAction)
+
+            # self.toolBar.addAction(self.andAction)
+            # self.toolBar.addAction(self.nandAction)
+            # self.toolBar.addAction(self.orAction)
+            # self.toolBar.addAction(self.norAction)
+            # self.toolBar.addAction(self.xorAction)
+            # self.toolBar.addAction(self.xnorAction)
+            
+        elif type == "filters":
+            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.boxFilteringAction)
             self.toolBar.addAction(self.boxFilteringByFourierAction)
-            self.toolBar.addAction(self.addSaltPepperNoiseAction)
+            self.toolBar.addAction(self.unsharpMaskAction)
             self.toolBar.addAction(self.medianFilterAction)
-            self.toolBar.addAction(self.subtractionAction)
             
         elif type == "inputs":
             self.addToolBar(Qt.BottomToolBarArea, self.toolBar)  # type: ignore
@@ -595,6 +685,12 @@ class Window(QMainWindow):
                     "Angle": f"{size}°",
                     "Direction": depth,
                 }
+        elif ext == "ROI":
+            info = {
+                    "Mean":width, 
+                    "Variance":height,
+                    "Std":size
+                }
         else:
             info = {
                     "Width":width, 
@@ -629,17 +725,28 @@ class Window(QMainWindow):
     def _connectActions(self):
         " File "
         self.addTabAction.triggered.connect(self.addNewTab)
-        self.openAction.triggered.connect(lambda: self.baseBehavior(self.browseImage)) 
+        self.openAction.triggered.connect(self.browseImage) 
         self.clearAction.triggered.connect(lambda: self.baseBehavior(self.clearImage)) 
         self.saveAction.triggered.connect(self.saveImage)
         self.exitAction.triggered.connect(self.exit)
+
+        " Fourier "
+        self.logMagnitudeAction.triggered.connect(lambda: self.updateImage(True))
+
+        "Image"
+        self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.equalizeImage))
+        self.binaryAction.triggered.connect(self.equalizeImage)
+        self.negativeAction.triggered.connect(self.equalizeImage)
+        self.logImageAction.triggered.connect(self.equalizeImage)
+        self.negativeAction.triggered.connect(self.equalizeImage)
+        self.gammaAction.triggered.connect(self.equalizeImage)
+        self.setROIAction.triggered.connect(self.getROI)
 
         " Transformation image "
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"nearest"))
         self.zoomLinearInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"linear"))
         # Rotate image
-        # self.rotateNearestAction.triggered.connect(self.rotateImage(mode="nearest"))
         self.rotateNearestAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"nearest"))
         self.rotateLinearAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"linear"))
         # Shear image
@@ -648,22 +755,12 @@ class Window(QMainWindow):
 
         " Shapes construction "
         # Construct T
-        self.constructTAction.triggered.connect(lambda: self.baseBehavior(self.drawT))
+        self.constructTAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"T"))
         # Construct triangle
-        self.constructTriangleAction.triggered.connect(lambda: self.baseBehavior(self.drawTriangle))
+        self.constructTriangleAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"triangle"))
+        # Construct circle
+        self.constructCircleBoxAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"circle"))
         
-        " View "
-        self.showHistogramAction.triggered.connect(self.currentTab.showHideHistogram)
-        self.showFourierAction.triggered.connect(self.showHideFourier)
-        
-        "Image"
-        self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.equalizeImage))
-        self.binaryAction.triggered.connect(self.equalizeImage)
-        self.negativeAction.triggered.connect(self.equalizeImage)
-        self.logImageAction.triggered.connect(self.equalizeImage)
-        self.negativeAction.triggered.connect(self.equalizeImage)
-        self.gammaAction.triggered.connect(self.equalizeImage)
-
         " Filters "
         self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
         self.medianFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMedian))
@@ -672,34 +769,43 @@ class Window(QMainWindow):
         self.notchRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.notchRejectFilter))
         
         " Noise "
+        self.addUniformNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "uniform"))
+        self.addGaussianNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "gaussian"))
+        self.addRayleighNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "rayleigh"))
+        self.addErlangNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "erlang"))
+        self.addExponentialNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "exponential"))
+        self.addSaltNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "salt"))
+        self.addPepperNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "pepper"))
         self.addSaltPepperNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "salt and pepper"))
 
         " Operation "
         # Arithmetic Operations
-        self.subtractionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.additionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.multiplicationAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.divisionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.subtractionAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "subtract", self.images))
+        self.additionAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "add", self.images))
+        self.multiplicationAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "multiply", self.images))
+        self.divisionAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "divide", self.images))
         # Set Operations
-        self.complementAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.unionAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.intersectAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
+        self.complementAction.triggered.connect(lambda: self.baseBehavior(self.operationOneImage, "complement"))
+        self.unionAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "union", self.images))
+        self.intersectAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "intersect", self.images))
         # Logical Operations
-        self.notAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.andAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.nandAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))        
-        self.orAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.norAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))
-        self.xorAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))        
-        self.xnorAction.triggered.connect(lambda: self.subtractionTwoImage(self.images))        
+        self.notAction.triggered.connect(lambda: self.baseBehavior(self.operationOneImage, "not"))
+        self.andAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "and", self.images))
+        self.nandAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "nand", self.images))        
+        self.orAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "or", self.images))
+        self.norAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "nor", self.images))
+        self.xorAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "xor", self.images))        
+        self.xnorAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "xnor", self.images))        
 
         self.addToCompareListAction.triggered.connect(self.addToCompare)
 
-        " Fourier "
-        self.logMagnitudeAction.triggered.connect(lambda: self.updateImage(True))
-    
+        " View "
+        self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
+        self.showFourierAction.triggered.connect(lambda: self.currentTab.showHideFourier())
+
     def _connect(self):
         self._connectActions()
+
         # Tabs
         self.tabs.currentChanged.connect(self.setCurrentTab)
         self.tabs.tabCloseRequested.connect(self.closeCurrentTab)
@@ -735,12 +841,9 @@ class Window(QMainWindow):
             data = self.currentTab.setImage(path, self.fileExtension)
         except Exception as e:
             print(e)
-            # Error
             appLogger.exception("Can't open the file !")
             QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
         else:
-            
-
             self.statusbar.showMessage(path.split("/")[-1])
             if self.fileExtension == "dcm":
                 # If dicom
@@ -806,11 +909,48 @@ class Window(QMainWindow):
     # Equalize
     def equalizeImage(self):
         self.currentTab.equalize()
+
+    # Get ROI            
+    def getROI(self):
+        image = self.currentTab.primaryViewer.getGrayImage()
+        if len(image) != 0:
+            _, ax = plt.subplots()
+            ax.imshow(image, cmap="gray")
+            plt.title("Draw your region of interest (ROI)")
+            plt.suptitle("Click Enter if you finished")
             
+            def line_select_callback(eclick, erelease):
+                """
+                Callback for line selection.
+                *eclick* and *erelease* are the press and release events.
+                """
+                x1, y1 = eclick.xdata, eclick.ydata
+                x2, y2 = erelease.xdata, erelease.ydata
+                # print(f"({x1:3.2f}, {y1:3.2f}) --> ({x2:3.2f}, {y2:3.2f})")
+                # print(f"The buttons you used were: {eclick.button} {erelease.button}")
+
+            def toggle_selector(event):
+                if event.key == 'enter':
+                    if toggle_selector.RS.active:
+                        toggle_selector.RS.set_active(False)
+                        mean, variance, std = self.currentTab.primaryViewer.setROI(toggle_selector.RS.corners)
+                        self.setInfo("ROI", mean, variance, std)
+                        self.updateImage(True)
+                        plt.close()
+
+            toggle_selector.RS = RectangleSelector(ax, line_select_callback,
+                                                drawtype='box', useblit=True,
+                                                button=[1, 3],
+                                                minspanx=3, minspany=3,
+                                                spancoords='pixels',
+                                                interactive=True)
+
+            plt.connect('key_press_event', toggle_selector)
+            plt.show()
 
 
     ##########################################
-    #         """Fourier Functions"""          #
+    #         """Fourier Functions"""         #
     ##########################################
 
 
@@ -859,7 +999,7 @@ class Window(QMainWindow):
 
         except Exception as e:
             print(e)
-            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
+            QMessageBox.critical(self , "Invalid size or factor" , "Please Enter valid size or factor.")
             return
 
         if filterSize > 0:
@@ -872,39 +1012,38 @@ class Window(QMainWindow):
         else:
             QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
     
-    def set_plot_title(self, title, fs = 16):
-       plt.title(title, fontsize = fs)
-
+    # Apply notch reject filter
     def notchRejectFilter(self):
         image = self.currentTab.primaryViewer.getGrayImage()
 
         if len(image) != 0:
-
             requirements = {
-                "Number of points":"",
-                "Radius":""
+                "Number of points":{
+                    "type": INT,
+                    "range": (1, inf)
+                },
+                "Radius":{
+                    "type": FLOAT,
+                    "range": (1, inf)
+                }
             }
 
-            inputWindow = popWindow("Notch Reject Filter", requirements)
-            inputWindow.exec_()
-            
-            output = inputWindow.getValues()
+            output = self.getInputsFromUser(requirements, "Notch Reject Filter")
             if output != None:
-                n = int(output.get("Number of points"))
-                frequency = int(output.get("Radius"))
+                n = output[0]
+                frequency = output[1]
             else:
                 return
 
             plt.clf()
-
             spectrum = self.currentTab.primaryViewer.fourierTransform(image, draw=False)            
             magnitudeSpectrum = self.currentTab.primaryViewer.fourierTransform(image, mode="magnitude", log=True, draw=False)
             
             plt.imshow(magnitudeSpectrum, cmap = "gray")
             
-            self.set_plot_title("Click on image to choose points. (Press any key to Start)")
+            plt.title("Click on image to choose points. (Press any key to Start)", fontsize = 14)
             plt.waitforbuttonpress()
-            self.set_plot_title(f'Select {n} points with mouse click')
+            plt.title(f'Select {n} points with mouse click', fontsize = 14)
             
             points = np.asarray(plt.ginput(n, timeout = -1))
             plt.close()
@@ -984,64 +1123,76 @@ class Window(QMainWindow):
             self.images = []
         
         self.images.append(image)
-        print(len(self.images))
+        self.statusbar.showMessage(f"Operation list has {len(self.images)} images",1000000)
         
-    # get subtraction of images
-    def subtractionTwoImage(self, images):
+    # get result of operation between two images
+    def operationTwoImage(self, operation, images):
         if len(images) == 2:
-            titleOfNewWindow = f"Subtraction of images"
-            newTab = self.addNewTab(titleOfNewWindow,type="compare")
-            newTab.primaryViewer.subtractionTwoImage(images[0], images[1])
-            newTab.secondaryViewer.subtractionTwoImage(images[1], images[0])
-
-    # get addition of images
-    def additionTwoImage(self, images):
-        if len(images) == 2:
-            titleOfNewWindow = f"Addition of images"
+            titleOfNewWindow = f"{operation}ing of images"
+            # if operation == "subtract":
+            #     newTab = self.addNewTab(titleOfNewWindow, type="compare")
+            # else:            
             newTab = self.addNewTab(titleOfNewWindow)
-            newTab.primaryViewer.additionTwoImage(images[0], images[1])
+            
+            newTab.primaryViewer.operationTwoImages(operation, images[0], images[1])
+            # if operation == "subtract":
+            #     newTab.secondaryViewer.operationTwoImages(operation, images[1], images[0])
+
+    # get result of operation on one image
+    def operationOneImage(self, operation):
+        self.currentTab.primaryViewer.operationOneImages(operation)
 
     ##########################################
     #    """Construct Shapes Functions"""    #
     ##########################################
 
-    # Draw T shape
-    def drawT(self):
-        self.currentTab.primaryViewer.constructT("white")
-        
-    # Draw triangle shape
-    def drawTriangle(self):
-        self.currentTab.primaryViewer.constructTriangle("white")
-        
+    # Draw circle, T, triangle
+    def drawShape(self, shape):
+        if shape=="T":
+            self.currentTab.primaryViewer.constructT("white")
+        elif shape == "triangle":  
+            self.currentTab.primaryViewer.constructTriangle("white")    
+        elif shape == "circle":  
+            self.currentTab.primaryViewer.constructCircle()     
+
     ##########################################
     #         """Noise Functions"""          #
     ##########################################
 
     # Add random noise to the image
     def addNoise(self, mode="salt and pepper"):
-        if mode == "salt and pepper":
-            self.currentTab.primaryViewer.addSaltAndPepper()
-        
+        if mode == "uniform":
+            self.currentTab.primaryViewer.addUniformNoise(-10,10)
+        elif mode == "gaussian":
+            self.currentTab.primaryViewer.addGaussianNoise(5,0)
+        elif mode == "rayleigh":
+            self.currentTab.primaryViewer.addRayleighNoise(5)
+        elif mode == "erlang":
+            self.currentTab.primaryViewer.addErlangNoise(100)
+        elif mode == "exponential":
+            self.currentTab.primaryViewer.addExponentialNoise(5)
+        elif mode == "pepper":
+            self.currentTab.primaryViewer.addSaltAndPepperNoise("pepper")
+        elif mode == "salt":
+            self.currentTab.primaryViewer.addSaltAndPepperNoise("salt")
+        elif mode == "salt and pepper":
+            self.currentTab.primaryViewer.addSaltAndPepperNoise()
+    
     ##########################################
     #         """View Functions"""           #
     ##########################################
 
-    # Show magnitude and phase of image
-    def showHideFourier(self):
-        self.currentTab.showHideMagnitude()
-        self.currentTab.showHidePhase()
 
     ##########################################
 
     # Base function  
     def baseBehavior(self, func, *args, **kwargs):
-        # try:
+        try:
             func(*args, **kwargs)
             self.updateImage(True)
-        # except Exception as e:
-        #         print(e)
-        #         QMessageBox.critical(self,"Error","Sorry, Error occurred.")
-        #         return  
+        except Exception as e:
+            QMessageBox.critical(self,"Error",f"Sorry, Error occurred. {e}")
+            return  
                 
     # Update magnitude and phase and histogram for the image after every update
     def updateImage(self, log=False):
@@ -1053,7 +1204,7 @@ class Window(QMainWindow):
             self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
 
         self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
-    
+        
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
         # checking index i.e
@@ -1084,3 +1235,21 @@ class Window(QMainWindow):
         self.tabs.addTab(newTab, title)
         # Return new tab
         return newTab
+
+    def getInputsFromUser(self, requirements, title="Blank"):
+        inputWindow = popWindow(title, requirements)
+        inputWindow.exec_()
+        
+        result = list()
+        output = inputWindow.getValues()
+        loaded = inputWindow.checkLoaded()
+
+        if loaded != False and output != None:
+            for _, value in self.output.items():
+                result.append(value)
+
+            return tuple(result)
+
+        return None
+
+        

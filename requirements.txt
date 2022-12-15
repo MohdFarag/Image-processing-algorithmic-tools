@@ -3,4 +3,3 @@ pillow
 pydicom
 matplotlib
 numpy
-opencv-python

@@ -1,14 +1,50 @@
 import numpy as np
 from math import *
 
+
+def get_padding_width_per_side(kernel_size: int) -> int:
+    # Simple integer division
+    return kernel_size // 2
+    
+def add_padding_to_image(img: np.array, padding_width: int) -> np.array:
+    # Array of zeros of shape (img + padding_width)
+    img_with_padding = np.zeros(shape=(
+        img.shape[0] + padding_width * 2,  # Multiply with two because we need padding on all sides
+        img.shape[1] + padding_width * 2
+    ))
+    
+    # Change the inner elements
+    # For example, if img.shape = (224, 224), and img_with_padding.shape = (226, 226)
+    # keep the pixel wide padding on all sides, but change the other values to be the same as img
+    img_with_padding[padding_width:-padding_width, padding_width:-padding_width] = img
+    
+    return img_with_padding
+
+def calculate_target_size(img_size: int, kernel_size: int) -> int:
+    num_pixels = 0
+    
+    # From 0 up to img size (if img size = 224, then up to 223)
+    for i in range(img_size):
+        # Add the kernel size (let's say 3) to the current i
+        added = i + kernel_size
+        # It must be lower than the image size
+        if added <= img_size:
+            # Increment if so
+            num_pixels += 1
+            
+    return num_pixels
+
 # Get depth of image
 def getDepth(image:np.ndarray):
     rangeOfImage = image.max() - image.min()
     bitDepthForOneChannel = ceil(log2(rangeOfImage))
     
-    _ , _ , numOfChannels = image.shape
-    bitDepth = bitDepthForOneChannel * numOfChannels
+    if image.ndim == 3:
+        _ , _ , numOfChannels = image.shape
+    else:
+        numOfChannels = 1
 
+    bitDepth = bitDepthForOneChannel * numOfChannels
     return bitDepth
 
 # Get index and value of image
@@ -111,4 +147,3 @@ def intensityLevelSlicing(mode="two"):
 
 def bitPlaneSlicing(k):
     pass
-
