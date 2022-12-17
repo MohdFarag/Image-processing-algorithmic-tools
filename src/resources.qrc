@@ -8,6 +8,8 @@
     <file alias="T">assets/icons/T.png</file>
     <file alias="triangle">assets/icons/triangle.png</file>
     <file alias="circle">assets/icons/circle.png</file>
+    <file alias="square">assets/icons/square.png</file>
+    <file alias="background">assets/icons/background.png</file>
 
     <file alias="addition">assets/icons/addition.png</file>
     <file alias="subtraction">assets/icons/subtraction.png</file>

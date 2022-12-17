@@ -1,3 +1,9 @@
+"""Image Processing Algorithmic tools
+
+Author: Mohamed Ahmed Abdullah
+Version: v1.2
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
  

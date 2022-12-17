@@ -11,7 +11,9 @@ class tabViewer(QWidget):
     histogramViewer: ImageViewer
     magnitudeViewer: ImageViewer
     phaseViewer: ImageViewer
-
+    sinogramViewer: ImageViewer
+    laminogramViewer: ImageViewer
+    
     def __init__(self, title:str="", color:str="red", type="normal"):
         super(tabViewer, self).__init__()
 
@@ -20,6 +22,8 @@ class tabViewer(QWidget):
         self.showHist = False
         self.showMag = False
         self.showPhase = False
+        self.showSinogram = False
+        self.showLaminogram = False
         
         # Initialize new layout
         self.tabLayout = QGridLayout()
@@ -35,6 +39,10 @@ class tabViewer(QWidget):
         self.magnitudeViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Magnitude of {self.title}")
         self.phaseViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Phase of {self.title}")
 
+        # Phantom components
+        self.sinogramViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Sinogram of {self.title}")
+        self.laminogramViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Laminogram of {self.title}")
+
         self.tabLayout.addWidget(self.primaryViewer,0,0)
         if type == "compare":
             self.tabLayout.addWidget(self.secondaryViewer,0,1)
@@ -47,6 +55,12 @@ class tabViewer(QWidget):
 
             self.tabLayout.addWidget(self.phaseViewer,1,1)
             self.phaseViewer.hide()
+
+            self.tabLayout.addWidget(self.sinogramViewer,2,0)
+            self.sinogramViewer.hide()
+
+            self.tabLayout.addWidget(self.laminogramViewer,2,1)
+            self.laminogramViewer.hide()
 
         # Set layout to new tab
         self.setLayout(self.tabLayout)
@@ -78,6 +92,26 @@ class tabViewer(QWidget):
     def showHideFourier(self):
         self.showHideMagnitude()
         self.showHidePhase()
+
+    def showHideSinogram(self):
+        if not self.showSinogram:
+            self.showSinogram = True
+            self.sinogramViewer.show()
+        else:
+            self.showSinogram = False
+            self.sinogramViewer.hide()
+    
+    def showHideLaminogram(self):
+        if not self.showLaminogram:
+            self.showLaminogram = True
+            self.laminogramViewer.show()
+        else:
+            self.showLaminogram = False
+            self.laminogramViewer.hide()
+    
+    def showHidePhantom(self):
+        self.showHideSinogram()
+        self.showHideLaminogram()
 
     def equalize(self):
         self.primaryViewer.normalizeHistogram()

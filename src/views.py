@@ -10,6 +10,7 @@ import sys
 from .tabViewer import tabViewer
 from .popup import popWindow
 from .utilities import *
+from .style import *
 
 # Importing Qt widgets
 from PyQt5.QtWidgets import *
@@ -52,6 +53,7 @@ class Window(QMainWindow):
         
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon"))
+        self.setMinimumSize(1000,600)
 
         ### Setting title
         self.setWindowTitle("Image Processing Algorithms")
@@ -62,7 +64,6 @@ class Window(QMainWindow):
         self._createToolBar("main")
         self._createToolBar("transformations")
         self._createToolBar("shapes")
-        self._createToolBar("filters")
         self._createToolBar("operation")
         self._createToolBar("inputs")
         self._createStatusBar()
@@ -272,6 +273,18 @@ class Window(QMainWindow):
         self.constructCircleBoxAction = QAction(QIcon(":circle"), "&Circle", self)
         self.constructCircleBoxAction.setStatusTip('Construct an Circle in gray box')
     
+        # Construct square image Action
+        self.constructSquareBoxAction = QAction(QIcon(":square"), "&Square", self)
+        self.constructSquareBoxAction.setStatusTip('Construct an square')
+
+        # Construct background image Action
+        self.constructBackgroundAction = QAction(QIcon(":background"), "&Background", self)
+        self.constructBackgroundAction.setStatusTip('Construct an background with one color')
+            
+        # Construct Schepp-Logan phantom Action
+        self.constructPhantomAction = QAction(QIcon(":phantom"), "&Schepp-Logan phantom", self)
+        self.constructPhantomAction.setStatusTip('Construct an Schepp-Logan phantom')
+    
     # Noises Actions
     def noisesActions(self):
         # Add gaussian noise action
@@ -315,6 +328,14 @@ class Window(QMainWindow):
         # Show histogram of the image
         self.showFourierAction = QAction(QIcon(":showFourier"), "&Fourier", self)
         self.showFourierAction.setStatusTip('Show the magnitude and phase')
+
+        # Show sinogram of the image
+        self.showSinogramAction = QAction(QIcon(":showSinogram"), "&Sinogram", self)
+        self.showSinogramAction.setStatusTip('Show the sinogram')
+
+        # Show histogram of the image
+        self.showLaminogramAction = QAction(QIcon(":showLaminogram"), "&Laminogram", self)
+        self.showLaminogramAction.setStatusTip('Show the laminogram')
 
     # Help Actions
     def helpActions(self):
@@ -442,6 +463,8 @@ class Window(QMainWindow):
         viewMenu = QMenu("&View", self)
         viewMenu.addAction(self.showHistogramAction)
         viewMenu.addAction(self.showFourierAction)
+        viewMenu.addAction(self.showSinogramAction)
+        viewMenu.addAction(self.showLaminogramAction)
         
         """Transformation"""
         transformationMenu = QMenu("&Transformation", self)
@@ -488,6 +511,9 @@ class Window(QMainWindow):
         shapeMenu.addAction(self.constructTAction)
         shapeMenu.addAction(self.constructTriangleAction)
         shapeMenu.addAction(self.constructCircleBoxAction)
+        shapeMenu.addAction(self.constructSquareBoxAction)
+        shapeMenu.addAction(self.constructPhantomAction)
+        shapeMenu.addAction(self.constructBackgroundAction)
 
         """Noise"""
         noiseMenu = QMenu("&Noise", self)
@@ -532,7 +558,10 @@ class Window(QMainWindow):
             
             self.toolBar.addAction(self.showHistogramAction)
             self.toolBar.addAction(self.showFourierAction)
-            self.toolBar.addAction(self.logMagnitudeAction)
+            
+            self.toolBar.addAction(self.showSinogramAction)
+            self.toolBar.addAction(self.showLaminogramAction)
+
             self.toolBar.addAction(self.addToCompareListAction)
             self.toolBar.addAction(self.clearAction)       
 
@@ -551,42 +580,21 @@ class Window(QMainWindow):
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             
             self.toolBar.addAction(self.constructTAction)
-            self.toolBar.addAction(self.constructTriangleAction)
             self.toolBar.addAction(self.constructCircleBoxAction)
+            self.toolBar.addAction(self.constructSquareBoxAction)
 
         elif type == "operation":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
             
             self.toolBar.addAction(self.additionAction)
             self.toolBar.addAction(self.subtractionAction)
-            self.toolBar.addAction(self.multiplicationAction)
-            self.toolBar.addAction(self.divisionAction)
 
             # self.toolBar.addAction(self.unionAction)
             # self.toolBar.addAction(self.intersectAction)
-            # self.toolBar.addAction(self.complementAction)
 
             # self.toolBar.addAction(self.andAction)
-            # self.toolBar.addAction(self.nandAction)
             # self.toolBar.addAction(self.orAction)
-            # self.toolBar.addAction(self.norAction)
             # self.toolBar.addAction(self.xorAction)
-            # self.toolBar.addAction(self.xnorAction)
-            
-        elif type == "filters":
-            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
-            self.toolBar.addAction(self.boxFilteringAction)
-            self.toolBar.addAction(self.boxFilteringByFourierAction)
-            self.toolBar.addAction(self.unsharpMaskAction)
-            self.toolBar.addAction(self.medianFilterAction)
-            
-        elif type == "inputs":
-            self.addToolBar(Qt.BottomToolBarArea, self.toolBar)  # type: ignore
-            
-            self.sizeInput = self.addInput("Filter Size")
-            self.factorInput = self.addInput("Factor or Highboost")
-            self.toolBar.addWidget(self.sizeInput)
-            self.toolBar.addWidget(self.factorInput)
     
     # Context Menu Event
     def contextMenuEvent(self, event):
@@ -724,8 +732,8 @@ class Window(QMainWindow):
     # Connect
     def _connectActions(self):
         " File "
-        self.addTabAction.triggered.connect(self.addNewTab)
-        self.openAction.triggered.connect(self.browseImage) 
+        self.addTabAction.triggered.connect(lambda: self.addNewTab("Blank"))
+        self.openAction.triggered.connect(lambda: self.baseBehavior(self.browseImage)) 
         self.clearAction.triggered.connect(lambda: self.baseBehavior(self.clearImage)) 
         self.saveAction.triggered.connect(self.saveImage)
         self.exitAction.triggered.connect(self.exit)
@@ -760,6 +768,12 @@ class Window(QMainWindow):
         self.constructTriangleAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"triangle"))
         # Construct circle
         self.constructCircleBoxAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"circle"))
+        # Construct square
+        self.constructSquareBoxAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"square"))
+        # Construct background
+        self.constructBackgroundAction.triggered.connect(lambda: self.baseBehavior(self.drawShape))
+        # Construct phantom
+        self.constructPhantomAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"phantom"))
         
         " Filters "
         self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
@@ -802,6 +816,8 @@ class Window(QMainWindow):
         " View "
         self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
         self.showFourierAction.triggered.connect(lambda: self.currentTab.showHideFourier())
+        self.showSinogramAction.triggered.connect(lambda: self.currentTab.showHideSinogram())
+        self.showLaminogramAction.triggered.connect(lambda: self.currentTab.showHideLaminogram())
 
     def _connect(self):
         self._connectActions()
@@ -960,11 +976,17 @@ class Window(QMainWindow):
     
     # Apply box filter
     def applyBoxFilter(self, mode="spatial"):
-        try:
-            filterSize = int(self.sizeInput.text())
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
+        requirements = {
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        if output != None:
+            filterSize = output[0]
+        else:
             return
 
         if filterSize > 0:
@@ -978,12 +1000,19 @@ class Window(QMainWindow):
                 
     # Apply median masking
     def applyMedian(self): 
-        try:
-            filterSize = int(self.sizeInput.text())
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid size or factor" , "Please enter valid size or factor.")
+        requirements = {
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        if output != None:
+            filterSize = output[0]
+        else:
             return
+
 
         if filterSize > 0:
             if filterSize % 2 == 0:
@@ -993,24 +1022,31 @@ class Window(QMainWindow):
             
     # Apply un-sharp masking
     def applyUnsharp(self):
-        try:
-            filterSize = int(self.sizeInput.text())
-            factorSize = int(self.factorInput.text())
 
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid size or factor" , "Please Enter valid size or factor.")
+        requirements = {
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            },
+            "HighBoost Factor":{
+                "type": FLOAT,
+                "range": (0, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        if output != None:
+            filterSize = output[0]
+            factorSize = output[1]
+        else:
             return
 
-        if filterSize > 0:
-            if filterSize % 2 == 0:
-                filterSize += 1
+        if filterSize % 2 == 0:
+            filterSize += 1
 
-            self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
-                 
-            # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-        else:
-            QMessageBox.critical(self , "Invalid size" , "Please enter valid size.")
+        self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
+                
+        # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
     
     # Apply notch reject filter
     def notchRejectFilter(self):
@@ -1056,50 +1092,61 @@ class Window(QMainWindow):
 
     # Shear Image
     def shearImage(self, mode="horizontal"):
-        try:
-            shearFactor = float(self.factorInput.text())
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid shearing factor" , "Please enter valid factor.")
-            return
-        
-        if -90 < shearFactor < 90:
-            self.currentTab.primaryViewer.shearImage(shearFactor, mode)
-        else:
-            QMessageBox.critical(self , "Invalid shearing factor" , "Shear angle should be between -90° and 90°.")
+        requirements = {
+            "Shear Factor":{
+                "type": FLOAT,
+                "range": (-90, 90)
+            }
+        }
 
+        output = self.getInputsFromUser(requirements, "Shear Image")
+        if output != None:
+            shearFactor = output[0]
+        else:
+            return
+
+        self.currentTab.primaryViewer.shearImage(shearFactor, mode)
+    
     # Zoom Image
     def zoomImage(self, mode="linear"):
-        try:
-            zoomingFactor = float(self.factorInput.text())
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
+        requirements = {
+            "Zooming Factor":{
+                "type": FLOAT,
+                "range": (0.1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Notch Reject Filter")
+        if output != None:
+            zoomingFactor = output[0]
+        else:
             return
         
-        if zoomingFactor > 0:
-            self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
-                                
-            if mode == "nearest":
-                self.interpolationMode = "Zoom Nearest Neighbor"
-            elif mode == "linear":
-                self.interpolationMode = "Zoom Bilinear"
+        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
+                            
+        if mode == "nearest":
+            self.interpolationMode = "Zoom Nearest Neighbor"
+        elif mode == "linear":
+            self.interpolationMode = "Zoom Bilinear"
 
-            self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-        else:
-            QMessageBox.critical(self , "Invalid zooming factor" , "Please enter valid factor.")
+        self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
 
     # Rotate Image
     def rotateImage(self, mode="linear"):
-        try:
-            rotationAngle = float(self.factorInput.text())
-        except Exception as e:
-            print(e)
-            QMessageBox.critical(self , "Invalid Zooming Factor" , "Please Enter Valid Factor.")
-            return
+        requirements = {
+            "Rotation Angle":{
+                "type": FLOAT,
+                "range": (-inf, inf)
+            }
+        }
 
-        
-        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.rotateImage(rotationAngle, mode)
+        output = self.getInputsFromUser(requirements, "Rotation Image")
+        if output != None:
+            rotationAngle = output[0]
+        else:
+            return
+        image = self.currentTab.primaryViewer.getGrayImage()
+        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.rotateImage(image,rotationAngle, mode)
 
         direction = "Clockwise"
         if rotationAngle >= 0:
@@ -1129,14 +1176,14 @@ class Window(QMainWindow):
     def operationTwoImage(self, operation, images):
         if len(images) == 2:
             titleOfNewWindow = f"{operation}ing of images"
-            # if operation == "subtract":
-            #     newTab = self.addNewTab(titleOfNewWindow, type="compare")
-            # else:            
-            newTab = self.addNewTab(titleOfNewWindow)
+            if operation == "subtract":
+                newTab = self.addNewTab(titleOfNewWindow, type="compare")
+            else:            
+                newTab = self.addNewTab(titleOfNewWindow)
             
             newTab.primaryViewer.operationTwoImages(operation, images[0], images[1])
-            # if operation == "subtract":
-            #     newTab.secondaryViewer.operationTwoImages(operation, images[1], images[0])
+            if operation == "subtract":
+                newTab.secondaryViewer.operationTwoImages(operation, images[1], images[0])
 
     # get result of operation on one image
     def operationOneImage(self, operation):
@@ -1146,14 +1193,20 @@ class Window(QMainWindow):
     #    """Construct Shapes Functions"""    #
     ##########################################
 
-    # Draw circle, T, triangle
-    def drawShape(self, shape):
+    # Draw Shapes
+    def drawShape(self, shape="background"):
         if shape=="T":
-            self.currentTab.primaryViewer.constructT("white")
+            self.currentTab.primaryViewer.constructT()
         elif shape == "triangle":  
-            self.currentTab.primaryViewer.constructTriangle("white")    
+            self.currentTab.primaryViewer.constructTriangle()    
         elif shape == "circle":  
-            self.currentTab.primaryViewer.constructCircle()     
+            self.currentTab.primaryViewer.constructCircle() 
+        elif shape == "square":
+            self.currentTab.primaryViewer.constructSquare()
+        elif shape == "phantom":
+            self.currentTab.primaryViewer.constructPhantom()
+        else:
+            self.currentTab.primaryViewer.constructBackground()
 
     ##########################################
     #         """Noise Functions"""          #
@@ -1204,6 +1257,8 @@ class Window(QMainWindow):
             self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
 
         self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
+        self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
+        self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.primaryViewer.grayImage)
         
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
@@ -1231,13 +1286,19 @@ class Window(QMainWindow):
     def addNewTab(self, title:str="Blank", color:str="black", type="normal"):
         # Initialize new tab
         newTab = tabViewer(title, color, type)
+        
         # Add tab to list of tabs
         self.tabs.addTab(newTab, title)
+        
         # Return new tab
         return newTab
 
+    # Get inputs from user by give dictionary
     def getInputsFromUser(self, requirements, title="Blank"):
         inputWindow = popWindow(title, requirements)
+    
+        # setup stylesheet
+        inputWindow.setStyleSheet(qdarkgraystyle.load_stylesheet_pyqt5())
         inputWindow.exec_()
         
         result = list()
@@ -1245,7 +1306,7 @@ class Window(QMainWindow):
         loaded = inputWindow.checkLoaded()
 
         if loaded != False and output != None:
-            for _, value in self.output.items():
+            for _, value in output.items():
                 result.append(value)
 
             return tuple(result)

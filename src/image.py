@@ -10,6 +10,12 @@ import matplotlib.image as mpimg
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+# Phantom
+from phantominator import shepp_logan
+from skimage.transform import rotate ## Image rotation routine
+from skimage.data import shepp_logan_phantom
+from skimage.transform import radon, rescale
+
 from PIL import Image
 from .utilities import *
 
@@ -273,43 +279,49 @@ class ImageViewer(FigureCanvasQTAgg):
         return resizedImage.shape[0], resizedImage.shape[1]
 
     # Rotate image
-    def rotateImage(self, angle, mode):
-        if self.loaded:
+    def rotateImage(self, image, angle, mode, output="size"):
+        if len(image) != 0:
             # Converting degrees to radians
+            angle = -angle
             angle = math.radians(angle)
 
+            # Cosine & Sine
             cosine = math.cos(angle)
             sine = math.sin(angle)
 
             # Define the height of the image
-            oldWidth = self.grayImage.shape[0]
+            oldWidth = image.shape[0]
             # Define the width of the image
-            oldHeight = self.grayImage.shape[1]
+            oldHeight = image.shape[1]
 
-            sizeImage = min(oldWidth,oldHeight)
-          
+            # Define the width and height of the new image that is to be formed
+            newWidth = round(abs(image.shape[0]*cosine)+abs(image.shape[1]*sine))+1
+            newHeight = round(abs(image.shape[1]*cosine)+abs(image.shape[0]*sine))+1
+         
             # Initialize rotated image 
-            rotatedImage = np.zeros((sizeImage,sizeImage)) 
+            # rotatedImage = np.zeros((oldWidth,oldHeight)) 
+            rotatedImage = np.zeros((newWidth,newHeight)) 
 
             # Find the center of the rotated image
             (centerWidth, centerHeight), _= getCenter(rotatedImage)
 
-            for i in range(sizeImage):
-                for j in range(sizeImage):
-                    x = -(j-centerWidth)*sine + (i-centerHeight)*cosine
-                    y = (j-centerWidth)*cosine + (i-centerHeight)*sine
-                    
+            for i in range(newWidth):
+                for j in range(newHeight):
+                    x = -(j-centerHeight)*sine + (i-centerWidth)*cosine
+                    y = (j-centerHeight)*cosine + (i-centerWidth)*sine
+
                     # Add offset
-                    x += centerHeight
-                    y += centerWidth
+                    x += centerWidth
+                    y += centerHeight
                     
                     if mode == "nearest":
                         # Get nearest index
                         x = round(x)
                         y = round(y)
-                        #  check if x/y corresponds to a valid pixel in input image
-                        if (x >= 0 and y >= 0 and x < sizeImage and y < sizeImage):
-                            rotatedImage[j][i] = self.grayImage[y][x]
+                        
+                        # Check if x/y corresponds to a valid pixel in input image
+                        if (0 <= x < oldWidth and  0 <= y < oldHeight):
+                            rotatedImage[i][j] = image[x][y]
         
                     elif mode == "linear":    
                         # Calculate the coordinate values for 4 surrounding pixels.
@@ -318,33 +330,37 @@ class ImageViewer(FigureCanvasQTAgg):
                         y_floor = math.floor(y)
                         y_ceil = min(oldHeight - 1, math.ceil(y))
                         
-                        if (x >= 0 and y >= 0 and x < sizeImage and y < sizeImage):
+                        if (0 <= x < oldWidth and  0 <= y < oldHeight):
                             if (x_ceil == x_floor) and (y_ceil == y_floor):
-                                q = self.grayImage[int(y), int(x)]
+                                q = image[int(x), int(y)]
                             elif (y_ceil == y_floor):
-                                q1 = self.grayImage[int(y), int(x_floor)]
-                                q2 = self.grayImage[int(y), int(x_ceil)]
+                                q1 = image[x_floor, int(y)]
+                                q2 = image[x_ceil, int(y)]
                                 q = q1 * (x_ceil - x) + q2 * (x - x_floor)
                             elif (x_ceil == x_floor):
-                                q1 = self.grayImage[int(y_floor), int(x)]
-                                q2 = self.grayImage[int(y_ceil), int(x)]
+                                q1 = image[int(x), y_floor]
+                                q2 = image[int(x), y_ceil]
                                 q = (q1 * (y_ceil - y)) + (q2 * (y - y_floor))
                             else:
-                                p1 = self.grayImage[y_floor, x_floor]
-                                p2 = self.grayImage[y_ceil, x_floor]
-                                p3 = self.grayImage[y_floor, x_ceil]
-                                p4 = self.grayImage[y_ceil, x_ceil]
+                                p1 = image[x_floor, y_floor]
+                                p2 = image[x_floor, y_ceil]
+                                p3 = image[x_ceil, y_floor]
+                                p4 = image[x_ceil, y_ceil]
 
                                 q1 = p1 * (y_ceil - y) + p2 * (y - y_floor)
                                 q2 = p3 * (y_ceil - y) + p4 * (y - y_floor)
                                 q = q1 * (x_ceil - x) + q2 * (x - x_floor)
 
-                            rotatedImage[j][i] = q
-            
-            self.grayImage = self.scaleImage(rotatedImage)
-            self.drawImage(self.grayImage)
+                            rotatedImage[i][j] = q
 
-            return rotatedImage.shape[0],rotatedImage.shape[1]
+            if output == "size":
+                self.grayImage = self.scaleImage(rotatedImage)
+                self.drawImage(self.grayImage)
+
+                return rotatedImage.shape[0],rotatedImage.shape[1]
+            
+            elif output == "image":
+                return self.grayImage
         else:
             return "N/A","N/A"
 
@@ -375,12 +391,9 @@ class ImageViewer(FigureCanvasQTAgg):
                     if mode == "horizontal":
                         new_x = round(x-y*tangent)
                         new_y = y
-                    elif mode == "vertical":
-                        new_x = x
-                        new_y = round(x-y*tangent)
                     else:
                         new_x = x
-                        new_y = round(x-y*tangent)
+                        new_y = round(y-x*tangent)
 
                     # Add offset
                     new_x += centerHeight
@@ -397,12 +410,9 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
 
     # Construct T shape
-    def constructT(self, background="white"):
+    def constructT(self):
         self.grayImage = np.zeros((128,128), dtype=np.int64)
         
-        if background == "black":
-            self.grayImage.fill(255)
-
         for i in range(29,50):
             for j in range(29,100):
                 self.grayImage[i,j] = 255
@@ -418,9 +428,6 @@ class ImageViewer(FigureCanvasQTAgg):
     def constructTriangle(self, background="white"):
         self.grayImage = np.zeros((128,128), dtype=np.int64)
         
-        if background == "black":
-            self.grayImage.fill(255)
-
         k = 100 - 29
         for i in range(29,100):
             for j in range(k,127-k):
@@ -452,14 +459,84 @@ class ImageViewer(FigureCanvasQTAgg):
         self.loaded = True
         self.drawImage(self.grayImage)
 
-    # Construct Triangle shape
-    def constructSquare(self, background=0):
+    # Construct Square shape
+    def constructSquare(self, background=255):
+        # Parameters
+        n,m = 128,128
+        length = 64
+
+        self.grayImage = np.zeros((n,m), dtype=np.int64)
+        differenceSize = (n - length) // 2
+
+        for i in range(n):
+            for j in range(m):
+                if (differenceSize <= i <= n-differenceSize) and (differenceSize <= j <= m-differenceSize):
+                    self.grayImage[i,j] = background
+                else:
+                    self.grayImage[i,j] = 0
+
+        self.loaded = True
+        self.drawImage(self.grayImage)
+
+    # Construct Background shape
+    def constructBackground(self, background=0):
         self.grayImage = np.zeros((128,128), dtype=np.int64)
         
         self.grayImage.fill(background)
 
         self.loaded = True
         self.drawImage(self.grayImage)
+
+    ################
+    """Phantom"""
+    ################
+
+    # Construct phantom
+    def constructPhantom(self):
+        phantom=np.zeros((256,256))
+        for i in range(118,138):
+            for j in range(118,138):
+                phantom[i][j] =255 
+
+        # phantom = shepp_logan(256)
+        # phantom = np.flip(phantom)
+                
+        self.grayImage = self.scaleImage(phantom)
+        
+        self.loaded = True
+        self.drawImage(self.grayImage)
+
+    # Build the Radon Transform using 'steps' projections of 'image'. 
+    def radon(self, image, steps):                
+        ## Accumulate projections in a list.
+        projections = []
+        # Angle increment for rotations.
+        dTheta = -180.0 / steps
+
+        for i in range(steps):
+            projections.append(rotate(image, i*dTheta).sum(axis=0))
+        
+        return np.vstack(projections) # Return the projections as a sinogram
+        
+    # Display a Sinogram of this phantom
+    def drawSinogram(self, image):
+        sinogram = radon(image)
+        # sinogram = self.radon(image, 180)
+        self.drawImage(sinogram, "Sinogram")
+
+    # Display a Laminogram of this phantom
+    def drawLaminogram(self, image):
+        laminogram = np.zeros((image.shape[1], image.shape[1]))
+        dTheta = 180.0 / image.shape[0]
+
+        # thetaGroup = range(image.shape[0])
+        thetaGroup = [0, 20, 40, 60]
+        for i in thetaGroup:
+            temp = np.tile(image[i],(image.shape[1],1))
+            temp = rotate(temp, i)
+            laminogram += temp
+
+        self.drawImage(laminogram, "Laminogram")
 
     ###############################################
     """Histogram Functions"""
@@ -490,6 +567,9 @@ class ImageViewer(FigureCanvasQTAgg):
             # Get histogram of image
             histogram = np.bincount(image.flatten(), minlength=L)
 
+            # Calculate statistics of histogram
+            mean, variance, std = self.getStatOfHist(histogram, L)
+            
             # Normalize
             sumPixels = np.sum(histogram)
             normalizedHistogram = histogram/sumPixels
@@ -499,9 +579,10 @@ class ImageViewer(FigureCanvasQTAgg):
 
             self.axes.bar(range(len(normalizedHistogram)), normalizedHistogram, color='red')
             self.axes.plot(cdf_normalized, color = 'black')
-            
-            self.axes.legend(('cumulative histogram','histogram'), loc = 'upper left')
+            self.axes.axvline(mean, color='g', linestyle='dashed', linewidth=1)
+            self.axes.legend(('cumulative histogram','mean','histogram'), loc = 'upper left')
 
+            self.axes.set_title(f'\u03BC = {mean:.4}    \u03C3 = {std:.4}')
             self.draw()
         else:
             return
@@ -541,12 +622,6 @@ class ImageViewer(FigureCanvasQTAgg):
             self.drawImage(self.grayImage)
         else:
             return
-
-    def getVarOfHistogram(self, histogram:np.ndarray, L):
-        var = 0
-        for i in range(len(histogram)):
-            mean += i*histogram[i]
-        return mean
 
     def getStatOfHist(self, histogram:np.ndarray, L):
         # Normalize
@@ -618,25 +693,15 @@ class ImageViewer(FigureCanvasQTAgg):
         return convolvedImage
 
     # Box Kernel
-    def boxKernel(self, size:int, shape=None, mode="fill"):
+    def boxKernel(self, size:int, shape=None):
         if shape == None:
             shape = (size, size)
             
         value = 1/(size*size)
 
-        if mode == "fill":
-            filter = np.ones(shape)
-            filter.fill(value)
-            
-        elif mode == "padding":
-            startX=((shape[0]-size)//2)
-            startY=((shape[1]-size)//2)
-
-            filter = np.zeros(shape)
-            for i in range(startX, startX + size):
-                for j in range(startY, startY + size):
-                    filter[i][j] = value
-
+        filter = np.ones(shape)
+        filter.fill(value)
+        
         return filter
     
     # Subtract blurred image from original
@@ -697,23 +762,31 @@ class ImageViewer(FigureCanvasQTAgg):
             cols = self.grayImage.shape[1] + kernel.shape[1] - 1
             size = (rows,cols)
 
-            xPadding = kernel.shape[0] // 2
-            yPadding = kernel.shape[1] // 2
+            xImagePadding = kernel.shape[0] // 2
+            yImagePadding = kernel.shape[1] // 2
+            xPaddingFilterSize = self.grayImage.shape[0] // 2
+            yPaddingFilterSize = self.grayImage.shape[1] // 2
 
             blurredImage = np.array([])
             if domain == "spatial":
                 blurredImage = self.convolution(kernel)
             
-            elif domain == "frequency":                
-                boxFilterInFreqDomain = self.fourierTransform(kernel, draw=False, s=size)
+            elif domain == "frequency": 
+                # Image fourier
+                image = self.addPadding(image, (xImagePadding,yImagePadding))               
                 grayImageInFreqDomain = self.fourierTransform(image, draw=False, s=size)
+                
+                # Kernel fourier
+                kernel = self.addPadding(kernel, (xPaddingFilterSize,yPaddingFilterSize))
+                boxFilterInFreqDomain = self.fourierTransform(kernel, draw=False,s=size)
 
                 filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
 
                 blurredImage = self.inverseFourierTransform(filteredImageInFreqDomain)
+                blurredImage = np.fft.fftshift(blurredImage)
 
                 blurredImage = np.abs(blurredImage)
-                blurredImage = blurredImage[xPadding:rows-xPadding,yPadding:cols-yPadding]
+                blurredImage = blurredImage[xImagePadding:rows-xImagePadding,yImagePadding:cols-yImagePadding]
                 
             blurredImage = self.scaleImage(blurredImage)
 
@@ -734,6 +807,7 @@ class ImageViewer(FigureCanvasQTAgg):
         if len(self.grayImage) != 0:
             self.clearImage()
             boxFilter = self.boxKernel(filterSize)
+
             self.grayImage = self.applySpatialFilter(self.grayImage, boxFilter, domain="frequency")
             
             # Draw image
@@ -946,7 +1020,7 @@ class ImageViewer(FigureCanvasQTAgg):
             elif mode == "phase":
                 spectrum  = np.angle(fshift)
             else:
-                spectrum = fshift
+                spectrum = f
 
             if draw:
                 scaledSpectrum = self.scaleImage(spectrum)
@@ -959,6 +1033,6 @@ class ImageViewer(FigureCanvasQTAgg):
         if mode=="separate":
             combinedImage = np.multiply(combinedImage[0], np.exp(1j * combinedImage[1]))
 
-        resultImage = np.fft.ifftshift(combinedImage)
+        # shiftedImage = np.fft.ifftshift(combinedImage)
         resultImage = np.fft.ifft2(combinedImage)
         return resultImage
