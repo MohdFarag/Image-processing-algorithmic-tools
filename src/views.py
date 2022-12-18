@@ -330,11 +330,11 @@ class Window(QMainWindow):
         self.showFourierAction.setStatusTip('Show the magnitude and phase')
 
         # Show sinogram of the image
-        self.showSinogramAction = QAction(QIcon(":showSinogram"), "&Sinogram", self)
+        self.showSinogramAction = QAction(QIcon(":sinogram"), "&Sinogram", self)
         self.showSinogramAction.setStatusTip('Show the sinogram')
 
         # Show histogram of the image
-        self.showLaminogramAction = QAction(QIcon(":showLaminogram"), "&Laminogram", self)
+        self.showLaminogramAction = QAction(QIcon(":laminogram"), "&Laminogram", self)
         self.showLaminogramAction.setStatusTip('Show the laminogram')
 
     # Help Actions
@@ -582,6 +582,7 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.constructTAction)
             self.toolBar.addAction(self.constructCircleBoxAction)
             self.toolBar.addAction(self.constructSquareBoxAction)
+            self.toolBar.addAction(self.constructPhantomAction)
 
         elif type == "operation":
             self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
@@ -742,12 +743,12 @@ class Window(QMainWindow):
         self.logMagnitudeAction.triggered.connect(lambda: self.updateImage(True))
 
         "Image"
-        self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.equalizeImage))
-        self.binaryAction.triggered.connect(self.equalizeImage)
-        self.negativeAction.triggered.connect(self.equalizeImage)
-        self.logImageAction.triggered.connect(self.equalizeImage)
-        self.negativeAction.triggered.connect(self.equalizeImage)
-        self.gammaAction.triggered.connect(self.equalizeImage)
+        self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.currentTab.equalize))
+        self.binaryAction.triggered.connect(lambda: self.baseBehavior(self.binaryImage))
+        self.negativeAction.triggered.connect(lambda: self.baseBehavior(self.negativeImage))
+        self.logImageAction.triggered.connect(lambda: self.baseBehavior(self.logImage))
+        self.gammaAction.triggered.connect(lambda: self.baseBehavior(self.gammaActionImage))
+        
         self.setROIAction.triggered.connect(self.getROI)
 
         " Transformation image "
@@ -920,11 +921,36 @@ class Window(QMainWindow):
 
     ##########################################
     #         """Image Functions"""          #
-    ##########################################
+    ##########################################      
 
-    # Equalize
-    def equalizeImage(self):
-        self.currentTab.equalize()
+    # Transform to binary image
+    def binaryImage(self):
+        self.currentTab.primaryViewer.binaryImage()
+    
+    # Transform to negative image
+    def negativeImage(self):
+        self.currentTab.primaryViewer.negativeImage()
+
+    # Log the image
+    def logImage(self):
+        self.currentTab.primaryViewer.logImage()
+
+    # Log the image
+    def gammaActionImage(self):
+        requirements = {
+            "Y":{
+                "type": FLOAT,
+                "range": (0, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Gamma Correction")
+        if output != None:
+            Y = output[0]
+        else:
+            return
+
+        self.currentTab.primaryViewer.gammaCorrectionImage(Y)
 
     # Get ROI            
     def getROI(self):
@@ -936,14 +962,7 @@ class Window(QMainWindow):
             plt.suptitle("Click Enter if you finished")
             
             def line_select_callback(eclick, erelease):
-                """
-                Callback for line selection.
-                *eclick* and *erelease* are the press and release events.
-                """
-                x1, y1 = eclick.xdata, eclick.ydata
-                x2, y2 = erelease.xdata, erelease.ydata
-                # print(f"({x1:3.2f}, {y1:3.2f}) --> ({x2:3.2f}, {y2:3.2f})")
-                # print(f"The buttons you used were: {eclick.button} {erelease.button}")
+                pass
 
             def toggle_selector(event):
                 if event.key == 'enter':
@@ -964,9 +983,8 @@ class Window(QMainWindow):
             plt.connect('key_press_event', toggle_selector)
             plt.show()
 
-
     ##########################################
-    #         """Fourier Functions"""         #
+    #         """Fourier Functions"""        #
     ##########################################
 
 
@@ -1240,12 +1258,13 @@ class Window(QMainWindow):
 
     # Base function  
     def baseBehavior(self, func, *args, **kwargs):
-        try:
+        # try:
             func(*args, **kwargs)
             self.updateImage(True)
-        except Exception as e:
-            QMessageBox.critical(self,"Error",f"Sorry, Error occurred. {e}")
-            return  
+        # except Exception as e:
+        #     print(e)
+        #     QMessageBox.critical(self,"Error",f"Sorry, Error occurred. {e}")
+        #     return  
                 
     # Update magnitude and phase and histogram for the image after every update
     def updateImage(self, log=False):
@@ -1258,7 +1277,7 @@ class Window(QMainWindow):
 
         self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
         self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
-        self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.primaryViewer.grayImage)
+        self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage)
         
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):

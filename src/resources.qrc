@@ -11,6 +11,10 @@
     <file alias="square">assets/icons/square.png</file>
     <file alias="background">assets/icons/background.png</file>
 
+    <file alias="phantom">assets/icons/shepp-logan-phantom.png</file>
+    <file alias="sinogram">assets/icons/sinogram.png</file>
+    <file alias="laminogram">assets/icons/laminogram.png</file>
+
     <file alias="addition">assets/icons/addition.png</file>
     <file alias="subtraction">assets/icons/subtraction.png</file>
     <file alias="multiplication">assets/icons/multiplication.png</file>

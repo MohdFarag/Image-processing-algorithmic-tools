@@ -5,6 +5,7 @@ import random
 
 # Matplotlib
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import matplotlib.image as mpimg
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -12,9 +13,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Phantom
 from phantominator import shepp_logan
-from skimage.transform import rotate ## Image rotation routine
-from skimage.data import shepp_logan_phantom
-from skimage.transform import radon, rescale
+# from skimage.data import shepp_logan_phantom
+from skimage.transform import radon, rescale, rotate
 
 from PIL import Image
 from .utilities import *
@@ -119,7 +119,8 @@ class ImageViewer(FigureCanvasQTAgg):
         return self.originalImage
     
     # Draw image with matplotlib
-    def drawImage(self, image, title="Blank", cmap="gray"):
+    def drawImage(self, image, title="Blank", cmap="gray",x_axes=[], y_axes=[]):
+        
         self.axes.set_title(title, fontsize = 16)
         self.axes.imshow(image, cmap=cmap)
         self.draw()
@@ -187,19 +188,28 @@ class ImageViewer(FigureCanvasQTAgg):
     """Image Functions"""
     ###############################################
 
+    # Draw Binary image
+    def binaryImage(self):
+        self.grayImage = binaryImage(self.grayImage)
+        self.grayImage = self.scaleImage(self.grayImage)
+        self.drawImage(self.grayImage)
+
     # Draw logged image
     def logImage(self):
         self.grayImage = logTransformation(self.grayImage)
+        self.grayImage = self.scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     # Apply negative on image
     def negativeImage(self):
-        self.grayImage = negativeImage(self.grayImage, 256)
+        self.grayImage = negativeImage(self.grayImage)
+        self.grayImage = self.scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     # Apply gamma correction on image
     def gammaCorrectionImage(self, Y):
         self.grayImage = gammaCorrectionImage(self.grayImage, Y)
+        self.grayImage = self.scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     ###############################################
@@ -279,7 +289,7 @@ class ImageViewer(FigureCanvasQTAgg):
         return resizedImage.shape[0], resizedImage.shape[1]
 
     # Rotate image
-    def rotateImage(self, image, angle, mode, output="size"):
+    def rotateImage(self, image, angle, mode="nearest", output="size"):
         if len(image) != 0:
             # Converting degrees to radians
             angle = -angle
@@ -299,14 +309,14 @@ class ImageViewer(FigureCanvasQTAgg):
             newHeight = round(abs(image.shape[1]*cosine)+abs(image.shape[0]*sine))+1
          
             # Initialize rotated image 
-            # rotatedImage = np.zeros((oldWidth,oldHeight)) 
-            rotatedImage = np.zeros((newWidth,newHeight)) 
+            rotatedImage = np.zeros((oldWidth,oldHeight)) 
+            # rotatedImage = np.zeros((newWidth,newHeight)) 
 
             # Find the center of the rotated image
             (centerWidth, centerHeight), _= getCenter(rotatedImage)
 
-            for i in range(newWidth):
-                for j in range(newHeight):
+            for i in range(oldWidth):
+                for j in range(oldHeight):
                     x = -(j-centerHeight)*sine + (i-centerWidth)*cosine
                     y = (j-centerHeight)*cosine + (i-centerWidth)*sine
 
@@ -353,16 +363,18 @@ class ImageViewer(FigureCanvasQTAgg):
 
                             rotatedImage[i][j] = q
 
+            self.grayImage = self.scaleImage(rotatedImage)
             if output == "size":
-                self.grayImage = self.scaleImage(rotatedImage)
                 self.drawImage(self.grayImage)
-
-                return rotatedImage.shape[0],rotatedImage.shape[1]
-            
+                return rotatedImage.shape[0], rotatedImage.shape[1]            
             elif output == "image":
                 return self.grayImage
+
         else:
-            return "N/A","N/A"
+            if output == "size":
+                return "N/A","N/A"
+            elif output == "image":
+                return np.array([])
 
     # Shear image
     def shearImage(self, angle, mode="horizontal"):
@@ -487,56 +499,73 @@ class ImageViewer(FigureCanvasQTAgg):
         self.loaded = True
         self.drawImage(self.grayImage)
 
-    ################
+    ###############################################
     """Phantom"""
-    ################
+    ###############################################
 
     # Construct phantom
-    def constructPhantom(self):
-        phantom=np.zeros((256,256))
-        for i in range(118,138):
-            for j in range(118,138):
-                phantom[i][j] =255 
-
-        # phantom = shepp_logan(256)
-        # phantom = np.flip(phantom)
+    def constructPhantom(self, size=256):
+        phantom = shepp_logan(size)
+        phantom = np.flip(phantom)              
                 
         self.grayImage = self.scaleImage(phantom)
-        
         self.loaded = True
         self.drawImage(self.grayImage)
 
     # Build the Radon Transform using 'steps' projections of 'image'. 
-    def radon(self, image, steps):                
+    def radon(self, image, mode, angles):
         ## Accumulate projections in a list.
         projections = []
-        # Angle increment for rotations.
-        dTheta = -180.0 / steps
 
-        for i in range(steps):
-            projections.append(rotate(image, i*dTheta).sum(axis=0))
+        if mode == "steps":
+            # Angle increment for rotations.
+            dTheta = -180.0 / angles
+            for i in range(angles):
+                rotatedImage = self.rotateImage(image, i*dTheta, output="image")
+                projections.append(rotatedImage.sum(axis=0))
+        else:
+            for angle in angles:
+                rotatedImage = self.rotateImage(image, -angle, output="image")
+                projections.append(rotatedImage.sum(axis=0))
         
         return np.vstack(projections) # Return the projections as a sinogram
         
     # Display a Sinogram of this phantom
     def drawSinogram(self, image):
-        sinogram = radon(image)
-        # sinogram = self.radon(image, 180)
-        self.drawImage(sinogram, "Sinogram")
+        if len(image) != 0:
+            # Get sinogram 
+            angles = np.arange(180)
+            self.grayImage = self.radon(image, "list", angles)
+        
+            self.drawImage(self.grayImage, "Sinogram")
+
+    def drawLaminogramFromImage(self, image, thetas=range(180)):
+        if len(image) != 0:
+            laminogram = np.zeros(image.shape)
+            # Get sinogram
+            for angle in thetas:
+                strip = self.radon(image, "list", [angle])
+                strip = np.tile(strip, (image.shape[0], 1))
+                strip = self.rotateImage(strip, angle, output="image")
+    
+                laminogram += strip
+        
+            self.drawImage(laminogram, "Laminogram")
 
     # Display a Laminogram of this phantom
-    def drawLaminogram(self, image):
-        laminogram = np.zeros((image.shape[1], image.shape[1]))
-        dTheta = 180.0 / image.shape[0]
+    def drawLaminogram(self, sinogram, thetas=range(180)):
+        if len(sinogram) != 0:
+            laminogram = np.zeros(sinogram.shape)
 
-        # thetaGroup = range(image.shape[0])
-        thetaGroup = [0, 20, 40, 60]
-        for i in thetaGroup:
-            temp = np.tile(image[i],(image.shape[1],1))
-            temp = rotate(temp, i)
-            laminogram += temp
+            for j in range(sinogram.shape[0]):
+                strip = sinogram[j]
+                strip = np.tile(strip, (sinogram.shape[0], 1))
+                strip = self.rotateImage(strip, thetas[j], output="image")
+    
+                laminogram += strip
+        
+            self.drawImage(laminogram, "Laminogram")
 
-        self.drawImage(laminogram, "Laminogram")
 
     ###############################################
     """Histogram Functions"""

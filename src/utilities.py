@@ -64,6 +64,10 @@ def getMedian(image):
 def getVariance(image):
     return np.var(image)
 
+def binaryImage(r:np.ndarray, L=256):
+    r = np.round(r / r.max()) * (L-1)
+    return r
+
 # Log transformation
 def logTransformation(r:np.ndarray):
     maxPixelValue = np.max(r)
@@ -73,7 +77,7 @@ def logTransformation(r:np.ndarray):
     return result
 
 # Apply negative on image
-def negativeImage(r, L):
+def negativeImage(r, L=256):
     s = L - 1 - r
     return s
 
@@ -85,7 +89,7 @@ def gammaCorrectionImage(r, Y):
     return s
 
 # Function to extract ‘k’ bits from a given position in a number
-def extractKBits(num,k,p):
+def extractKBits(num, k, p):
      # Convert number into binary first
      binary = bin(num)
  
