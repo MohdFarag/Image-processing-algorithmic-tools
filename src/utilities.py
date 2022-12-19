@@ -1,109 +1,34 @@
 import numpy as np
 from math import *
 
+# Constants (Random values) -> to identify the type of popup
+INT = 127
+FLOAT = 310.47
+STR = "STRING"
+RADIO = "RADIO"
 
-def get_padding_width_per_side(kernel_size: int) -> int:
-    # Simple integer division
-    return kernel_size // 2
+# Scale function
+def scaleImage(image:np.ndarray, mode="scale", a_min=0, a_max=255):
+    resultImage = np.zeros(image.shape)        
     
-def add_padding_to_image(img: np.array, padding_width: int) -> np.array:
-    # Array of zeros of shape (img + padding_width)
-    img_with_padding = np.zeros(shape=(
-        img.shape[0] + padding_width * 2,  # Multiply with two because we need padding on all sides
-        img.shape[1] + padding_width * 2
-    ))
-    
-    # Change the inner elements
-    # For example, if img.shape = (224, 224), and img_with_padding.shape = (226, 226)
-    # keep the pixel wide padding on all sides, but change the other values to be the same as img
-    img_with_padding[padding_width:-padding_width, padding_width:-padding_width] = img
-    
-    return img_with_padding
+    if mode == "scale":
+        image = image - image.min()
+        if image.max() == 0 and image.min() == 0:
+            resultImage = a_max * (image / 1)   
+        else:            
+            resultImage = a_max * (image / image.max())   
+    elif mode == "clip":
+        for i in range(image.shape[0]):
+            for j in range(image.shape[1]):
+                if image[i,j] < a_min:
+                    resultImage[i,j] = a_min
+                elif image[i,j] > a_max:
+                    resultImage[i,j] = a_max
+                else:
+                    resultImage[i,j] = image[i,j]
 
-def calculate_target_size(img_size: int, kernel_size: int) -> int:
-    num_pixels = 0
-    
-    # From 0 up to img size (if img size = 224, then up to 223)
-    for i in range(img_size):
-        # Add the kernel size (let's say 3) to the current i
-        added = i + kernel_size
-        # It must be lower than the image size
-        if added <= img_size:
-            # Increment if so
-            num_pixels += 1
-            
-    return num_pixels
-
-# Get depth of image
-def getDepth(image:np.ndarray):
-    rangeOfImage = image.max() - image.min()
-    bitDepthForOneChannel = ceil(log2(rangeOfImage))
-    
-    if image.ndim == 3:
-        _ , _ , numOfChannels = image.shape
-    else:
-        numOfChannels = 1
-
-    bitDepth = bitDepthForOneChannel * numOfChannels
-    return bitDepth
-
-# Get index and value of image
-def getCenter(image):
-    xCenter = image.shape[0] // 2
-    yCenter = image.shape[1] // 2
-    centerCoordinates = (xCenter,yCenter)
-    return centerCoordinates, image[centerCoordinates]
-
-# Statistics
-def getMean(image):
-    return np.mean(image)
-
-def getMedian(image):
-    return np.median(image)
-
-def getVariance(image):
-    return np.var(image)
-
-def binaryImage(r:np.ndarray, L=256):
-    r = np.round(r / r.max()) * (L-1)
-    return r
-
-# Log transformation
-def logTransformation(r:np.ndarray):
-    maxPixelValue = np.max(r)
-    c = 255 / (np.log(1 + maxPixelValue))        
-    result = c * np.log(1 + r)
-
-    return result
-
-# Apply negative on image
-def negativeImage(r, L=256):
-    s = L - 1 - r
-    return s
-
-# Apply gamma correction on image
-def gammaCorrectionImage(r, Y):
-    maxPixelValue = np.max(r)
-    c = 255 / (maxPixelValue ** Y)
-    s = c * r ** Y
-    return s
-
-# Function to extract ‘k’ bits from a given position in a number
-def extractKBits(num, k, p):
-     # Convert number into binary first
-     binary = bin(num)
- 
-     # Remove first two characters
-     binary = binary[2:]
- 
-     end = len(binary) - p
-     start = end - k + 1
- 
-     # Extract k bit sub-string
-     kBitSubStr = binary[start : end+1]
- 
-     # Convert extracted sub-string into decimal again
-     return (int(kBitSubStr,2))
+    resultImage = np.round(np.asarray(resultImage, np.int64))
+    return resultImage
 
 # Distances
 def getDistance(p, q, mode="euclidean"):
@@ -120,34 +45,415 @@ def getDistance(p, q, mode="euclidean"):
 
     return d
 
-# Piecewise-Linear Intensity Transformation Functions
-
-def contrastStretching(img, p1, p2):
-    r1, s1 = p1
-    r2, s2 = p2
-
-    al = s1 / r1
-    bt = (s2 - s1) / (r2 - r1)
-    gm = (255 - s2) / (255 - r2)
+# Get depth of image
+def getDepth(image:np.ndarray):
+    rangeOfImage = image.max() - image.min()
+    bitDepthForOneChannel = ceil(log2(rangeOfImage))
     
-    c1 = s1 - bt * r1
-    c2 = s2 - gm * r2
-    
-    d = img
-    for i in img.shape[0]:
-        for j in img.shape[1]:
-            if(img[i][j] < r1):
-                d[i][j] = al * img[i][j]
-            elif( r1 <= img[i][j] < r2 ):
-                d[i][j] = bt * img[i][j] + c1
+    if image.ndim == 3:
+        _ , _ , numOfChannels = image.shape
+    else:
+        numOfChannels = 1
+
+    bitDepth = bitDepthForOneChannel * numOfChannels
+    return bitDepth
+
+# Get index and value of image
+def getCenter(image:np.ndarray):
+    xCenter = image.shape[0] // 2
+    yCenter = image.shape[1] // 2
+    centerCoordinates = (xCenter,yCenter)
+    return centerCoordinates, image[centerCoordinates]
+
+########################
+"Statistics"
+########################
+
+def getMean(image):
+    return np.mean(image)
+
+def getMedian(image):
+    return np.median(image)
+
+def getVariance(image):
+    return np.var(image)
+
+########################
+"Intensity transformations"
+########################
+
+# Transform grayscale image to binary
+def binaryImage(r:np.ndarray, L=256):
+    r = np.round(r / r.max()) * (L-1)
+    return r
+
+# Apply negative on image
+def negativeImage(r, L=256):
+    s = L - 1 - r
+    return s
+
+# Log transformation
+def logTransformation(r:np.ndarray):
+    maxPixelValue = np.max(r)
+    c = 255 / (np.log(1 + maxPixelValue))        
+    result = c * np.log(1 + r)
+
+    return result
+
+# Apply gamma correction on image
+def gammaCorrectionImage(r, Y):
+    maxPixelValue = np.max(r)
+    c = 255 / (maxPixelValue ** Y)
+    s = c * r ** Y
+    return s
+
+"Piecewise-Linear Transformation Functions"
+# Process that expands the range of intensity
+# levels in an image.
+def contrastStretching(image, r1, s1, r2, s2):
+    # Get shape of image
+    row, column = image.shape[0], image.shape[1]
+
+    # Create an zeros array to store the image
+    resultImage = np.zeros((row,column))
+    for i in range(row):
+        for j in range(column):
+            p = image[i,j]
+            if (0 <= p <= r1):
+                resultImage[i,j] = (s1 / r1)*p
+            elif (r1 < p <= r2):
+                resultImage[i,j] = ((s2 - s1)/(r2 - r1))*(p - r1)+s1
             else:
-                d[i][j] = gm * img[i][j] + c2
+                resultImage[i,j] = ((255 - s2)/(255 - r2))*(p - r2)+s2
     
-    return d
+    return resultImage
 
-def intensityLevelSlicing(mode="two"):
-    if mode == "two":
-        pass
+# Highlighting a specific range if intensities 
+# in an image often is of interest.
+def intensityLevelSlicing(image, A, B, mode="bw"):
+    """
+    Arguments: 
+        - image: image
+        - A: min intensity
+        - B: max intensity
+        - mode: 
+            - "bw" -> Black & White
+            - "bd" -> Brightness & Darkness
+    """
 
-def bitPlaneSlicing(k):
-    pass
+    # Get width and height of image
+    row, column = image.shape[0], image.shape[1]
+
+    # Create an zeros array to store the sliced image
+    resultImage = np.zeros((row,column))
+
+    # Loop over the input image and if pixel value lies 
+    # in desired range set it to 255 otherwise set it to 0.
+    for i in range(row):
+        for j in range(column):
+            if A <= image[i,j] <= B: 
+                resultImage[i,j] = 255
+            else: 
+                if mode == "bd":
+                    resultImage[i,j] = image[i,j] 
+                else:
+                    resultImage[i,j] = 0
+    
+    return resultImage
+
+# Function to extract ‘k’ bits from a given ‘p’ in a number
+def extractKBits(num, k, p):
+    # Convert number into binary first
+    binary = bin(num)
+
+    # Remove first two characters
+    binary = binary[2:]
+
+    end = len(binary) - p
+    start = end - k + 1
+
+    # Extract k bit sub-string
+    kBitSubStr = binary[start : end+1]
+    if kBitSubStr != '':
+        # Convert extracted sub-string into decimal again
+        return (int(kBitSubStr,2))
+    return 0
+
+def bitPlaneSlicing(image, k, p):
+    row, column = image.shape[0], image.shape[1]
+    resultImage = np.zeros((row,column))
+    for i in range(row):
+        for j in range(column):
+            resultImage[i,j] = extractKBits(int(image[i,j]), k, p)
+    return resultImage
+
+########################
+"Spatial Transformations"
+########################
+
+# Zoom image
+def zoom(image, scaleFactor, mode):
+    # Get size of original image
+    oldWidth = image.shape[0]
+    oldHeight = image.shape[1]
+    # Set size of zoomed image
+    newWidth = round(oldWidth * scaleFactor)
+    newHeight = round(oldHeight * scaleFactor)
+    # Initialize resized image
+    resizedImage = np.zeros([newWidth, newHeight])
+
+    if mode == "nearest":
+        # Set the values
+        for i in range(newWidth):
+            for j in range(newHeight):
+                if i/scaleFactor > oldWidth - 1 or j/scaleFactor > oldHeight - 1 :
+                    # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
+                    x = floor(i/scaleFactor)
+                    y = floor(j/scaleFactor)
+                else:
+                    # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
+                    x = round(i/scaleFactor)
+                    y = round(j/scaleFactor)
+
+                resizedImage[i,j] = image[x,y]
+    
+    elif mode == "linear":
+        y_ratio = float(oldWidth - 1) / (newWidth - 1) if newWidth > 1 else 0
+        x_ratio = float(oldHeight - 1) / (newHeight - 1) if newHeight > 1 else 0
+
+        for i in range(newWidth):
+            for j in range(newHeight):
+                x_l, y_l = floor(x_ratio * j), floor(y_ratio * i)
+                x_h, y_h = ceil(x_ratio * j), ceil(y_ratio * i)
+
+                x_weight = (x_ratio * j) - x_l
+                y_weight = (y_ratio * i) - y_l
+                
+                a = image[y_l, x_l]
+                b = image[y_l, x_h]
+                c = image[y_h, x_l]
+                d = image[y_h, x_h]
+                    
+                pixel = a * (1 - x_weight) * (1 - y_weight) + b * x_weight * (1 - y_weight) + c * y_weight * (1 - x_weight) + d * x_weight * y_weight
+                resizedImage[i][j] = pixel
+   
+    return resizedImage
+
+# Rotate image
+def rotate(image, angle, mode="nearest"):
+    # Converting degrees to radians
+    angle = -angle
+    angle = radians(angle)
+
+    # Cosine & Sine
+    cosine = cos(angle)
+    sine = sin(angle)
+
+    # Define the width of the image
+    oldWidth = image.shape[0]
+    # Define the height of the image
+    oldHeight = image.shape[1]
+    
+    # Initialize rotated image 
+    rotatedImage = np.zeros((oldWidth,oldHeight)) 
+
+    # Find the center of the rotated image
+    (centerWidth, centerHeight), _= getCenter(rotatedImage)
+
+    for i in range(oldWidth):
+        for j in range(oldHeight):
+            x = -(j-centerHeight)*sine + (i-centerWidth)*cosine
+            y = (j-centerHeight)*cosine + (i-centerWidth)*sine
+
+            # Add offset
+            x += centerWidth
+            y += centerHeight
+            
+            if mode == "nearest":
+                # Get nearest index
+                x = round(x)
+                y = round(y)
+                
+                # Check if x/y corresponds to a valid pixel in input image
+                if (0 <= x < oldWidth and  0 <= y < oldHeight):
+                    rotatedImage[i][j] = image[x][y]
+
+            elif mode == "linear":    
+                # Calculate the coordinate values for 4 surrounding pixels.
+                x_floor = floor(x)
+                x_ceil = min(oldWidth-1, ceil(x))
+                y_floor = floor(y)
+                y_ceil = min(oldHeight - 1, ceil(y))
+                
+                if (0 <= x < oldWidth and  0 <= y < oldHeight):
+                    if (x_ceil == x_floor) and (y_ceil == y_floor):
+                        q = image[int(x), int(y)]
+                    elif (y_ceil == y_floor):
+                        q1 = image[x_floor, int(y)]
+                        q2 = image[x_ceil, int(y)]
+                        q = q1 * (x_ceil - x) + q2 * (x - x_floor)
+                    elif (x_ceil == x_floor):
+                        q1 = image[int(x), y_floor]
+                        q2 = image[int(x), y_ceil]
+                        q = (q1 * (y_ceil - y)) + (q2 * (y - y_floor))
+                    else:
+                        p1 = image[x_floor, y_floor]
+                        p2 = image[x_floor, y_ceil]
+                        p3 = image[x_ceil, y_floor]
+                        p4 = image[x_ceil, y_ceil]
+
+                        q1 = p1 * (y_ceil - y) + p2 * (y - y_floor)
+                        q2 = p3 * (y_ceil - y) + p4 * (y - y_floor)
+                        q = q1 * (x_ceil - x) + q2 * (x - x_floor)
+
+                    rotatedImage[i][j] = q
+
+    return rotatedImage
+
+# Shear image
+def shear(image, angle, mode="horizontal"):
+    # Converting degrees to radians
+    angle = radians(angle)
+
+    # Define the height of the image
+    oldWidth = image.shape[0]
+    # Define the width of the image
+    oldHeight = image.shape[1]
+    
+    # Initialize rotated image
+    shearedImage = np.zeros((oldWidth,oldHeight))
+    tangent = tan(-angle)
+
+    # Find the center of the image
+    (centerWidth, centerHeight), _ = getCenter(image) # mid col
+    
+    for i in range(oldWidth):
+        for j in range(oldHeight):
+
+            x = (i-centerWidth)
+            y = (j-centerHeight)
+            
+            if mode == "horizontal":
+                new_x = round(x-y*tangent)
+                new_y = y
+            else:
+                new_x = x
+                new_y = round(y-x*tangent)
+
+            # Add offset
+            new_x += centerHeight
+            new_y += centerWidth
+
+            if (new_x >= 0 and new_y >= 0 and new_x < oldWidth and new_y < oldHeight):
+                shearedImage[j][i] = image[new_y,new_x]
+    
+    return shearedImage
+
+########################
+"Radon Transformations"
+########################
+
+# Build the Radon Transform using 'steps' or 'list' of angles projections of 'image'. 
+def radon(image, angles, mode='list'):
+    ## Accumulate projections in a list.
+    projections = []
+
+    if mode == "steps":
+        # Angle increment for rotations.
+        dTheta = -180.0 / angles
+        for i in range(angles):
+            rotatedImage = rotate(image, i*dTheta)
+            projections.append(rotatedImage.sum(axis=0))
+    else:
+        for angle in angles:
+            rotatedImage = rotate(image, -angle)
+            projections.append(rotatedImage.sum(axis=0))
+    
+    return np.vstack(projections) # Return the projections as a sinogram
+
+########################
+"""Filters Functions"""
+########################
+
+
+# Add padding to image
+# TODO: Add Replicate padding & Mirror padding
+def addPadding(image, paddingSize, mode="zero", value=0):
+    if type(paddingSize) == tuple:
+        xPaddingSize, yPaddingSize = paddingSize
+    else:
+        xPaddingSize = paddingSize
+        yPaddingSize = paddingSize
+    
+    xAddedPadding = 2 * xPaddingSize
+    yAddedPadding = 2 * yPaddingSize
+
+    resultImage = np.zeros((image.shape[0] + xAddedPadding, image.shape[1] + yAddedPadding))
+    
+    if mode == "zero":
+        resultImage.fill(value)
+        for i in range(xPaddingSize, resultImage.shape[0] - xPaddingSize):
+            for j in range(yPaddingSize, resultImage.shape[1] - yPaddingSize):
+                resultImage[i][j] = image[i-xPaddingSize][j-yPaddingSize] 
+    
+    return resultImage
+
+# Convolution function
+def convolution(image:np.ndarray, filter:np.ndarray, mode="convolution"):
+    if mode == "convolution":
+        filter = np.flip(filter)
+
+    filterWidth = filter.shape[0]
+    filterHeight = filter.shape[1]
+    paddedImage = addPadding(image, (filterWidth//2,filterHeight//2))
+
+    convolvedImage = []
+    for i in range(image.shape[0]):
+        endPointVertical = i + filterWidth
+        rowArray = []
+        for j in range(image.shape[1]):
+            endPointHorizontal = j + filterHeight
+            rowArray.append(np.sum(paddedImage[i:endPointVertical,j:endPointHorizontal] * filter))
+        convolvedImage.append(rowArray)
+    
+    convolvedImage = np.array(convolvedImage)
+    return convolvedImage
+
+# Box Kernel
+def boxKernel(size:int, shape=None):
+    if shape == None:
+        shape = (size, size)
+        
+    filter = np.zeros(shape)
+    value = 1/(size*size)
+    filter.fill(value)
+    
+    return filter
+
+# Gaussian Kernel
+def gaussianKernel(sigma):
+    size = (6*sigma) + 1
+    filter = np.zeros((size,size))
+    K = 1
+    for s in range(size):
+        for t in range(size):
+            filter[s,t] = K * exp(-(s**2+t**2)/(2*sigma**2))
+
+    return filter
+
+def OrderStatisticFilter(image, kernelSize, percent):
+    paddingSize = kernelSize // 2
+    paddedImage = addPadding(image, paddingSize)
+
+    resultImage = []
+    for i in range(image.shape[0]):
+        endpointVertical = i + kernelSize
+        
+        rowArray = []
+        for j in range(image.shape[1]):
+            endPointHorizontal = j + kernelSize
+            rowArray.append(np.percentile(paddedImage[i:endpointVertical,j:endPointHorizontal],percent))
+
+        resultImage.append(rowArray)
+
+    return np.array(resultImage)

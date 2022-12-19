@@ -5,8 +5,11 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
+from .utilities import *
+
 # Importing Logging
 from .log import appLogger
+
 
 # Window class
 class popWindow(QDialog):
@@ -35,12 +38,11 @@ class popWindow(QDialog):
 
     def _initUI(self):       
         # Outer Layout
-        outerLayout = QVBoxLayout()
+        self.outerLayout = QVBoxLayout()
 
         for key, value in self.inputs.items():
-            inputField = self.addInput(key)
+            inputField = self.addInput(key, value.get("type"), value.get("options"))
             self.inputs[key] = inputField
-            outerLayout.addWidget(inputField)
 
         self.CancelBtn = QPushButton("Cancel")
         self.OkBtn = QPushButton("Apply")
@@ -49,44 +51,71 @@ class popWindow(QDialog):
         buttonsLayout.addWidget(self.CancelBtn)
         buttonsLayout.addWidget(self.OkBtn)
 
-        outerLayout.addLayout(buttonsLayout)
-        self.setLayout(outerLayout)
+        self.outerLayout.addLayout(buttonsLayout)
+        self.setLayout(self.outerLayout)
 
-    def addInput(self, placeholderText):
-        inputField = QLineEdit()
-        inputField.setPlaceholderText(placeholderText)
-        inputField.setStyleSheet("""border:1px solid #00d; 
-                                            height:18px; 
-                                            padding:2px; 
-                                            border-radius:5px; 
-                                            font-size:16px; 
-                                            margin-right:5px""")
-        return inputField
+    def addInput(self, placeholderText, type="", items=None):
+        if type == RADIO:
+            radioLayout = QHBoxLayout()
+            radioList = list()
+            for item in items: 
+                radioBtn = QRadioButton(item)
+                radioLayout.addWidget(radioBtn)
+                radioList.append(radioBtn)
+            self.outerLayout.addLayout(radioLayout)
+            return radioList
+        else:
+            inputField = QLineEdit()
+            inputField.setPlaceholderText(placeholderText)
+            inputField.setStyleSheet("""border:1px solid #00d; 
+                                                height:18px; 
+                                                padding:2px; 
+                                                border-radius:5px; 
+                                                font-size:16px; 
+                                                margin-right:5px""")
+            self.outerLayout.addWidget(inputField)
+            return inputField
 
     # Set values of inputs
     def setValues(self):
         self.outputs = self.inputs.copy()
         sentence = "NO ERROR"
+        state = True
+        
         try:
             for key, value in self.requirements.items():  
-                typeOfValue = value["type"]
-                output = type(typeOfValue)(self.inputs[key].text())
-
-                start, end = value["range"]
-                if start != -inf and end != inf:
-                    sentence = f"Sorry, The input must be between {start} and {end}."
-                elif start == -inf and end != inf:
-                    sentence = f"Sorry, The input must be less than {end}."
-                elif start != -inf and end == inf:
-                    sentence = f"Sorry, The input must be bigger than {start}."
-
-                if start <= output <= end:
+                typeOfValue = value.get("type")
+                if typeOfValue != RADIO:
+                    output = type(typeOfValue)(self.inputs[key].text())
+                else:
+                    output = -1
+                    for radioBtn in self.inputs[key]:
+                        output += 1
+                        if radioBtn.isChecked():
+                            break
+                                       
+                if output != "" and output != -1:
+                    if value.get("range") != None:
+                        start, end = value.get("range")
+                        if start != -inf and end != inf:
+                            sentence = f"Sorry, The input must be between {start} and {end}."
+                        elif start == -inf and end != inf:
+                            sentence = f"Sorry, The input must be less than {end}."
+                        elif start != -inf and end == inf:
+                            sentence = f"Sorry, The input must be bigger than {start}."
+                        state = start <= output <= end
+                else:
+                    sentence = "Please, Enter empty values."
+                    state = False
+                
+                if state:
                     self.outputs[key] = output
                     self.loaded = True
                 else:
                     QMessageBox.critical(self, "Error", sentence)
                     self.loaded = False
                     return 
+
         except Exception as e:
             print(e)
             self.loaded = False

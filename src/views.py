@@ -25,9 +25,6 @@ from matplotlib.widgets import RectangleSelector
 # Importing Logging
 from .log import appLogger
 
-# Constants
-INT = 0
-FLOAT = 0.0
 
 # Window class
 class Window(QMainWindow):
@@ -134,6 +131,19 @@ class Window(QMainWindow):
         self.gammaAction = QAction(QIcon(":gamma"), "&Gamma Correction", self)
         self.gammaAction.setStatusTip('Gamma image')
 
+        # Contrast Stretching
+        self.contrastStretchingAction = QAction(QIcon(":contrastStretching"), "&Contrast Stretching", self)
+        self.contrastStretchingAction.setStatusTip('Contrast Stretching')
+
+        # Intensity level slicing
+        self.intensityLevelSlicingAction = QAction(QIcon(":intensityLevelSlicing"), "&Intensity Level Slicing", self)
+        self.intensityLevelSlicingAction.setStatusTip('Intensity Level Slicing')
+
+        # Bit plane slicing
+        self.bitPlaneSlicingAction = QAction(QIcon(":bitSlicing"), "&Bit plane slicing", self)
+        self.bitPlaneSlicingAction.setStatusTip('Bit plane slicing')
+
+        # Set region of interest
         self.setROIAction = QAction(QIcon(":ROI"), "&ROI", self)
         self.setROIAction.setStatusTip('Draw ROI')
 
@@ -156,7 +166,7 @@ class Window(QMainWindow):
         self.boxFilteringAction.setStatusTip('Blur image in spatial domain')
 
         # Box filter (fourier)
-        self.boxFilteringByFourierAction = QAction(QIcon(":blurFourier"), "&Blur using fourier", self)
+        self.boxFilteringByFourierAction = QAction(QIcon(":blurFourier"), "&Blur in frequency domain", self)
         self.boxFilteringByFourierAction.setShortcut("ctrl+k")
         self.boxFilteringByFourierAction.setStatusTip('Blur image in frequency domain using fourier transform')
 
@@ -457,6 +467,10 @@ class Window(QMainWindow):
         imageMenu.addAction(self.logImageAction)
         imageMenu.addAction(self.gammaAction)
         imageMenu.addSeparator()
+        imageMenu.addAction(self.contrastStretchingAction)
+        imageMenu.addAction(self.intensityLevelSlicingAction)
+        imageMenu.addAction(self.bitPlaneSlicingAction)
+        imageMenu.addSeparator()
         imageMenu.addAction(self.setROIAction)
 
         """View"""
@@ -605,10 +619,7 @@ class Window(QMainWindow):
         menu.addAction(self.openAction)
         menu.addAction(self.saveAction)
         self.addSeparator(menu)
-        menu.addAction(self.equalizeAction)
         menu.addAction(self.clearAction)
-        self.addSeparator(menu)
-        menu.addAction(self.constructTAction)
         self.addSeparator(menu)
         menu.addAction(self.helpContentAction)
         menu.addAction(self.checkUpdatesAction)
@@ -744,11 +755,16 @@ class Window(QMainWindow):
 
         "Image"
         self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.currentTab.equalize))
+
         self.binaryAction.triggered.connect(lambda: self.baseBehavior(self.binaryImage))
         self.negativeAction.triggered.connect(lambda: self.baseBehavior(self.negativeImage))
         self.logImageAction.triggered.connect(lambda: self.baseBehavior(self.logImage))
-        self.gammaAction.triggered.connect(lambda: self.baseBehavior(self.gammaActionImage))
-        
+        self.gammaAction.triggered.connect(lambda: self.baseBehavior(self.gammaImage))
+
+        self.contrastStretchingAction.triggered.connect(lambda: self.baseBehavior(self.contrastStretching))
+        self.intensityLevelSlicingAction.triggered.connect(lambda: self.baseBehavior(self.intensityLevelSlicing))
+        self.bitPlaneSlicingAction.triggered.connect(self.bitPlaneSlicing)
+
         self.setROIAction.triggered.connect(self.getROI)
 
         " Transformation image "
@@ -817,8 +833,8 @@ class Window(QMainWindow):
         " View "
         self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
         self.showFourierAction.triggered.connect(lambda: self.currentTab.showHideFourier())
-        self.showSinogramAction.triggered.connect(lambda: self.currentTab.showHideSinogram())
-        self.showLaminogramAction.triggered.connect(lambda: self.currentTab.showHideLaminogram())
+        self.showSinogramAction.triggered.connect(self.sinogram)
+        self.showLaminogramAction.triggered.connect(self.laminogram)
 
     def _connect(self):
         self._connectActions()
@@ -935,8 +951,8 @@ class Window(QMainWindow):
     def logImage(self):
         self.currentTab.primaryViewer.logImage()
 
-    # Log the image
-    def gammaActionImage(self):
+    # Gamma
+    def gammaImage(self):
         requirements = {
             "Y":{
                 "type": FLOAT,
@@ -951,6 +967,71 @@ class Window(QMainWindow):
             return
 
         self.currentTab.primaryViewer.gammaCorrectionImage(Y)
+
+    def contrastStretching(self):
+        requirements = {
+            "r1":{
+                "type": INT,
+                "range": (0, 255)
+            },
+            "s1":{
+                "type": INT,
+                "range": (0, 255)
+            },
+            "r2":{
+                "type": INT,
+                "range": (0, 255)
+            },
+            "s2":{
+                "type": INT,
+                "range": (0, 255)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Contrast Stretching")
+        if output != None:
+            r1 = output[0]
+            s1 = output[1]
+            r2 = output[2]
+            s2 = output[3]
+        else:
+            return
+
+        self.currentTab.primaryViewer.contrastStretching(r1, s1, r2, s2)
+
+    def intensityLevelSlicing(self):
+        requirements = {
+            "A":{
+                "type": INT,
+                "range": (0, 255)
+            },
+            "B":{
+                "type": INT,
+                "range": (0, 255)
+            },
+            "Mode":{
+                "type": RADIO,
+                "options": ["white","brightens"]
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Contrast Stretching")
+        if output != None:
+            A = output[0]
+            B = output[1]
+            mode = output[2]
+        else:
+            return
+
+        if mode == "0":
+            mode = "bw"
+        else:
+            mode = "bd"
+
+        self.currentTab.primaryViewer.intensityLevelSlicing(A,B,mode)
+
+    def bitPlaneSlicing(self):
+        self.currentTab.primaryViewer.bitPlaneSlicing()
 
     # Get ROI            
     def getROI(self):
@@ -1022,12 +1103,17 @@ class Window(QMainWindow):
             "Kernel size":{
                 "type": INT,
                 "range": (1, inf)
+            },
+            "Percent":{
+                "type": FLOAT,
+                "range": (0, 100)
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        output = self.getInputsFromUser(requirements, "Order Statistic Filter")
         if output != None:
             filterSize = output[0]
+            percent = output[1]
         else:
             return
 
@@ -1036,7 +1122,7 @@ class Window(QMainWindow):
             if filterSize % 2 == 0:
                 filterSize += 1
             
-            self.currentTab.primaryViewer.medianMask(filterSize)               
+            self.currentTab.primaryViewer.OrderStatisticFilter(filterSize, percent)               
             
     # Apply un-sharp masking
     def applyUnsharp(self):
@@ -1248,7 +1334,43 @@ class Window(QMainWindow):
             self.currentTab.primaryViewer.addSaltAndPepperNoise("salt")
         elif mode == "salt and pepper":
             self.currentTab.primaryViewer.addSaltAndPepperNoise()
+
+    ##########################################
+    #  """Sinogram & Laminogram Functions""" #
+    ##########################################
+
+    def sinogram(self):
+        if self.currentTab.showHideSinogram():
+            self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
     
+    def laminogram(self):
+        if self.currentTab.showHideLaminogram():
+            requirements = {
+                "Mode": {
+                    "type": RADIO,
+                    "options": ["Start and End","Values"]
+                },
+                "Angles (comma ',') ":{
+                    "type": STR
+                }
+            }
+
+            output = self.getInputsFromUser(requirements, "Laminogram")
+            if output != None:
+                mode = output[0]
+                theta = output[1]
+            else:
+                return
+
+            theta = np.int64(np.array(theta.split(",")))
+            if mode == 0:
+                start, end, step = theta
+                theta = range(start, end, step)
+
+            # self.currentTab.sinogramViewer.drawLaminogramFromSinogram(self.currentTab.sinogramViewer.grayImage, thetas)
+            # self.currentTab.sinogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, theta)
+            self.currentTab.laminogramViewer.drawLaminogramFromImage(self.currentTab.primaryViewer.grayImage, theta)
+
     ##########################################
     #         """View Functions"""           #
     ##########################################
@@ -1276,9 +1398,7 @@ class Window(QMainWindow):
             self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
 
         self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
-        self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
-        self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage)
-        
+                
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
         # checking index i.e

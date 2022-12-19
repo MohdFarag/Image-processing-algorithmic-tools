@@ -57,10 +57,10 @@ class tabViewer(QWidget):
             self.phaseViewer.hide()
 
             self.tabLayout.addWidget(self.sinogramViewer,2,0)
-            # self.sinogramViewer.hide()
+            self.sinogramViewer.hide()
 
             self.tabLayout.addWidget(self.laminogramViewer,2,1)
-            # self.laminogramViewer.hide()
+            self.laminogramViewer.hide()
 
         # Set layout to new tab
         self.setLayout(self.tabLayout)
@@ -100,6 +100,8 @@ class tabViewer(QWidget):
         else:
             self.showSinogram = False
             self.sinogramViewer.hide()
+        
+        return self.showSinogram
     
     def showHideLaminogram(self):
         if not self.showLaminogram:
@@ -108,10 +110,8 @@ class tabViewer(QWidget):
         else:
             self.showLaminogram = False
             self.laminogramViewer.hide()
-    
-    def showHidePhantom(self):
-        self.showHideSinogram()
-        self.showHideLaminogram()
+        
+        return self.showLaminogram
 
     def equalize(self):
         self.primaryViewer.normalizeHistogram()
