@@ -114,7 +114,7 @@ class tabViewer(QWidget):
         return self.showLaminogram
 
     def equalize(self):
-        self.primaryViewer.normalizeHistogram()
+        self.primaryViewer.drawNormalizedHistogram()
 
     def setImage(self, path, fileExtension):
         data = self.primaryViewer.setImage(path, fileExtension)

@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # Phantom
 from phantominator import shepp_logan
 # from skimage.data import shepp_logan_phantom
-# from skimage.transform import radon, rotate rescale, iradon
+from skimage.transform import iradon # ,vradon, rotate rescale
 
 from PIL import Image
 from .utilities import *
@@ -102,9 +102,7 @@ class ImageViewer(FigureCanvasQTAgg):
         else:
             self.grayImage = self.originalImage
 
-        self.grayImage = scaleImage(self.grayImage)
         self.loaded = True
-
         self.drawImage(self.grayImage)
 
         # Depends on extension of the file
@@ -119,10 +117,13 @@ class ImageViewer(FigureCanvasQTAgg):
         return self.originalImage
     
     # Draw image with matplotlib
-    def drawImage(self, image, title="Blank", cmap=plt.cm.Greys_r,x_axes=[], y_axes=[]):
+    def drawImage(self, image, title="Blank", cmap=plt.cm.Greys_r):
+        self.clearImage()
         
         self.axes.set_title(title, fontsize = 16)
-        self.axes.imshow(image, cmap=cmap)
+        self.grayImage = scaleImage(image)
+        self.axes.imshow(self.grayImage, cmap=cmap, aspect='equal', origin='lower')
+        
         self.draw()
 
     # Save Image
@@ -156,7 +157,7 @@ class ImageViewer(FigureCanvasQTAgg):
         L = ROI.max()
         # Get histogram of image
         histogram = np.bincount(ROI.flatten(), minlength=L)
-        mean, variance, std = self.getStatisticsOfHistogram(histogram, L)
+        mean, variance, std = getStatisticsOfHistogram(histogram, L)
 
         self.grayImage = ROI
         return mean, variance, std
@@ -168,25 +169,21 @@ class ImageViewer(FigureCanvasQTAgg):
     # Draw Binary image
     def binaryImage(self):
         self.grayImage = binaryImage(self.grayImage)
-        self.grayImage = scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     # Draw logged image
     def logImage(self):
         self.grayImage = logTransformation(self.grayImage)
-        self.grayImage = scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     # Apply negative on image
     def negativeImage(self):
         self.grayImage = negativeImage(self.grayImage)
-        self.grayImage = scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     # Apply gamma correction on image
     def gammaCorrectionImage(self, Y):
         self.grayImage = gammaCorrectionImage(self.grayImage, Y)
-        self.grayImage = scaleImage(self.grayImage)
         self.drawImage(self.grayImage)
 
     ###############################################
@@ -194,13 +191,11 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
 
     def contrastStretching(self, r1, s1, r2, s2):
-        contrastedImage = contrastStretching(self.grayImage, r1, s1, r2, s2)
-        self.grayImage = scaleImage(contrastedImage)
+        self.grayImage = contrastStretching(self.grayImage, r1, s1, r2, s2)
         self.drawImage(self.grayImage)
 
     def intensityLevelSlicing(self, A, B, mode):
-        contrastedImage = intensityLevelSlicing(self.grayImage, A, B, mode)
-        self.grayImage = scaleImage(contrastedImage)
+        self.grayImage = intensityLevelSlicing(self.grayImage, A, B, mode)
         self.drawImage(self.grayImage)
 
     def bitPlaneSlicing(self):
@@ -231,7 +226,7 @@ class ImageViewer(FigureCanvasQTAgg):
             zoomWidth = int(resizedImage.shape[0]/scaleFactor)
             zoomHeight = int(resizedImage.shape[1]/scaleFactor)
             
-            self.grayImage = scaleImage(resizedImage[:zoomWidth,:zoomHeight])
+            self.grayImage = resizedImage[:zoomWidth,:zoomHeight]
             self.drawImage(self.grayImage)
             return resizedImage.shape[0], resizedImage.shape[1]
         else:
@@ -240,19 +235,16 @@ class ImageViewer(FigureCanvasQTAgg):
     # Rotate image
     def rotateImage(self, image, angle, mode="nearest"):
         if len(image) != 0:
-            rotatedImage = rotate(self.grayImage, angle, mode)
-
-            self.grayImage = scaleImage(rotatedImage)
+            self.grayImage = rotate(self.grayImage, angle, mode)
             self.drawImage(self.grayImage)
-            return rotatedImage.shape[0], rotatedImage.shape[1]   
+            return self.grayImage.shape[0], self.grayImage.shape[1]   
         else:
             return "N/A","N/A"
              
     # Shear image
     def shearImage(self, angle, mode="horizontal"):
         if self.loaded:
-            shearedImage = shear(self.grayImage, angle, mode)
-            self.grayImage = scaleImage(shearedImage)
+            self.grayImage = shear(self.grayImage, angle, mode)
             self.drawImage(self.grayImage)
         else:
             return
@@ -341,11 +333,10 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Construct phantom
     def constructPhantom(self, size=256):
-        phantom = shepp_logan(size)
-        phantom = np.flip(phantom)              
-                
-        self.grayImage = scaleImage(phantom)
         self.loaded = True
+        phantom = shepp_logan(size)
+        self.grayImage = np.flip(phantom)              
+        
         self.drawImage(self.grayImage)
         
     # Display a Sinogram of this phantom
@@ -353,10 +344,7 @@ class ImageViewer(FigureCanvasQTAgg):
         if len(image) != 0:
             
             # Get sinogram 
-            sinogram = self.radon(image, angles)
-            # sinogram = radon(image,angles) # Built-in
-
-            self.grayImage = scaleImage(sinogram)
+            self.grayImage = radon(image, angles)
             self.drawImage(self.grayImage, "Sinogram")
 
     # Display a Laminogram of this phantom from image
@@ -370,61 +358,81 @@ class ImageViewer(FigureCanvasQTAgg):
 
                 laminogram += strip
 
-            laminogram = scaleImage(laminogram)
             self.drawImage(laminogram, "Laminogram")
 
     # Display a Laminogram of this phantom from sinogram
-    def drawLaminogramFromSinogram(self, sinogram, thetas=range(180)):
+    def drawLaminogram(self, sinogram, thetas=range(180)):
         if len(sinogram) != 0:
-            laminogram = np.zeros(sinogram.shape)
+            laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
             j = 0
             for i in thetas:
                 strip = sinogram[i]
-                strip = np.tile(strip, (sinogram.shape[0], 1))
-                strip = rotate(strip, thetas[j])
-                j += 1
-    
+                strip = np.tile(strip, (sinogram.shape[1], 1))
+                strip = rotate(strip, thetas[j])    
                 laminogram += strip
-        
+                j += 1
             self.drawImage(laminogram, "Laminogram")
 
-    # Built In iradon
-    # def drawLaminogram(self, sinogram, theta):
-    #     reconstruction_fbp = iradon(sinogram, theta=theta, filter_name=None)
+    # Display a Laminogram of this phantom from sinogram
+    def drawLaminogramHammingFilter(self, sinogram, thetas=range(180)):
+        if len(sinogram) != 0:
+            laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
+            j = 0
+            for i in thetas:
+                strip = sinogram[i]
+                strip = np.fft.fft(strip)
+                
+                window = np.hamming(sinogram.shape[1])
+                strip = np.abs(np.fft.ifft(strip * window))
+                
+                strip = np.tile(strip, (sinogram.shape[1], 1))
+                strip = rotate(strip, thetas[j])
+                laminogram += strip
+                j += 1
+            self.drawImage(laminogram, "Laminogram")
 
-    #     self.drawImage(reconstruction_fbp, "Laminogram")
+    # Display a Laminogram of this phantom from sinogram
+    def drawLaminogramRamLakFilter(self, sinogram, thetas=range(180)):
+        if len(sinogram) != 0:
+            laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
+            j = 0
+            for i in thetas:
+                strip = sinogram[i]
+                ramp = self.generateRampKernel(sinogram.shape[1])
+                
+                ramp = np.fft.fft(ramp)
+                strip = np.fft.fft(strip)
+                strip = np.abs(np.fft.ifft(strip * ramp))
+                
+                strip = np.tile(strip, (sinogram.shape[1], 1))
+                strip = rotate(strip, thetas[j])
+                laminogram += strip
+                j += 1
+            self.drawImage(laminogram, "Laminogram")
 
+    def generateRampKernel(self, N):
+        res = np.zeros(N)
+        center = N // 2 - 1
+        for i in range(N):
+            if (i - center) % 2 != 0:
+                res[i] = -1 / (pi * (i - center)) ** 2
+        res[center] = 1 / 4
+        return res
+    
     ###############################################
     """Histogram Functions"""
     ###############################################
 
-    # Build histogram of the image
-    def getHistogram(self, image:np.ndarray, bins):
-        # Put pixels in a 1D array by flattening out img array
-        flatImage = image.flatten()
-
-        # Array with size of bins, set to zeros
-        histogram = np.zeros(bins)
-        
-        # Loop through pixels and sum up counts of pixels
-        for pixel in flatImage:
-            histogram[pixel] += 1
-        
-        # return our final result
-        return histogram
-
     # Get histogram image
     def drawHistogram(self, image:np.ndarray):
-        self.clearImage()
-
-        if len(image) != 0:
+        if len(image) != 0:     
+            self.clearImage()    
             L = image.max()
-          
             # Get histogram of image
-            histogram = np.bincount(image.flatten(), minlength=L)
+            histogram = getHistogram(image, L)
 
             # Calculate statistics of histogram
-            mean, variance, std = self.getStatisticsOfHistogram(histogram, L)
+            mean, variance, std = getStatisticsOfHistogram(histogram, L)
             
             # Normalize
             sumPixels = np.sum(histogram)
@@ -444,57 +452,13 @@ class ImageViewer(FigureCanvasQTAgg):
             return
 
     # Normalized Histogram
-    def normalizeHistogram(self):
+    def drawNormalizedHistogram(self):
         if len(self.grayImage) != 0:
-            self.clearImage() # Clear prev.
-            
-            # Calculate max intensity value to equalize to it 
-            try:
-                L = self.grayImage.max()
-            except:
-                L = 256        
-
-            # Get histogram of nonEqualizedImage
-            nonEqualizedHistogram = np.bincount(self.grayImage.flatten(), minlength=L)
-
-            # Normalize
-            sumPixels = np.sum(nonEqualizedHistogram)
-            nonEqualizedHistogram = nonEqualizedHistogram/sumPixels
-
-            # Normalized cumulative histogram
-            cfdHistogram = np.cumsum(nonEqualizedHistogram)
-
-            # Initialized transform map
-            transformMap = np.floor((L-1) * cfdHistogram)
-
-            # Flatten image array into 1D list
-            flatNonEqualizedImage = list(self.grayImage.flatten())
-            flatEqualizedImage = [transformMap[p] for p in flatNonEqualizedImage]
-
-            # Reshape and write back into equalizedImage
-            self.grayImage = np.reshape(np.asarray(flatEqualizedImage, dtype=np.int64), self.grayImage.shape)
-
+            self.grayImage = normalizeHistogram(self.grayImage)            
             # Draw equalized image
             self.drawImage(self.grayImage)
         else:
             return
-
-    def getStatisticsOfHistogram(self, histogram:np.ndarray, L):
-        # Normalize
-        sumPixels = np.sum(histogram)
-        normalizedHistogram = histogram/sumPixels
-
-        mean = 0
-        for i in range(L):
-            mean += i * normalizedHistogram[i]
-        
-        variance = 0
-        for i in range(L):
-            variance += (i-mean)**2 * normalizedHistogram[i]
-
-        std = sqrt(variance)
-
-        return mean, variance, std
 
     ###############################################
     """Filters Functions"""
@@ -534,8 +498,6 @@ class ImageViewer(FigureCanvasQTAgg):
                 blurredImage = np.abs(blurredImage)
                 blurredImage = blurredImage[xImagePadding:rows-xImagePadding,yImagePadding:cols-yImagePadding]
                 
-            blurredImage = scaleImage(blurredImage)
-
             return blurredImage
 
     # Subtract blurred image from original
@@ -553,9 +515,7 @@ class ImageViewer(FigureCanvasQTAgg):
     # Order statistic mask
     def OrderStatisticFilter(self, size, percent):
         if len(self.grayImage) != 0:
-            resultImage = OrderStatisticFilter(self.grayImage, size, percent)
-            scaledImage = scaleImage(resultImage)
-            self.grayImage = scaledImage
+            self.grayImage = OrderStatisticFilter(self.grayImage, size, percent)
             # Draw image
             self.drawImage(self.grayImage)
 
@@ -568,16 +528,13 @@ class ImageViewer(FigureCanvasQTAgg):
             # Subtract blurred image from original image
             subtractedImage = self.subtractBlurredFromOriginal(blurredImage)
             # Multiply the result by k (highboost factor)
-            resultImage = self.multiplyByFactor(subtractedImage, k)
-            # Scale image
-            self.grayImage = scaleImage(resultImage)            
+            self.grayImage = self.multiplyByFactor(subtractedImage, k)          
             # Draw image
             self.drawImage(self.grayImage)
     
     # Perform box filtering
     def boxFiltering(self, size):
         if len(self.grayImage) != 0:
-            self.clearImage()
             boxFilter = boxKernel(size)
             self.grayImage = self.applySpatialFilter(self.grayImage, boxFilter)
                        
@@ -587,7 +544,6 @@ class ImageViewer(FigureCanvasQTAgg):
     # Perform box filtering in frequency domain
     def boxFilteringUsingFourier(self, filterSize):
         if len(self.grayImage) != 0:
-            self.clearImage()
             boxFilter = boxKernel(filterSize)
 
             self.grayImage = self.applySpatialFilter(self.grayImage, boxFilter, domain="frequency")
@@ -610,9 +566,7 @@ class ImageViewer(FigureCanvasQTAgg):
                         if d1 <= d0 or d2 <= d0:
                             magnitudeSpectrum[u][v] = 0
         
-            resultSpectrum = np.abs(self.inverseFourierTransform(magnitudeSpectrum))
-            self.grayImage = scaleImage(resultSpectrum)
-
+            self.grayImage = np.abs(self.inverseFourierTransform(magnitudeSpectrum))
             # Draw image
             self.drawImage(self.grayImage)
             
@@ -623,26 +577,19 @@ class ImageViewer(FigureCanvasQTAgg):
     # Add uniform noise to the image
     def addUniformNoise(self, a, b):
         if len(self.grayImage) != 0:
-            self.clearImage()
-
             uniformNoise = np.random.uniform(a, b, self.grayImage.shape)
             uniformNoise = np.asarray(np.round(uniformNoise), dtype=np.int64)
-            
             self.grayImage += uniformNoise
-            self.grayImage = scaleImage(self.grayImage)
+
             # Draw image
             self.drawImage(self.grayImage)
 
     # Add gaussian noise to the image
     def addGaussianNoise(self, sigma, mean):
         if len(self.grayImage) != 0:
-            self.clearImage()
-
             gaussianNoise = np.random.normal(mean, sigma, self.grayImage.shape)
-            gaussianNoise = np.asarray(np.round(gaussianNoise), dtype=np.int64)
-            
+            gaussianNoise = np.asarray(np.round(gaussianNoise), dtype=np.int64)            
             self.grayImage += gaussianNoise
-            self.grayImage = scaleImage(self.grayImage)
 
             # Draw image
             self.drawImage(self.grayImage)
@@ -650,13 +597,9 @@ class ImageViewer(FigureCanvasQTAgg):
     # Add rayleigh noise to the image
     def addRayleighNoise(self,scale):
         if len(self.grayImage) != 0:
-            self.clearImage()
-
             rayleighNoise = np.random.rayleigh(scale, self.grayImage.shape)
-            rayleighNoise = np.asarray(np.round(rayleighNoise), dtype=np.int64)
-            
+            rayleighNoise = np.asarray(np.round(rayleighNoise), dtype=np.int64)            
             self.grayImage += rayleighNoise
-            self.grayImage = scaleImage(self.grayImage)
             
             # Draw image
             self.drawImage(self.grayImage)
@@ -664,28 +607,20 @@ class ImageViewer(FigureCanvasQTAgg):
     # Add erlang noise to the image
     def addErlangNoise(self, k, scale=1):
         if len(self.grayImage) != 0:
-            self.clearImage()
-
             erlangNoise = np.random.gamma(k, scale, self.grayImage.shape)
-            erlangNoise = np.asarray(np.round(erlangNoise), dtype=np.int64)
-            
+            erlangNoise = np.asarray(np.round(erlangNoise), dtype=np.int64)            
             self.grayImage += erlangNoise
-            self.grayImage = scaleImage(self.grayImage)
 
             # Draw image
             self.drawImage(self.grayImage)
 
     # Add rayleigh noise to the image
-    def addExponentialNoise(self,scale):
+    def addExponentialNoise(self, scale):
         if len(self.grayImage) != 0:
-            self.clearImage()
-
             width, height = self.grayImage.shape
             exponentialNoise = np.random.exponential(scale, (width,height))
-            exponentialNoise = np.asarray(np.round(exponentialNoise), dtype=np.int64)
-            
+            exponentialNoise = np.asarray(np.round(exponentialNoise), dtype=np.int64)            
             self.grayImage += exponentialNoise
-            self.grayImage = scaleImage(self.grayImage)
             
             # Draw image
             self.drawImage(self.grayImage)
@@ -693,7 +628,6 @@ class ImageViewer(FigureCanvasQTAgg):
     # Add salt & pepper noise to the image
     def addSaltAndPepperNoise(self, mode="salt and pepper"):
         if len(self.grayImage) != 0:
-            self.clearImage()
             width, height = self.grayImage.shape
             
             # Randomly pick some pixels in the image for coloring them white
@@ -726,15 +660,18 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Operation on two images
     def operationTwoImages(self, operation, image1, image2):
-        if image1.shape != image2.shape:
-            raise "Error"
-            return
-
+        # if image1.shape != image2.shape:
         if len(image1) == 0 or len(image2) == 0:
             return
 
+        rowPadding1, colPadding1 = (image2.shape[0] - image1.shape[0]) // 2, (image2.shape[1] - image1.shape[1]) // 2
+        rowPadding2, colPadding2 = (image1.shape[0] - image2.shape[0]) // 2, (image1.shape[1] - image2.shape[1]) // 2
+
+        image1 = addPadding(image1,(rowPadding1, colPadding1))
+        image2 = addPadding(image2,(rowPadding2, colPadding2))
+
         if operation == "subtract":
-            resultedImage = image1 - image2
+            resultedImage = np.subtract(image1, image2)
         elif operation == "add":
             resultedImage = np.add(image1, image2)
         elif operation == "multiply":
@@ -760,9 +697,8 @@ class ImageViewer(FigureCanvasQTAgg):
         elif operation == "xnor":
             resultedImage = np.bitwise_not(np.bitwise_xor(image1, image2))
 
-        # Scale
-        scaledImage = scaleImage(resultedImage)
-        self.grayImage = scaledImage
+
+        self.grayImage = resultedImage
 
         # Draw image
         self.drawImage(self.grayImage)
@@ -775,10 +711,7 @@ class ImageViewer(FigureCanvasQTAgg):
             elif operation == "complement":
                 resultedImage = np.bitwise_not(self.grayImage)
             
-            # Scale
-            scaledImage = scaleImage(resultedImage)
-            self.grayImage = scaledImage
-
+            self.grayImage = resultedImage
             self.drawImage(self.grayImage, "Operation")
 
     ###############################################
@@ -807,8 +740,7 @@ class ImageViewer(FigureCanvasQTAgg):
                 spectrum = f
 
             if draw:
-                scaledSpectrum = scaleImage(spectrum)
-                self.drawImage(scaledSpectrum, mode)
+                self.drawImage(spectrum, mode)
 
             return spectrum
 

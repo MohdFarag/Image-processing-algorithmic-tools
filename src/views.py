@@ -1082,7 +1082,7 @@ class Window(QMainWindow):
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        output = self.getInputsFromUser(requirements, "Blur Image")
         if output != None:
             filterSize = output[0]
         else:
@@ -1280,14 +1280,8 @@ class Window(QMainWindow):
     def operationTwoImage(self, operation, images):
         if len(images) == 2:
             titleOfNewWindow = f"{operation}ing of images"
-            if operation == "subtract":
-                newTab = self.addNewTab(titleOfNewWindow, type="compare")
-            else:            
-                newTab = self.addNewTab(titleOfNewWindow)
-            
+            newTab = self.addNewTab(titleOfNewWindow)            
             newTab.primaryViewer.operationTwoImages(operation, images[0], images[1])
-            if operation == "subtract":
-                newTab.secondaryViewer.operationTwoImages(operation, images[1], images[0])
 
     # get result of operation on one image
     def operationOneImage(self, operation):
@@ -1367,9 +1361,9 @@ class Window(QMainWindow):
                 start, end, step = theta
                 theta = range(start, end, step)
 
-            # self.currentTab.sinogramViewer.drawLaminogramFromSinogram(self.currentTab.sinogramViewer.grayImage, thetas)
-            # self.currentTab.sinogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, theta)
-            self.currentTab.laminogramViewer.drawLaminogramFromImage(self.currentTab.primaryViewer.grayImage, theta)
+            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, theta)
+            self.currentTab.histogramViewer.drawLaminogramHammingFilter(self.currentTab.primaryViewer.grayImage, theta)
+            self.currentTab.sinogramViewer.drawLaminogramRamLakFilter(self.currentTab.sinogramViewer.grayImage, theta)
 
     ##########################################
     #         """View Functions"""           #

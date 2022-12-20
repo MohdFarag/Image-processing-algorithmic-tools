@@ -194,48 +194,47 @@ def bitPlaneSlicing(image, k, p):
 # Zoom image
 def zoom(image, scaleFactor, mode):
     # Get size of original image
-    oldWidth = image.shape[0]
-    oldHeight = image.shape[1]
+    oldWidth, oldHeight = image.shape[0], image.shape[1]
+
     # Set size of zoomed image
     newWidth = round(oldWidth * scaleFactor)
     newHeight = round(oldHeight * scaleFactor)
+    
     # Initialize resized image
     resizedImage = np.zeros([newWidth, newHeight])
 
-    if mode == "nearest":
-        # Set the values
-        for i in range(newWidth):
-            for j in range(newHeight):
+    x_ratio = float(oldWidth - 1) / (newWidth - 1) if newWidth > 1 else 0
+    y_ratio = float(oldHeight - 1) / (newHeight - 1) if newHeight > 1 else 0
+
+    for i in range(newWidth):
+        for j in range(newHeight):
+            if mode == "nearest":
                 if i/scaleFactor > oldWidth - 1 or j/scaleFactor > oldHeight - 1 :
-                    # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
-                    x = floor(i/scaleFactor)
-                    y = floor(j/scaleFactor)
+                    # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 int(1.5,0.5) 🡪 (1,0)
+                    x = int(i/scaleFactor)
+                    y = int(j/scaleFactor)
                 else:
-                    # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 floor(1.5,0.5) 🡪 (1,0)
-                    x = round(i/scaleFactor)
-                    y = round(j/scaleFactor)
-
-                resizedImage[i,j] = image[x,y]
-    
-    elif mode == "linear":
-        y_ratio = float(oldWidth - 1) / (newWidth - 1) if newWidth > 1 else 0
-        x_ratio = float(oldHeight - 1) / (newHeight - 1) if newHeight > 1 else 0
-
-        for i in range(newWidth):
-            for j in range(newHeight):
-                x_l, y_l = floor(x_ratio * j), floor(y_ratio * i)
-                x_h, y_h = ceil(x_ratio * j), ceil(y_ratio * i)
-
-                x_weight = (x_ratio * j) - x_l
-                y_weight = (y_ratio * i) - y_l
+                    # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 int(1.5,0.5) 🡪 (1,0)
+                    x = int(i/scaleFactor)
+                    y = int(j/scaleFactor)             
                 
-                a = image[y_l, x_l]
-                b = image[y_l, x_h]
-                c = image[y_h, x_l]
-                d = image[y_h, x_h]
+                pixel = image[x,y]
+
+            elif mode == "linear":
+                x_l, y_l = int(x_ratio * i), int(y_ratio * j)
+                x_h, y_h = ceil(x_ratio * i), ceil(y_ratio * j)
+
+                x_weight = (x_ratio * i) - x_l
+                y_weight = (y_ratio * j) - y_l
+                
+                a = image[x_l, y_l]
+                b = image[x_l, y_h]
+                c = image[x_h, y_l]
+                d = image[x_h, y_h]
                     
                 pixel = a * (1 - x_weight) * (1 - y_weight) + b * x_weight * (1 - y_weight) + c * y_weight * (1 - x_weight) + d * x_weight * y_weight
-                resizedImage[i][j] = pixel
+            
+            resizedImage[i][j] = pixel
    
     return resizedImage
 
@@ -280,9 +279,9 @@ def rotate(image, angle, mode="nearest"):
 
             elif mode == "linear":    
                 # Calculate the coordinate values for 4 surrounding pixels.
-                x_floor = floor(x)
+                x_floor = int(x)
                 x_ceil = min(oldWidth-1, ceil(x))
-                y_floor = floor(y)
+                y_floor = int(y)
                 y_ceil = min(oldHeight - 1, ceil(y))
                 
                 if (0 <= x < oldWidth and  0 <= y < oldHeight):
@@ -375,7 +374,6 @@ def radon(image, angles, mode='list'):
 """Filters Functions"""
 ########################
 
-
 # Add padding to image
 # TODO: Add Replicate padding & Mirror padding
 def addPadding(image, paddingSize, mode="zero", value=0):
@@ -384,6 +382,11 @@ def addPadding(image, paddingSize, mode="zero", value=0):
     else:
         xPaddingSize = paddingSize
         yPaddingSize = paddingSize
+
+    if xPaddingSize < 0:
+        xPaddingSize = 0
+    if yPaddingSize < 0:
+        yPaddingSize = 0
     
     xAddedPadding = 2 * xPaddingSize
     yAddedPadding = 2 * yPaddingSize
@@ -441,6 +444,7 @@ def gaussianKernel(sigma):
 
     return filter
 
+# Order statistics filter (medians & max & min)
 def OrderStatisticFilter(image, kernelSize, percent):
     paddingSize = kernelSize // 2
     paddedImage = addPadding(image, paddingSize)
@@ -457,3 +461,73 @@ def OrderStatisticFilter(image, kernelSize, percent):
         resultImage.append(rowArray)
 
     return np.array(resultImage)
+
+###############################################
+"""Histogram Functions"""
+###############################################
+
+# Build histogram of the image
+def getHistogram(image:np.ndarray, bins=256):
+    # Calculate the histogram size
+    bins = max(image.max(), bins) + 1
+    
+    # Put pixels in a 1D array by flattening out img array
+    flatImage = image.flatten()
+
+    # Array with size of bins, set to zeros
+    histogram = np.zeros(bins)
+    
+    # Loop through pixels and sum up counts of pixels
+    for pixel in flatImage:
+        histogram[pixel] += 1
+    
+    # return our final result
+    return histogram
+
+# Normalized Histogram
+def normalizeHistogram(image:np.ndarray):
+    # Calculate max intensity value to equalize to it 
+    try:
+        L = image.max()
+    except:
+        L = 256        
+
+    # Get histogram of nonEqualizedImage
+    nonEqualizedHistogram = getHistogram(image, bins=L)
+
+    # Normalize
+    sumPixels = np.sum(nonEqualizedHistogram)
+    nonEqualizedHistogram = nonEqualizedHistogram/sumPixels
+
+    # Normalized cumulative histogram
+    cfdHistogram = np.cumsum(nonEqualizedHistogram)
+
+    # Initialized transform map
+    transformMap = np.floor((L-1) * cfdHistogram)
+
+    # Flatten image array into 1D list
+    flatNonEqualizedImage = list(image.flatten())
+    flatEqualizedImage = [transformMap[p] for p in flatNonEqualizedImage]
+
+    # Reshape and write back into equalizedImage
+    image = np.reshape(np.asarray(flatEqualizedImage, dtype=np.int64), image.shape)
+
+    return image
+
+# Get mean & variance & std from histogram
+def getStatisticsOfHistogram(histogram:np.ndarray, L):
+    # Normalize
+    sumPixels = np.sum(histogram)
+    normalizedHistogram = histogram/sumPixels
+
+    mean = 0
+    for i in range(L):
+        mean += i * normalizedHistogram[i]
+    
+    variance = 0
+    for i in range(L):
+        variance += (i-mean)**2 * normalizedHistogram[i]
+
+    std = sqrt(variance)
+
+    return mean, variance, std
