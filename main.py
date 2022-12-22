@@ -1,7 +1,7 @@
 """Image Processing Algorithmic tools
 
 Author: Mohamed Ahmed Abdullah
-Version: v1.2
+Version: v1.3
 """
 
 #!/usr/bin/env python3

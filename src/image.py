@@ -1,5 +1,4 @@
 # math & matrix computations library
-import math
 import numpy as np
 import random
 
@@ -14,7 +13,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # Phantom
 from phantominator import shepp_logan
 # from skimage.data import shepp_logan_phantom
-from skimage.transform import iradon # ,vradon, rotate rescale
+import skimage.transform # import iradon , radon, rotate, rescale
 
 from PIL import Image
 from .utilities import *
@@ -117,13 +116,15 @@ class ImageViewer(FigureCanvasQTAgg):
         return self.originalImage
     
     # Draw image with matplotlib
-    def drawImage(self, image, title="Blank", cmap=plt.cm.Greys_r):
+    def drawImage(self, image, title="Blank", cmap=plt.cm.Greys_r, scale="scale", save=True):
         self.clearImage()
-        
+        image = scaleImage(image, scale)
+
+        if save:
+            self.grayImage = image
+
         self.axes.set_title(title, fontsize = 16)
-        self.grayImage = scaleImage(image)
-        self.axes.imshow(self.grayImage, cmap=cmap, aspect='equal', origin='lower')
-        
+        self.axes.imshow(image, cmap=cmap, aspect='equal', origin='upper', vmin=0, vmax=255)
         self.draw()
 
     # Save Image
@@ -152,15 +153,17 @@ class ImageViewer(FigureCanvasQTAgg):
         p1 = corners[0][0], corners[1][0]
         p2 = corners[0][2], corners[1][2]
         ROI = self.grayImage[p1[1]:p2[1], p1[0]:p2[0]]
-        self.drawImage(ROI)
-
-        L = ROI.max()
+        
+        # To Draw ROI
+        self.drawImage(ROI, scale="clip" ,save=False)
+        
         # Get histogram of image
+        L = ROI.max()
         histogram = np.bincount(ROI.flatten(), minlength=L)
         mean, variance, std = getStatisticsOfHistogram(histogram, L)
 
-        self.grayImage = ROI
-        return mean, variance, std
+        # self.grayImage = ROI
+        return ROI, mean, variance, std
 
     ###############################################
     """Image Functions"""
@@ -283,7 +286,7 @@ class ImageViewer(FigureCanvasQTAgg):
 
     # Construct Circle in gray box shape
     def constructCircle(self, n=256, m=256, I1=250, I2=150, I3=50, d=184, r=64):
-        self.grayImage = np.zeros((n,m), dtype=np.int64)
+        self.grayImage = np.ones((n,m), dtype=np.int64)
         (centerX, centerY), _ = getCenter(self.grayImage)
         differenceSize = (n - d) // 2
 
@@ -298,7 +301,7 @@ class ImageViewer(FigureCanvasQTAgg):
                     self.grayImage[i,j] = I3
 
         self.loaded = True
-        self.drawImage(self.grayImage)
+        self.drawImage(self.grayImage, scale="clip")
 
     # Construct Square shape
     def constructSquare(self):
@@ -334,15 +337,12 @@ class ImageViewer(FigureCanvasQTAgg):
     # Construct phantom
     def constructPhantom(self, size=256):
         self.loaded = True
-        phantom = shepp_logan(size)
-        self.grayImage = np.flip(phantom)              
-        
-        self.drawImage(self.grayImage)
+        sheppLoganPhantom = np.flip(shepp_logan(size))
+        self.drawImage(sheppLoganPhantom)
         
     # Display a Sinogram of this phantom
     def drawSinogram(self, image, angles=np.arange(180)):
-        if len(image) != 0:
-            
+        if len(image) != 0:           
             # Get sinogram 
             self.grayImage = radon(image, angles)
             self.drawImage(self.grayImage, "Sinogram")
@@ -354,70 +354,25 @@ class ImageViewer(FigureCanvasQTAgg):
             for angle in thetas:
                 strip = radon(image, [angle])
                 strip = np.tile(strip, (image.shape[0], 1))
-                strip = rotate(strip, angle)
+                strip = skimage.transform.rotate(strip, angle)
 
                 laminogram += strip
 
             self.drawImage(laminogram, "Laminogram")
 
     # Display a Laminogram of this phantom from sinogram
-    def drawLaminogram(self, sinogram, thetas=range(180)):
+    def drawLaminogram(self, sinogram, thetas=range(180), type='none'):
         if len(sinogram) != 0:
-            laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
-            j = 0
-            for i in thetas:
-                strip = sinogram[i]
-                strip = np.tile(strip, (sinogram.shape[1], 1))
-                strip = rotate(strip, thetas[j])    
-                laminogram += strip
-                j += 1
-            self.drawImage(laminogram, "Laminogram")
-
-    # Display a Laminogram of this phantom from sinogram
-    def drawLaminogramHammingFilter(self, sinogram, thetas=range(180)):
-        if len(sinogram) != 0:
-            laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
-            j = 0
-            for i in thetas:
-                strip = sinogram[i]
-                strip = np.fft.fft(strip)
-                
-                window = np.hamming(sinogram.shape[1])
-                strip = np.abs(np.fft.ifft(strip * window))
-                
-                strip = np.tile(strip, (sinogram.shape[1], 1))
-                strip = rotate(strip, thetas[j])
-                laminogram += strip
-                j += 1
-            self.drawImage(laminogram, "Laminogram")
-
-    # Display a Laminogram of this phantom from sinogram
-    def drawLaminogramRamLakFilter(self, sinogram, thetas=range(180)):
-        if len(sinogram) != 0:
-            laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
-            j = 0
-            for i in thetas:
-                strip = sinogram[i]
-                ramp = self.generateRampKernel(sinogram.shape[1])
-                
-                ramp = np.fft.fft(ramp)
-                strip = np.fft.fft(strip)
-                strip = np.abs(np.fft.ifft(strip * ramp))
-                
-                strip = np.tile(strip, (sinogram.shape[1], 1))
-                strip = rotate(strip, thetas[j])
-                laminogram += strip
-                j += 1
-            self.drawImage(laminogram, "Laminogram")
-
-    def generateRampKernel(self, N):
-        res = np.zeros(N)
-        center = N // 2 - 1
-        for i in range(N):
-            if (i - center) % 2 != 0:
-                res[i] = -1 / (pi * (i - center)) ** 2
-        res[center] = 1 / 4
-        return res
+            if type != 'none':
+                fftSinogram = np.fft.rfft(sinogram, axis=1)
+                if type == 'Ram-Lak':
+                    kernel = np.floor(np.arange(0.5, (fftSinogram.shape[1])//2 + 0.1, 0.5))
+                elif type == 'Hamming':
+                    kernel = np.hamming(fftSinogram.shape[1])                
+                sinogram = np.fft.irfft(fftSinogram[:,:kernel.shape[0]] * kernel, axis=1)   
+            
+            laminogram = backProjection(sinogram, thetas)
+            self.drawImage(laminogram)
     
     ###############################################
     """Histogram Functions"""
@@ -445,8 +400,8 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.plot(cdf_normalized, color = 'black')
             self.axes.axvline(mean, color='g', linestyle='dashed', linewidth=1)
             self.axes.legend(('cumulative histogram','mean','histogram'), loc = 'upper left')
-
-            self.axes.set_title(f'\u03BC = {mean:.4}    \u03C3 = {std:.4}')
+           
+            self.axes.set_title(f'\u03BC = {mean}    \u03C3 = {std}')
             self.draw()
         else:
             return
@@ -527,7 +482,7 @@ class ImageViewer(FigureCanvasQTAgg):
             blurredImage = self.applySpatialFilter(self.grayImage, boxFilter)
             # Subtract blurred image from original image
             subtractedImage = self.subtractBlurredFromOriginal(blurredImage)
-            # Multiply the result by k (highboost factor)
+            # Multiply the result by k (highboost factor) then sum to original image
             self.grayImage = self.multiplyByFactor(subtractedImage, k)          
             # Draw image
             self.drawImage(self.grayImage)
@@ -582,22 +537,22 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage += uniformNoise
 
             # Draw image
-            self.drawImage(self.grayImage)
+            self.drawImage(self.grayImage, scale="clip")
 
     # Add gaussian noise to the image
-    def addGaussianNoise(self, sigma, mean):
+    def addGaussianNoise(self, mean, sigma):
         if len(self.grayImage) != 0:
             gaussianNoise = np.random.normal(mean, sigma, self.grayImage.shape)
             gaussianNoise = np.asarray(np.round(gaussianNoise), dtype=np.int64)            
             self.grayImage += gaussianNoise
 
             # Draw image
-            self.drawImage(self.grayImage)
+            self.drawImage(self.grayImage, scale="clip")
 
     # Add rayleigh noise to the image
-    def addRayleighNoise(self,scale):
+    def addRayleighNoise(self, mode):
         if len(self.grayImage) != 0:
-            rayleighNoise = np.random.rayleigh(scale, self.grayImage.shape)
+            rayleighNoise = np.random.rayleigh(mode, self.grayImage.shape)
             rayleighNoise = np.asarray(np.round(rayleighNoise), dtype=np.int64)            
             self.grayImage += rayleighNoise
             

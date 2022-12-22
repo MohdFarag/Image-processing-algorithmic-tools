@@ -13,12 +13,16 @@ from .utilities import *
 from .style import *
 
 # Importing Qt widgets
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+try:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtGui import *
+    from PyQt6.QtCore import *
+except ImportError:
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtCore import *
 
 # Matplotlib
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
 
@@ -27,11 +31,11 @@ from .log import appLogger
 
 
 # Window class
-class Window(QMainWindow):
+class MainWindow(QMainWindow):
     """Main Window"""
     def __init__(self, *args, **kwargs):
         """Initializer."""
-        super(Window, self).__init__(*args, **kwargs)
+        super(MainWindow, self).__init__(*args, **kwargs)
 
         ### Variables
         self.images = []
@@ -48,12 +52,12 @@ class Window(QMainWindow):
         self.bodyOfPatient = "N/A"
         self.interpolationMode = "N/A"
         
+        ### Setting title
+        self.setWindowTitle("Image Processing Algorithms")
+
         ### Setting Icon
         self.setWindowIcon(QIcon(":icon"))
         self.setMinimumSize(1000,600)
-
-        ### Setting title
-        self.setWindowTitle("Image Processing Algorithms")
 
         ### UI contents
         self._createActions()
@@ -69,6 +73,7 @@ class Window(QMainWindow):
         # Connect signals
         self._connect()
    
+    ##########################################
     ##########################################
 
     # Actions
@@ -567,7 +572,7 @@ class Window(QMainWindow):
         
         if type == "main":
             # Using a title
-            self.addToolBar(Qt.LeftToolBarArea, self.toolBar)  # type: ignore
+            self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolBar)  # type: ignore
             self.toolBar.addAction(self.openAction)
             
             self.toolBar.addAction(self.showHistogramAction)
@@ -580,8 +585,8 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.clearAction)       
 
         elif type == "transformations":
-            self.addToolBar(Qt.TopToolBarArea,self.toolBar) # type: ignore
-            self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon) # type: ignore
+            self.addToolBar(Qt.ToolBarArea.TopToolBarArea,self.toolBar) # type: ignore
+            self.toolBar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon) # type: ignore
             
             self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
             self.toolBar.addAction(self.zoomLinearInterpolationAction)
@@ -591,7 +596,7 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.shearActionVertical)     
 
         elif type == "shapes":
-            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
+            self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolBar)  # type: ignore
             
             self.toolBar.addAction(self.constructTAction)
             self.toolBar.addAction(self.constructCircleBoxAction)
@@ -599,18 +604,11 @@ class Window(QMainWindow):
             self.toolBar.addAction(self.constructPhantomAction)
 
         elif type == "operation":
-            self.addToolBar(Qt.RightToolBarArea, self.toolBar)  # type: ignore
+            self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolBar)  # type: ignore
             
             self.toolBar.addAction(self.additionAction)
             self.toolBar.addAction(self.subtractionAction)
 
-            # self.toolBar.addAction(self.unionAction)
-            # self.toolBar.addAction(self.intersectAction)
-
-            # self.toolBar.addAction(self.andAction)
-            # self.toolBar.addAction(self.orAction)
-            # self.toolBar.addAction(self.xorAction)
-    
     # Context Menu Event
     def contextMenuEvent(self, event):
         # Creating a menu object with the central widget as parent
@@ -633,6 +631,7 @@ class Window(QMainWindow):
     def _initUI(self):
         centralMainWindow = QWidget(self)
         self.setCentralWidget(centralMainWindow)
+
         # Outer Layout
         outerLayout = QVBoxLayout()
 
@@ -646,11 +645,14 @@ class Window(QMainWindow):
         self.currentTab = self.addNewTab("Image", "red")
         outerLayout.addWidget(self.tabs)
         
+        print("xxxxxxxxxxxxxxxx2")
+
         # Add docker
         self.addDockLayout()
         ### GUI ###
 
         centralMainWindow.setLayout(outerLayout)
+
 
     # Status Bar
     def _createStatusBar(self):
@@ -673,7 +675,7 @@ class Window(QMainWindow):
 
         self.dockInfo.setWidget(self.dataWidget)
         self.dockInfo.setFloating(False)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockInfo)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dockInfo)
 
     # Set information
     def setInfo(self, ext, width="", height="", size="", depth="", color="", Modality="", PatientName="", PatientAge="", BodyPartExamined=""):
@@ -751,7 +753,7 @@ class Window(QMainWindow):
         self.exitAction.triggered.connect(self.exit)
 
         " Fourier "
-        self.logMagnitudeAction.triggered.connect(lambda: self.updateImage(True))
+        self.logMagnitudeAction.triggered.connect(lambda: self.updateImage())
 
         "Image"
         self.equalizeAction.triggered.connect(lambda: self.baseBehavior(self.currentTab.equalize))
@@ -918,20 +920,17 @@ class Window(QMainWindow):
 
     # Clear image
     def clearImage(self):
-        self.currentTab.primaryViewer.reset()
-        self.currentTab.histogramViewer.reset()
-        self.currentTab.magnitudeViewer.reset()
-        self.currentTab.phaseViewer.reset() 
+        self.currentTab.clear()
 
     # Exit the application
     def exit(self):
         exitDialog = QMessageBox.critical(self,
         "Exit the application",
         "Are you sure you want to exit the application?",
-        buttons=QMessageBox.Yes | QMessageBox.No,
-        defaultButton=QMessageBox.No)
+        buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        defaultButton=QMessageBox.StandardButton.Yes)
 
-        if exitDialog == QMessageBox.Yes:
+        if exitDialog == QMessageBox.StandardButton.Yes.value:
             # Exit the application
             sys.exit()
 
@@ -1038,21 +1037,25 @@ class Window(QMainWindow):
         image = self.currentTab.primaryViewer.getGrayImage()
         if len(image) != 0:
             _, ax = plt.subplots()
-            ax.imshow(image, cmap="gray")
+            ax.imshow(image, cmap="gray", vmin=0, vmax=255)
             plt.title("Draw your region of interest (ROI)")
             plt.suptitle("Click Enter if you finished")
             
             def line_select_callback(eclick, erelease):
-                pass
+                ROI, mean, variance, std = self.currentTab.primaryViewer.setROI(toggle_selector.RS.corners)
+                self.updateImage(ROI)
+                self.setInfo("ROI", mean, variance, std)
+
+            def handle_close(event):
+                self.currentTab.primaryViewer.drawImage(image, scale="clip")
+                self.updateImage(image)
+                plt.close()
 
             def toggle_selector(event):
                 if event.key == 'enter':
-                    if toggle_selector.RS.active:
-                        toggle_selector.RS.set_active(False)
-                        mean, variance, std = self.currentTab.primaryViewer.setROI(toggle_selector.RS.corners)
-                        self.setInfo("ROI", mean, variance, std)
-                        self.updateImage(True)
-                        plt.close()
+                    self.currentTab.primaryViewer.drawImage(image, scale="clip")
+                    self.updateImage(image)
+                    plt.close()
 
             toggle_selector.RS = RectangleSelector(ax, line_select_callback,
                                                 drawtype='box', useblit=True,
@@ -1062,6 +1065,7 @@ class Window(QMainWindow):
                                                 interactive=True)
 
             plt.connect('key_press_event', toggle_selector)
+            plt.connect('close_event', handle_close)
             plt.show()
 
     ##########################################
@@ -1313,13 +1317,78 @@ class Window(QMainWindow):
     # Add random noise to the image
     def addNoise(self, mode="salt and pepper"):
         if mode == "uniform":
-            self.currentTab.primaryViewer.addUniformNoise(-10,10)
+            requirements = {
+                "a":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                },
+                "b":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                }
+            }
+
+            output = self.getInputsFromUser(requirements, "Uniform Noise")
+            if output != None:
+                a = output[0]
+                b = output[1]
+            else:
+                return
+            
+            self.currentTab.primaryViewer.addUniformNoise(a,b)
         elif mode == "gaussian":
-            self.currentTab.primaryViewer.addGaussianNoise(5,0)
+            requirements = {
+                "mean":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                },
+                "sigma":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                }
+            }
+
+            output = self.getInputsFromUser(requirements, "Gaussian Noise")
+            if output != None:
+                mean = output[0]
+                sigma = output[1]
+            else:
+                return
+
+            self.currentTab.primaryViewer.addGaussianNoise(mean,sigma)
         elif mode == "rayleigh":
-            self.currentTab.primaryViewer.addRayleighNoise(5)
+            requirements = {
+                "mode":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                }
+            }
+
+            output = self.getInputsFromUser(requirements, "Rayleigh Noise")
+            if output != None:
+                mode = output[0]
+            else:
+                return
+            self.currentTab.primaryViewer.addRayleighNoise(mode)
         elif mode == "erlang":
-            self.currentTab.primaryViewer.addErlangNoise(100)
+            requirements = {
+                "K":{
+                    "type": FLOAT,
+                    "range": (0, inf)
+                },
+                "Scale":{
+                    "type": FLOAT,
+                    "range": (0, inf)
+                }
+            }
+
+            output = self.getInputsFromUser(requirements, "Erlang Noise")
+            if output != None:
+                k = output[0]
+                scale = output[1]
+            else:
+                return
+            self.currentTab.primaryViewer.addErlangNoise(k, scale)
         elif mode == "exponential":
             self.currentTab.primaryViewer.addExponentialNoise(5)
         elif mode == "pepper":
@@ -1340,9 +1409,13 @@ class Window(QMainWindow):
     def laminogram(self):
         if self.currentTab.showHideLaminogram():
             requirements = {
+                "Filter Type": {
+                    "type": RADIO,
+                    "options": ['None', 'Hamming', 'Ram-Lak (ramp)']
+                },
                 "Mode": {
                     "type": RADIO,
-                    "options": ["Start and End","Values"]
+                    "options": ['Start, End, step',"Values"]
                 },
                 "Angles (comma ',') ":{
                     "type": STR
@@ -1351,19 +1424,27 @@ class Window(QMainWindow):
 
             output = self.getInputsFromUser(requirements, "Laminogram")
             if output != None:
-                mode = output[0]
-                theta = output[1]
+                filterType = output[0]
+                mode = output[1]
+                angles = output[2].replace(" ","")
             else:
                 return
+            angles = np.int64(np.array(angles.split(",")))
 
-            theta = np.int64(np.array(theta.split(",")))
             if mode == 0:
-                start, end, step = theta
-                theta = range(start, end, step)
+                if len(angles) == 2:
+                    start, end = angles
+                    angles = range(start, end)
+                elif len(angles) == 3:
+                    start, end, step = angles
+                    angles = range(start, end, step)
 
-            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, theta)
-            self.currentTab.histogramViewer.drawLaminogramHammingFilter(self.currentTab.primaryViewer.grayImage, theta)
-            self.currentTab.sinogramViewer.drawLaminogramRamLakFilter(self.currentTab.sinogramViewer.grayImage, theta)
+            if filterType == 0:
+                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles)
+            elif filterType == 1:
+                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="Hamming")
+            elif filterType == 2:
+                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="Ram-Lak")
 
     ##########################################
     #         """View Functions"""           #
@@ -1374,24 +1455,27 @@ class Window(QMainWindow):
 
     # Base function  
     def baseBehavior(self, func, *args, **kwargs):
-        # try:
+        try:
             func(*args, **kwargs)
-            self.updateImage(True)
-        # except Exception as e:
-        #     print(e)
-        #     QMessageBox.critical(self,"Error",f"Sorry, Error occurred. {e}")
-        #     return  
+            self.updateImage()
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self,"Error",f"Sorry, Error occurred. {e}")
+            return  
                 
     # Update magnitude and phase and histogram for the image after every update
-    def updateImage(self, log=False):
+    def updateImage(self, image=[], log=True):
+        if image == []:
+            image = self.currentTab.primaryViewer.grayImage
+            
         if log:
-            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude",True)
-            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase",True)
+            self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude", True)
+            self.currentTab.phaseViewer.fourierTransform(image, "phase", True)
         else:
-            self.currentTab.magnitudeViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"magnitude")
-            self.currentTab.phaseViewer.fourierTransform(self.currentTab.primaryViewer.grayImage,"phase")
+            self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude")
+            self.currentTab.phaseViewer.fourierTransform(image, "phase")
 
-        self.currentTab.histogramViewer.drawHistogram(self.currentTab.primaryViewer.grayImage)
+        self.currentTab.histogramViewer.drawHistogram(image)
                 
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
@@ -1419,7 +1503,7 @@ class Window(QMainWindow):
     def addNewTab(self, title:str="Blank", color:str="black", type="normal"):
         # Initialize new tab
         newTab = tabViewer(title, color, type)
-        
+            
         # Add tab to list of tabs
         self.tabs.addTab(newTab, title)
         

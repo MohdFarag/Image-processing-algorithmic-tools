@@ -370,6 +370,19 @@ def radon(image, angles, mode='list'):
     
     return np.vstack(projections) # Return the projections as a sinogram
 
+# Display a Laminogram of this phantom from sinogram
+def backProjection(sinogram, thetas=range(180)):
+    laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
+    j = 0
+    for i in thetas:
+        strip = sinogram[i]
+        strip = np.tile(strip, (sinogram.shape[1], 1))
+        strip = rotate(strip, thetas[j])    
+        laminogram += strip
+        j += 1
+    
+    return laminogram
+
 ########################
 """Filters Functions"""
 ########################

@@ -1,7 +1,13 @@
-# importing Qt widgets
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+# Importing Qt widgets
+try:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtGui import *
+    from PyQt6.QtCore import *
+except ImportError:
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtCore import *
+
 from .image import ImageViewer
 
 class tabViewer(QWidget):
@@ -122,3 +128,11 @@ class tabViewer(QWidget):
         self.phaseViewer.fourierTransform(self.primaryViewer.grayImage,"phase")
 
         return data
+
+    def clear(self):
+        self.primaryViewer.reset()
+        self.histogramViewer.reset()
+        self.magnitudeViewer.reset()
+        self.phaseViewer.reset()
+        self.sinogramViewer.reset()
+        self.laminogramViewer.reset()

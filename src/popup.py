@@ -1,9 +1,14 @@
 from math import *
 
 # Importing Qt widgets
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+try:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtGui import *
+    from PyQt6.QtCore import *
+except ImportError:
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtCore import *
 
 from .utilities import *
 
@@ -57,9 +62,11 @@ class popWindow(QDialog):
     def addInput(self, placeholderText, type="", items=None):
         if type == RADIO:
             radioLayout = QHBoxLayout()
+            radioGroup = QButtonGroup(self)
             radioList = list()
             for item in items: 
-                radioBtn = QRadioButton(item)
+                radioBtn = QRadioButton(item,self)
+                radioGroup.addButton(radioBtn)
                 radioLayout.addWidget(radioBtn)
                 radioList.append(radioBtn)
             self.outerLayout.addLayout(radioLayout)

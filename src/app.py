@@ -1,8 +1,11 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication
-from .views import Window
+try:
+    from PyQt6.QtWidgets import QApplication
+except ImportError:
+    from PyQt5.QtWidgets import QApplication
 
+from .mainWindow import MainWindow
 from .style import *
 
 # Importing Logging
@@ -12,16 +15,14 @@ def main():
     # Create the application
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
+    # Apply the complete dark theme to your Qt App.
+    qdarktheme.setup_theme("auto")
     
     # Create and show the main window
-    win = Window()
-    
-    # Set stylesheet
-    qtmodern.styles.light(app)
-    win = qtmodern.windows.ModernWindow(win)
-    
-    win.show()
+    window = MainWindow()
+    window.show()
+
     appLogger.debug("Application started successfully.")
 
     # Run the event loop
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
