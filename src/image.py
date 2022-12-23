@@ -356,15 +356,13 @@ class ImageViewer(FigureCanvasQTAgg):
             #     kernelSize = fftSinogram.shape[1] + 1
             # else:
             #     kernelSize = fftSinogram.shape[1]
-
             # if type != 'none':
             #     if type == 'ramp':
             #         kernel = skimage.transform.radon_transform._get_fourier_filter(kernelSize, "ramp")
             #         # kernel = np.floor(np.arange(0.5, (fftSinogram.shape[1])//2 + 0.1, 0.5))
             #     elif type == 'hamming':
             #         kernel = skimage.transform.radon_transform._get_fourier_filter(kernelSize, "hamming")
-            #         # kernel = np.hamming(fftSinogram.shape[1])
-                
+            #         # kernel = np.hamming(fftSinogram.shape[1])                
             #     sinogram = np.fft.irfft(fftSinogram * kernel, axis=1)   
             
             laminogram = skimage.transform.iradon(sinogram[:,thetas], thetas, filter_name=type)

@@ -1475,6 +1475,7 @@ class MainWindow(QMainWindow):
             self.currentTab.phaseViewer.fourierTransform(image, "phase")
 
         self.currentTab.histogramViewer.drawHistogram(image)
+        # self.currentTab.sinogramViewer.drawSinogram(image)
                 
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
