@@ -54,7 +54,7 @@ class tabViewer(QWidget):
             self.tabLayout.addWidget(self.secondaryViewer,0,1)
         else:
             self.tabLayout.addWidget(self.histogramViewer,0,1)
-            self.histogramViewer.hide()
+            # self.histogramViewer.hide()
             
             self.tabLayout.addWidget(self.magnitudeViewer,1,0)
             self.magnitudeViewer.hide()
@@ -63,10 +63,10 @@ class tabViewer(QWidget):
             self.phaseViewer.hide()
 
             self.tabLayout.addWidget(self.sinogramViewer,2,0)
-            self.sinogramViewer.hide()
+            # self.sinogramViewer.hide()
 
             self.tabLayout.addWidget(self.laminogramViewer,2,1)
-            self.laminogramViewer.hide()
+            # self.laminogramViewer.hide()
 
         # Set layout to new tab
         self.setLayout(self.tabLayout)

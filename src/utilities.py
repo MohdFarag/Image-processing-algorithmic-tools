@@ -353,31 +353,32 @@ def shear(image, angle, mode="horizontal"):
 ########################
 
 # Build the Radon Transform using 'steps' or 'list' of angles projections of 'image'. 
-def radon(image, angles, mode='list'):
+def radon(image, angles):
     ## Accumulate projections in a list.
     projections = []
 
-    if mode == "steps":
+    if type(angles) == int:
         # Angle increment for rotations.
         dTheta = -180.0 / angles
         for i in range(angles):
             rotatedImage = rotate(image, i*dTheta)
             projections.append(rotatedImage.sum(axis=0))
-    else:
+    elif type(angles) == list or type(angles) == tuple or type(angles) == np.ndarray:
         for angle in angles:
             rotatedImage = rotate(image, -angle)
             projections.append(rotatedImage.sum(axis=0))
     
     return np.vstack(projections) # Return the projections as a sinogram
 
-# Display a Laminogram of this phantom from sinogram
-def backProjection(sinogram, thetas=range(180)):
+# Build a Laminogram of the phantom from sinogram and thetas
+def iradon(sinogram, angles=range(180)):
+    # Initialize laminogram
     laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
     j = 0
-    for i in thetas:
+    for i in angles:
         strip = sinogram[i]
         strip = np.tile(strip, (sinogram.shape[1], 1))
-        strip = rotate(strip, thetas[j])    
+        strip = rotate(strip, angles[j])    
         laminogram += strip
         j += 1
     

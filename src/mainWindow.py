@@ -12,6 +12,7 @@ from .popup import popWindow
 from .utilities import *
 from .style import *
 
+
 # Importing Qt widgets
 try:
     from PyQt6.QtWidgets import *
@@ -645,8 +646,6 @@ class MainWindow(QMainWindow):
         self.currentTab = self.addNewTab("Image", "red")
         outerLayout.addWidget(self.tabs)
         
-        print("xxxxxxxxxxxxxxxx2")
-
         # Add docker
         self.addDockLayout()
         ### GUI ###
@@ -1403,48 +1402,48 @@ class MainWindow(QMainWindow):
     ##########################################
 
     def sinogram(self):
-        if self.currentTab.showHideSinogram():
-            self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
+        # if self.currentTab.showHideSinogram():
+        self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
     
     def laminogram(self):
-        if self.currentTab.showHideLaminogram():
-            requirements = {
-                "Filter Type": {
-                    "type": RADIO,
-                    "options": ['None', 'Hamming', 'Ram-Lak (ramp)']
-                },
-                "Mode": {
-                    "type": RADIO,
-                    "options": ['Start, End, step',"Values"]
-                },
-                "Angles (comma ',') ":{
-                    "type": STR
-                }
+        # if self.currentTab.showHideLaminogram():
+        requirements = {
+            "Filter Type": {
+                "type": RADIO,
+                "options": ['None', 'Hamming', 'Ram-Lak (ramp)']
+            },
+            "Mode": {
+                "type": RADIO,
+                "options": ['Start, End, step',"Values"]
+            },
+            "Angles (comma ',') ":{
+                "type": STR
             }
+        }
 
-            output = self.getInputsFromUser(requirements, "Laminogram")
-            if output != None:
-                filterType = output[0]
-                mode = output[1]
-                angles = output[2].replace(" ","")
-            else:
-                return
-            angles = np.int64(np.array(angles.split(",")))
+        output = self.getInputsFromUser(requirements, "Laminogram")
+        if output != None:
+            filterType = output[0]
+            mode = output[1]
+            angles = output[2].replace(" ","")
+        else:
+            return
+        angles = np.int64(np.array(angles.split(",")))
 
-            if mode == 0:
-                if len(angles) == 2:
-                    start, end = angles
-                    angles = range(start, end)
-                elif len(angles) == 3:
-                    start, end, step = angles
-                    angles = range(start, end, step)
+        if mode == 0:
+            if len(angles) == 2:
+                start, end = angles
+                angles = range(start, end)
+            elif len(angles) == 3:
+                start, end, step = angles
+                angles = range(start, end, step)
 
-            if filterType == 0:
-                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles)
-            elif filterType == 1:
-                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="Hamming")
-            elif filterType == 2:
-                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="Ram-Lak")
+        if filterType == 0:
+            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles)
+        elif filterType == 1:
+            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="hamming")
+        elif filterType == 2:
+            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="ramp")
 
     ##########################################
     #         """View Functions"""           #
@@ -1513,10 +1512,7 @@ class MainWindow(QMainWindow):
     # Get inputs from user by give dictionary
     def getInputsFromUser(self, requirements, title="Blank"):
         inputWindow = popWindow(title, requirements)
-    
-        # setup stylesheet
-        inputWindow.setStyleSheet(qdarkgraystyle.load_stylesheet_pyqt5())
-        inputWindow.exec_()
+        inputWindow.exec()
         
         result = list()
         output = inputWindow.getValues()

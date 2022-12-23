@@ -65,7 +65,7 @@ class popWindow(QDialog):
             radioGroup = QButtonGroup(self)
             radioList = list()
             for item in items: 
-                radioBtn = QRadioButton(item,self)
+                radioBtn = QRadioButton(item, self)
                 radioGroup.addButton(radioBtn)
                 radioLayout.addWidget(radioBtn)
                 radioList.append(radioBtn)

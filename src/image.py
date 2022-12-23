@@ -343,37 +343,33 @@ class ImageViewer(FigureCanvasQTAgg):
     # Display a Sinogram of this phantom
     def drawSinogram(self, image, angles=np.arange(180)):
         if len(image) != 0:           
-            # Get sinogram 
+            # Get sinogram
             self.grayImage = radon(image, angles)
             self.drawImage(self.grayImage, "Sinogram")
-
-    # Display a Laminogram of this phantom from image
-    def drawLaminogramFromImage(self, image, thetas=range(180)):
-        if len(image) != 0:
-            laminogram = np.zeros(image.shape)
-            for angle in thetas:
-                strip = radon(image, [angle])
-                strip = np.tile(strip, (image.shape[0], 1))
-                strip = skimage.transform.rotate(strip, angle)
-
-                laminogram += strip
-
-            self.drawImage(laminogram, "Laminogram")
+            self.grayImage = np.rot90(self.grayImage,3)
 
     # Display a Laminogram of this phantom from sinogram
-    def drawLaminogram(self, sinogram, thetas=range(180), type='none'):
+    def drawLaminogram(self, sinogram, thetas=range(180), type=None):
         if len(sinogram) != 0:
-            if type != 'none':
-                fftSinogram = np.fft.rfft(sinogram, axis=1)
-                if type == 'Ram-Lak':
-                    kernel = np.floor(np.arange(0.5, (fftSinogram.shape[1])//2 + 0.1, 0.5))
-                elif type == 'Hamming':
-                    kernel = np.hamming(fftSinogram.shape[1])                
-                sinogram = np.fft.irfft(fftSinogram[:,:kernel.shape[0]] * kernel, axis=1)   
+            # fftSinogram = np.fft.rfft(sinogram, axis=1)
+            # if fftSinogram.shape[1] % 2 != 0:
+            #     kernelSize = fftSinogram.shape[1] + 1
+            # else:
+            #     kernelSize = fftSinogram.shape[1]
+
+            # if type != 'none':
+            #     if type == 'ramp':
+            #         kernel = skimage.transform.radon_transform._get_fourier_filter(kernelSize, "ramp")
+            #         # kernel = np.floor(np.arange(0.5, (fftSinogram.shape[1])//2 + 0.1, 0.5))
+            #     elif type == 'hamming':
+            #         kernel = skimage.transform.radon_transform._get_fourier_filter(kernelSize, "hamming")
+            #         # kernel = np.hamming(fftSinogram.shape[1])
+                
+            #     sinogram = np.fft.irfft(fftSinogram * kernel, axis=1)   
             
-            laminogram = backProjection(sinogram, thetas)
+            laminogram = skimage.transform.iradon(sinogram[:,thetas], thetas, filter_name=type)
             self.drawImage(laminogram)
-    
+
     ###############################################
     """Histogram Functions"""
     ###############################################

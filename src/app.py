@@ -16,7 +16,7 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     # Apply the complete dark theme to your Qt App.
-    qdarktheme.setup_theme("auto")
+    qdarktheme.setup_theme("light")
     
     # Create and show the main window
     window = MainWindow()
@@ -24,5 +24,5 @@ def main():
 
     appLogger.debug("Application started successfully.")
 
-    # Run the event loop
+    # Start the event loop
     sys.exit(app.exec())
