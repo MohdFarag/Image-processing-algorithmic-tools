@@ -12,7 +12,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Phantom
 from phantominator import shepp_logan
-# from skimage.data import shepp_logan_phantom
 import skimage.transform # import iradon , radon, rotate, rescale
 
 from PIL import Image
@@ -342,31 +341,17 @@ class ImageViewer(FigureCanvasQTAgg):
         
     # Display a Sinogram of this phantom
     def drawSinogram(self, image, angles=np.arange(180)):
-        if len(image) != 0:           
+        if len(image) != 0:
             # Get sinogram
             self.grayImage = radon(image, angles)
             self.drawImage(self.grayImage, "Sinogram")
             self.grayImage = np.rot90(self.grayImage,3)
 
     # Display a Laminogram of this phantom from sinogram
-    def drawLaminogram(self, sinogram, thetas=range(180), type=None):
+    def drawLaminogram(self, sinogram, thetas=range(180), filterType=None):
         if len(sinogram) != 0:
-            # fftSinogram = np.fft.rfft(sinogram, axis=1)
-            # if fftSinogram.shape[1] % 2 != 0:
-            #     kernelSize = fftSinogram.shape[1] + 1
-            # else:
-            #     kernelSize = fftSinogram.shape[1]
-            # if type != 'none':
-            #     if type == 'ramp':
-            #         kernel = skimage.transform.radon_transform._get_fourier_filter(kernelSize, "ramp")
-            #         # kernel = np.floor(np.arange(0.5, (fftSinogram.shape[1])//2 + 0.1, 0.5))
-            #     elif type == 'hamming':
-            #         kernel = skimage.transform.radon_transform._get_fourier_filter(kernelSize, "hamming")
-            #         # kernel = np.hamming(fftSinogram.shape[1])                
-            #     sinogram = np.fft.irfft(fftSinogram * kernel, axis=1)   
-            
-            laminogram = skimage.transform.iradon(sinogram[:,thetas], thetas, filter_name=type)
-            self.drawImage(laminogram)
+            laminogram = skimage.transform.iradon(sinogram[:,thetas], thetas, filter_name=filterType)
+            self.drawImage(laminogram, title="Laminogram")
 
     ###############################################
     """Histogram Functions"""
@@ -646,11 +631,8 @@ class ImageViewer(FigureCanvasQTAgg):
         elif operation == "xnor":
             resultedImage = np.bitwise_not(np.bitwise_xor(image1, image2))
 
-
-        self.grayImage = resultedImage
-
         # Draw image
-        self.drawImage(self.grayImage)
+        self.drawImage(resultedImage)
 
     # Operation on one image
     def operationOneImages(self, operation):
@@ -660,8 +642,7 @@ class ImageViewer(FigureCanvasQTAgg):
             elif operation == "complement":
                 resultedImage = np.bitwise_not(self.grayImage)
             
-            self.grayImage = resultedImage
-            self.drawImage(self.grayImage, "Operation")
+            self.drawImage(resultedImage, "Operation")
 
     ###############################################
     """Fourier Functions"""
@@ -701,3 +682,29 @@ class ImageViewer(FigureCanvasQTAgg):
         # shiftedImage = np.fft.ifftshift(combinedImage)
         resultImage = np.fft.ifft2(combinedImage)
         return resultImage
+
+    ###############################################
+    """Morphological Functions"""
+    ###############################################
+    
+    # inverse Fourier transform
+    def morphologicalActions(self, option):
+        if len(self.grayImage) != 0:
+            image = binaryImage(self.grayImage)
+            if option == 'erosion':
+                print(1)
+                result = erosionImage(image)
+            elif option == 'dilation':
+                print(2)
+                result = dilationImage(image)
+            elif option == 'opening':
+                print(3)
+                result = opening(image)
+            elif option == 'closing':
+                print(4)
+                result = closing(image)
+            elif option == 'noise':
+                print(5)
+                result = removeNoise(image)
+
+            self.drawImage(result)

@@ -1,5 +1,6 @@
 import numpy as np
 from math import *
+from skimage.morphology import erosion, dilation
 
 # Constants (Random values) -> to identify the type of popup
 INT = 127
@@ -190,9 +191,10 @@ def bitPlaneSlicing(image, k, p):
 ########################
 "Spatial Transformations"
 ########################
+# TODO: Add Bicubic interpolation
 
 # Zoom image
-def zoom(image, scaleFactor, mode):
+def zoom(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
     # Get size of original image
     oldWidth, oldHeight = image.shape[0], image.shape[1]
 
@@ -220,7 +222,7 @@ def zoom(image, scaleFactor, mode):
                 
                 pixel = image[x,y]
 
-            elif mode == "linear":
+            elif mode == "bilinear":
                 x_l, y_l = int(x_ratio * i), int(y_ratio * j)
                 x_h, y_h = ceil(x_ratio * i), ceil(y_ratio * j)
 
@@ -239,10 +241,27 @@ def zoom(image, scaleFactor, mode):
     return resizedImage
 
 # Rotate image
-def rotate(image, angle, mode="nearest"):
+def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:str='same'):
+    '''
+    This function rotates the image around its center by amount of degrees
+    provided. The rotated image can be of the same size as the original image
+    or it can show the full image.
+
+    inputs: 
+            image: input image (dtype: numpy-ndarray)
+            angle: amount of rotation in degrees (e.g., 45,90 etc.)
+            interpolation: type of interpolation you need
+                'nearest': Nearest neighbour interpolation
+                'bilinear' : Bilinear interpolation
+            option: string variable for type of rotation. It can take two values
+                'same': the rotated image will have same size as the original image
+                    It is default value for this variable.
+                'full': the rotated image will show the full rotation of original
+                    image thus the size may be different than original.
+    '''
+    
     # Converting degrees to radians
-    angle = -angle
-    angle = radians(angle)
+    angle = radians(-angle)
 
     # Cosine & Sine
     cosine = cos(angle)
@@ -253,58 +272,71 @@ def rotate(image, angle, mode="nearest"):
     # Define the height of the image
     oldHeight = image.shape[1]
     
-    # Initialize rotated image 
-    rotatedImage = np.zeros((oldWidth,oldHeight)) 
+    if(option != 'same'):
+        # Let us find the height and width of the rotated image
+        widthRotated = round(abs(image.shape[0]*cos(angle))) + round(abs(image.shape[1]*sin(angle)))
+        heightRotated = round(abs(image.shape[1]*sin(angle))) + round(abs(image.shape[0]*cos(angle)))
 
-    # Find the center of the rotated image
+        # Initialize rotated image 
+        rotatedImage = np.zeros((widthRotated, heightRotated)) 
+    else:
+        # Initialize rotated image 
+        rotatedImage = np.zeros((oldWidth,oldHeight)) 
+
+    # Finding the center point of rotated image.
+    (oldCenterWidth, oldCenterHeight), _= getCenter(image)
     (centerWidth, centerHeight), _= getCenter(rotatedImage)
 
-    for i in range(oldWidth):
-        for j in range(oldHeight):
-            x = -(j-centerHeight)*sine + (i-centerWidth)*cosine
-            y = (j-centerHeight)*cosine + (i-centerWidth)*sine
+    for i in range(rotatedImage.shape[0]):
+        for j in range(rotatedImage.shape[1]):
+            if option != "same":
+                x = -(j-centerHeight) * sine + (i-centerWidth) * cosine
+                y = (j-centerHeight) * cosine + (i-centerWidth) * sine
+                # Add offset
+                x += oldCenterWidth 
+                y += oldCenterHeight
+            else:
+                x = -(j-oldCenterHeight) * sine + (i-oldCenterWidth) * cosine
+                y = (j-oldCenterHeight) * cosine + (i-oldCenterWidth) * sine
+                # Add offset
+                x += centerWidth
+                y += centerHeight
 
-            # Add offset
-            x += centerWidth
-            y += centerHeight
-            
-            if mode == "nearest":
+            if interpolation == "nearest":            
                 # Get nearest index
-                x = round(x)
-                y = round(y)
-                
+                x, y = round(x), round(y) 
                 # Check if x/y corresponds to a valid pixel in input image
                 if (0 <= x < oldWidth and  0 <= y < oldHeight):
                     rotatedImage[i][j] = image[x][y]
 
-            elif mode == "linear":    
+            elif interpolation == "bilinear":    
                 # Calculate the coordinate values for 4 surrounding pixels.
-                x_floor = int(x)
-                x_ceil = min(oldWidth-1, ceil(x))
-                y_floor = int(y)
-                y_ceil = min(oldHeight - 1, ceil(y))
+                xFloor = int(x)
+                xCeil = min(oldWidth-1, ceil(x))
+                yFloor = int(y)
+                yCeil = min(oldHeight - 1, ceil(y))
                 
                 if (0 <= x < oldWidth and  0 <= y < oldHeight):
-                    if (x_ceil == x_floor) and (y_ceil == y_floor):
+                    if (xCeil == xFloor) and (yCeil == yFloor):
                         q = image[int(x), int(y)]
-                    elif (y_ceil == y_floor):
-                        q1 = image[x_floor, int(y)]
-                        q2 = image[x_ceil, int(y)]
-                        q = q1 * (x_ceil - x) + q2 * (x - x_floor)
-                    elif (x_ceil == x_floor):
-                        q1 = image[int(x), y_floor]
-                        q2 = image[int(x), y_ceil]
-                        q = (q1 * (y_ceil - y)) + (q2 * (y - y_floor))
+                    elif (yCeil == yFloor):
+                        q1 = image[xFloor, int(y)]
+                        q2 = image[xCeil, int(y)]
+                        q = q1 * (xCeil - x) + q2 * (x - xFloor)
+                    elif (xCeil == xFloor):
+                        q1 = image[int(x), yFloor]
+                        q2 = image[int(x), yCeil]
+                        q = (q1 * (yCeil - y)) + (q2 * (y - yFloor))
                     else:
-                        p1 = image[x_floor, y_floor]
-                        p2 = image[x_floor, y_ceil]
-                        p3 = image[x_ceil, y_floor]
-                        p4 = image[x_ceil, y_ceil]
+                        p1 = image[xFloor, yFloor]
+                        p2 = image[xFloor, yCeil]
+                        p3 = image[xCeil, yFloor]
+                        p4 = image[xCeil, yCeil]
 
-                        q1 = p1 * (y_ceil - y) + p2 * (y - y_floor)
-                        q2 = p3 * (y_ceil - y) + p4 * (y - y_floor)
-                        q = q1 * (x_ceil - x) + q2 * (x - x_floor)
-
+                        q1 = p1 * (yCeil - y) + p2 * (y - yFloor)
+                        q2 = p3 * (yCeil - y) + p4 * (y - yFloor)
+                        q = q1 * (xCeil - x) + q2 * (x - xFloor)
+                    
                     rotatedImage[i][j] = q
 
     return rotatedImage
@@ -390,7 +422,7 @@ def iradon(sinogram, angles=range(180)):
 
 # Add padding to image
 # TODO: Add Replicate padding & Mirror padding
-def addPadding(image, paddingSize, mode="zero", value=0):
+def addPadding(image, paddingSize, mode="same", value=0):
     if type(paddingSize) == tuple:
         xPaddingSize, yPaddingSize = paddingSize
     else:
@@ -407,7 +439,7 @@ def addPadding(image, paddingSize, mode="zero", value=0):
 
     resultImage = np.zeros((image.shape[0] + xAddedPadding, image.shape[1] + yAddedPadding))
     
-    if mode == "zero":
+    if mode == "same":
         resultImage.fill(value)
         for i in range(xPaddingSize, resultImage.shape[0] - xPaddingSize):
             for j in range(yPaddingSize, resultImage.shape[1] - yPaddingSize):
@@ -459,7 +491,7 @@ def gaussianKernel(sigma):
     return filter
 
 # Order statistics filter (medians & max & min)
-def OrderStatisticFilter(image, kernelSize, percent):
+def OrderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
     paddingSize = kernelSize // 2
     paddedImage = addPadding(image, paddingSize)
 
@@ -470,7 +502,7 @@ def OrderStatisticFilter(image, kernelSize, percent):
         rowArray = []
         for j in range(image.shape[1]):
             endPointHorizontal = j + kernelSize
-            rowArray.append(np.percentile(paddedImage[i:endpointVertical,j:endPointHorizontal],percent))
+            rowArray.append(np.percentile(paddedImage[i:endpointVertical,j:endPointHorizontal], percent))
 
         resultImage.append(rowArray)
 
@@ -499,12 +531,9 @@ def getHistogram(image:np.ndarray, bins=256):
     return histogram
 
 # Normalized Histogram
-def normalizeHistogram(image:np.ndarray):
+def normalizeHistogram(image: np.ndarray):
     # Calculate max intensity value to equalize to it 
-    try:
-        L = image.max()
-    except:
-        L = 256        
+    L = image.max()      
 
     # Get histogram of nonEqualizedImage
     nonEqualizedHistogram = getHistogram(image, bins=L)
@@ -524,12 +553,12 @@ def normalizeHistogram(image:np.ndarray):
     flatEqualizedImage = [transformMap[p] for p in flatNonEqualizedImage]
 
     # Reshape and write back into equalizedImage
-    image = np.reshape(np.asarray(flatEqualizedImage, dtype=np.int64), image.shape)
+    equalizedImage = np.reshape(flatEqualizedImage, image.shape)
 
-    return image
+    return equalizedImage
 
 # Get mean & variance & std from histogram
-def getStatisticsOfHistogram(histogram:np.ndarray, L):
+def getStatisticsOfHistogram(histogram:np.ndarray, L=256):
     # Normalize
     sumPixels = np.sum(histogram)
     normalizedHistogram = histogram/sumPixels
@@ -545,3 +574,44 @@ def getStatisticsOfHistogram(histogram:np.ndarray, L):
     std = sqrt(variance)
 
     return mean, variance, std
+
+###############################################
+"""Morphological Transformations"""
+###############################################
+
+def erosionImage(image, ST=None):
+    # Erode the image
+    AeB = erosion(image, ST)
+    return AeB
+
+def dilationImage(image, ST=None):
+    # Dilate the image
+    AdB = dilation(image, ST)
+    return AdB
+
+def opening(image:np.ndarray, SE=None):
+    # Erode the image
+    AeB = erosionImage(image, SE)
+    # Dilate the eroded image
+    AoB = dilationImage(AeB, SE)
+
+    return AoB
+
+def closing(image:np.ndarray, SE=None):
+    # Dilate the image
+    AdB = dilationImage(image,SE)
+    # Erode the dilated image
+    AcB = erosionImage(AdB,SE)
+
+    return AcB
+
+def removeNoise(image: np.ndarray):
+    # Define the structuring element using inbuilt CV2 function
+    SE = np.array([[1,1,1],
+                   [1,1,1],
+                   [1,1,1]])
+    
+    AoB = opening(image,SE)
+    AoBcB = closing(AoB, SE)
+
+    return AoBcB

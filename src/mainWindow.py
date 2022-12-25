@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
         self.operationsActions()
         self.constructionShapesActions()
         self.noisesActions()
+        self.morphologicalActions()
         self.viewActions()
         self.helpActions()
 
@@ -334,7 +335,29 @@ class MainWindow(QMainWindow):
         # Add salt and pepper noise action
         self.addSaltPepperNoiseAction = QAction(QIcon(":saltPepper"), "&Salt and Pepper Noise", self)
         self.addSaltPepperNoiseAction.setStatusTip('Add salt and pepper noise')
-    
+
+    # Morphological Actions
+    def morphologicalActions(self):
+        # Add erosion action
+        self.erosionAction = QAction(QIcon(":erosion"), "&Erosion", self)
+        self.erosionAction.setStatusTip('Erosion')
+
+        # Add dilation action
+        self.dilationAction = QAction(QIcon(":dilation"), "&Dilation", self)
+        self.dilationAction.setStatusTip('Dilation')
+
+        # Add opening action
+        self.openingAction = QAction(QIcon(":opening"), "&Opening", self)
+        self.openingAction.setStatusTip('Erosion followed by dilation')
+
+        # Add closing action
+        self.closingAction = QAction(QIcon(":closing"), "&Closing", self)
+        self.closingAction.setStatusTip('Dilation followed by erosion')
+
+        # Add closing action
+        self.removeNoiseAction = QAction(QIcon(":removeNoise"), "&Remove Noise", self)
+        self.removeNoiseAction.setStatusTip('Remove noise')
+
     # View Actions
     def viewActions(self):
         # Show histogram of the image
@@ -547,6 +570,15 @@ class MainWindow(QMainWindow):
         noiseMenu.addAction(self.addSaltNoiseAction)
         noiseMenu.addAction(self.addPepperNoiseAction)
 
+        """Morphological"""
+        morphologicalMenu = QMenu("&Morphological", self)
+        morphologicalMenu.addAction(self.erosionAction)
+        morphologicalMenu.addAction(self.dilationAction)
+        morphologicalMenu.addSeparator()
+        morphologicalMenu.addAction(self.openingAction)
+        morphologicalMenu.addAction(self.closingAction)
+        morphologicalMenu.addAction(self.removeNoiseAction)
+        
         """Help"""
         helpMenu = QMenu("&Help", self)
         helpMenu.addAction(self.helpContentAction)
@@ -564,6 +596,7 @@ class MainWindow(QMainWindow):
         menuBar.addMenu(filterMenu)
         menuBar.addMenu(shapeMenu)
         menuBar.addMenu(noiseMenu)
+        menuBar.addMenu(morphologicalMenu)
         menuBar.addMenu(viewMenu)
         menuBar.addMenu(helpMenu)
 
@@ -651,7 +684,6 @@ class MainWindow(QMainWindow):
         ### GUI ###
 
         centralMainWindow.setLayout(outerLayout)
-
 
     # Status Bar
     def _createStatusBar(self):
@@ -771,10 +803,10 @@ class MainWindow(QMainWindow):
         " Transformation image "
         # Zoom image
         self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"nearest"))
-        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"linear"))
+        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"bilinear"))
         # Rotate image
         self.rotateNearestAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"nearest"))
-        self.rotateLinearAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"linear"))
+        self.rotateLinearAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"bilinear"))
         # Shear image
         self.shearActionHorizontal.triggered.connect(lambda: self.baseBehavior(self.shearImage,"horizontal"))
         self.shearActionVertical.triggered.connect(lambda: self.baseBehavior(self.shearImage,"vertical"))
@@ -830,6 +862,13 @@ class MainWindow(QMainWindow):
         self.xnorAction.triggered.connect(lambda: self.baseBehavior(self.operationTwoImage, "xnor", self.images))        
 
         self.addToCompareListAction.triggered.connect(self.addToCompare)
+
+        " Morphological "
+        self.erosionAction.triggered.connect(lambda: self.currentTab.primaryViewer.morphologicalActions("erosion"))
+        self.dilationAction.triggered.connect(lambda: self.currentTab.primaryViewer.morphologicalActions("dilation"))
+        self.openingAction.triggered.connect(lambda: self.currentTab.primaryViewer.morphologicalActions("opening"))
+        self.closingAction.triggered.connect(lambda: self.currentTab.primaryViewer.morphologicalActions("closing"))
+        self.removeNoiseAction.triggered.connect(lambda: self.currentTab.primaryViewer.morphologicalActions("noise"))
 
         " View "
         self.showHistogramAction.triggered.connect(lambda: self.currentTab.showHideHistogram())
@@ -1215,7 +1254,7 @@ class MainWindow(QMainWindow):
         self.currentTab.primaryViewer.shearImage(shearFactor, mode)
     
     # Zoom Image
-    def zoomImage(self, mode="linear"):
+    def zoomImage(self, mode="bilinear"):
         requirements = {
             "Zooming Factor":{
                 "type": FLOAT,
@@ -1223,7 +1262,7 @@ class MainWindow(QMainWindow):
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Notch Reject Filter")
+        output = self.getInputsFromUser(requirements, "Zoom image")
         if output != None:
             zoomingFactor = output[0]
         else:
@@ -1233,13 +1272,13 @@ class MainWindow(QMainWindow):
                             
         if mode == "nearest":
             self.interpolationMode = "Zoom Nearest Neighbor"
-        elif mode == "linear":
+        elif mode == "bilinear":
             self.interpolationMode = "Zoom Bilinear"
 
         self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
 
     # Rotate Image
-    def rotateImage(self, mode="linear"):
+    def rotateImage(self, mode="bilinear"):
         requirements = {
             "Rotation Angle":{
                 "type": FLOAT,
@@ -1247,7 +1286,7 @@ class MainWindow(QMainWindow):
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Rotation Image")
+        output = self.getInputsFromUser(requirements, "Rotate Image")
         if output != None:
             rotationAngle = output[0]
         else:
@@ -1441,9 +1480,9 @@ class MainWindow(QMainWindow):
         if filterType == 0:
             self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles)
         elif filterType == 1:
-            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="hamming")
+            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, filterType="hamming")
         elif filterType == 2:
-            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, type="ramp")
+            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, filterType="ramp")
 
     ##########################################
     #         """View Functions"""           #
