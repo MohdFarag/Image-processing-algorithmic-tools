@@ -1,4 +1,4 @@
-# Image Processing Algorithms
+# Image Processing Algorithmic Tools
 
 **An application that illustrates the image with extension BMP, DICOM, JPEG, PNG, etc. and compute image processing tools and algorithms on it.**
 
