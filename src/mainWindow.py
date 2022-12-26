@@ -10,7 +10,9 @@ import sys
 from .tabViewer import tabViewer
 from .popup import popWindow
 from .utilities import *
-from .style import *
+
+# Style
+import qdarktheme
 
 # Importing Qt widgets
 try:
@@ -1009,7 +1011,7 @@ class MainWindow(QMainWindow):
             plt.suptitle("Click Enter if you finished")
             
             def line_select_callback(eclick, erelease):
-                ROI, mean, variance, std = self.currentTab.primaryViewer.setROI(toggle_selector.RS.corners)
+                ROI = self.currentTab.primaryViewer.setROI(toggle_selector.RS.corners)
                 self.updateImage(ROI)
 
             def handle_close(event):

@@ -154,14 +154,7 @@ class ImageViewer(FigureCanvasQTAgg):
         
         # To Draw ROI
         self.drawImage(ROI, scale="clip" ,save=False)
-        
-        # Get histogram of image
-        L = ROI.max()
-        histogram = np.bincount(ROI.flatten(), minlength=L)
-        mean, variance, std = getStatisticsOfHistogram(histogram, L)
-
-        # self.grayImage = ROI
-        return ROI, mean, variance, std
+        return ROI
 
     ###############################################
     """Image Functions"""
@@ -699,6 +692,7 @@ class ImageViewer(FigureCanvasQTAgg):
             elif option == 'closing':
                 result = closing(image)
             elif option == 'noise':
-                result = removeNoise(image)
+                AoB = opening(image)
+                result = closing(AoB)
 
             self.drawImage(result)

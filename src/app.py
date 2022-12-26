@@ -5,8 +5,7 @@ try:
 except ImportError:
     from PyQt5.QtWidgets import QApplication
 
-from .mainWindow import MainWindow
-from .style import *
+from .mainWindow import *
 
 # Importing Logging
 from .log import appLogger
@@ -15,8 +14,9 @@ def main():
     # Create the application
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    # Apply the complete dark theme to your Qt App.
-    qdarktheme.setup_theme("light")
+    
+    # Apply the complete light theme to Qt App.
+    qdarktheme.setup_theme("auto")
     
     # Create and show the main window
     window = MainWindow()

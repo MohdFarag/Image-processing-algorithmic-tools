@@ -588,18 +588,58 @@ def getStatisticsOfHistogram(histogram:np.ndarray, L=256):
 """Morphological Transformations"""
 ###############################################
 
-# TODO: Make from scratch
-def erosionImage(image, ST=None):
-    # Erode the image
-    AeB = erosion(image, ST)
-    return AeB
+# Erode the image
+def erosionImage(image, SE=None):
+    # Define the structuring element
+    if SE is None:
+        k = 3
+        SE = np.ones((k,k))
+    else:
+        k = len(SE)
+    
+    constant = (k-1) // 2
 
-# TODO: Make from scratch
-def dilationImage(image, ST=None):
-    # Dilate the image
-    AdB = dilation(image, ST)
+    # Acquire size of the image
+    m, n= image.shape 
+    
+    # Define new image
+    AdB = np.zeros((m,n))
+    
+    # Erosion without using inbuilt cv2 function for morphology
+    for i in range(constant, m-constant):
+        for j in range(constant,n-constant):
+            temp = image[i-constant:i+constant+1, j-constant:j+constant+1]
+            product = temp * SE
+            AdB[i,j] = np.min(product)
     return AdB
 
+# Dilate the image
+def dilationImage(image, SE=None):
+    # Define the structuring element
+    if SE is None:
+        k = 3
+        SE = np.ones((k,k))
+    else:
+        k = len(SE)
+
+    constant = (k-1)//2
+    
+    # Acquire size of the image
+    m, n = image.shape
+    
+    # Define new image to store the pixels of dilated image
+    AdB = np.zeros((m,n))
+
+    # Dilation operation
+    for i in range(constant, m-constant):
+        for j in range(constant,n-constant):
+            temp = image[i-constant:i+constant+1, j-constant:j+constant+1]
+            product = temp * SE
+            AdB[i,j] = np.max(product)
+
+    return AdB
+
+# Opening the image
 def opening(image:np.ndarray, SE=None):
     # Erode the image
     AeB = erosionImage(image, SE)
@@ -608,6 +648,7 @@ def opening(image:np.ndarray, SE=None):
 
     return AoB
 
+# Closing the image
 def closing(image:np.ndarray, SE=None):
     # Dilate the image
     AdB = dilationImage(image,SE)
@@ -615,14 +656,3 @@ def closing(image:np.ndarray, SE=None):
     AcB = erosionImage(AdB,SE)
 
     return AcB
-
-def removeNoise(image: np.ndarray):
-    # Define the structuring element
-    SE = np.array([[1,1,1],
-                   [1,1,1],
-                   [1,1,1]])
-    
-    AoB = opening(image,SE)
-    AoBcB = closing(AoB, SE)
-
-    return AoBcB
