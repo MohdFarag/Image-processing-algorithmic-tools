@@ -12,7 +12,6 @@ from .popup import popWindow
 from .utilities import *
 from .style import *
 
-
 # Importing Qt widgets
 try:
     from PyQt6.QtWidgets import *
@@ -30,7 +29,6 @@ from matplotlib.widgets import RectangleSelector
 # Importing Logging
 from .log import appLogger
 
-
 # Window class
 class MainWindow(QMainWindow):
     """Main Window"""
@@ -41,17 +39,8 @@ class MainWindow(QMainWindow):
         ### Variables
         self.images = []
 
-        self.widthOfImage = 0
-        self.heightOfImage = 0
-        self.sizeOfImage = 0
-        self.depthOfImage = 0
-        self.fileExtension = "N/A"
-        self.modeOfImage = "N/A"
-        self.modalityOfImage = "N/A"
-        self.nameOfPatient = "N/A"
-        self.ageOfPatient = "N/A"
-        self.bodyOfPatient = "N/A"
-        self.interpolationMode = "N/A"
+        self.imageInformation = None
+        self.SE = None
         
         ### Setting title
         self.setWindowTitle("Image Processing Algorithms")
@@ -702,77 +691,46 @@ class MainWindow(QMainWindow):
         self.dataWidget = QTreeWidget()
         self.dataWidget.setColumnCount(2) # Att, Val
         self.dataWidget.setHeaderLabels(["Attribute", "Value"])
-        self.setInfo("jpeg") # Default
 
         self.dockInfo.setWidget(self.dataWidget)
         self.dockInfo.setFloating(False)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dockInfo)
 
     # Set information
-    def setInfo(self, ext, width="", height="", size="", depth="", color="", Modality="", PatientName="", PatientAge="", BodyPartExamined=""):
-        info = dict() # Initialize the dicom
-        if ext == "dcm":
-            info = {
-                    "Width":width, 
-                    "Height":height,
-                    "Total Size":size,
-                    "Bit depth":depth,
-                    "Image color":color,
-                    "Modality used": Modality,
-                    "Patient name": PatientName,
-                    "Patient Age": PatientAge,
-                    "Body part examined": BodyPartExamined
-                }
-        elif ext in ["Zoom Bilinear", "Zoom Nearest Neighbor"]:
-            info = {
-                    "Interpolation Type": ext,
-                    "Width": width, 
-                    "Height": height,
-                    "Image color": f"{color}->Grayscale" ,
-                }
-        elif ext in ["Rotate Bilinear", "Rotate Nearest Neighbor"]:
-            info = {
-                    "Interpolation Type": ext,
-                    "Width": width, 
-                    "Height": height,
-                    "Angle": f"{size}°",
-                    "Direction": depth,
-                }
-        elif ext == "ROI":
-            info = {
-                    "Mean":width, 
-                    "Variance":height,
-                    "Std":size
-                }
-        else:
-            info = {
-                    "Width":width, 
-                    "Height":height,
-                    "Total Size":size,
-                    "Bit depth":depth,
-                    "Image color":color
-                }
+    def setInfo(self, image:np.ndarray, information):
+        width =  image.shape[1]
+        height = image.shape[0]
         
+        depth = getDepth(image)
+        size = width * height * depth
+
+        modality = getAttribute(information, "Modality")
+        patientName = getAttribute(information, "PatientName")
+        patientAge = getAttribute(information,"PatientAge")
+        bodyPartExamined = getAttribute(information,"BodyPartExamined") 
+
+        info = {
+            "Width": f"{width} px",
+            "Height": f"{height} px",
+            "Size": f"{size} bytes",
+            "Bit depth": f"{depth} px",
+            "Modality used": modality,
+            "Patient name": patientName,
+            "Patient Age": patientAge,
+            "Body part examined": bodyPartExamined,
+        }
+
         # Update the tree
         self.setDataOfTree(info)
-
-    # Get Data
-    def getAttr(self, variable, att):
-        if hasattr(variable, att):
-            # If attribute is found.
-            return getattr(variable, att)
-        else:
-            # If attribute is not found.
-            return "N/A"
 
     # Set the data of the tree
     def setDataOfTree(self, data):
         self.dataWidget.clear()
-        item = QTreeWidgetItem(["Data"])
+        i = 0
         for key, value in data.items():
-            child = QTreeWidgetItem([key, str(value)])
-            item.addChild(child)
-        self.dataWidget.insertTopLevelItem(0, item)
+            item = QTreeWidgetItem([key, str(value)])
+            self.dataWidget.insertTopLevelItem(i, item)
+            i += 1
     
     # Connect
     def _connectActions(self):
@@ -904,50 +862,21 @@ class MainWindow(QMainWindow):
     def browseImage(self):
         # Browse Function
         path, _ = QFileDialog.getOpenFileName(self, "Load Image File", directory="./src/assets/testInputs/", filter="Custom files (*.bmp *.png *.jpeg *.jpg *.dcm);;All files (*.*)")            
-        self.fileExtension = path.split(".")[-1] # get ext.
+        fileExtension = path.split(".")[-1] # get ext.
         
         # If no image chosen
         if path == "":
             return
 
         try:
-            data = self.currentTab.setImage(path, self.fileExtension)
+            self.imageInformation = self.currentTab.setImage(path, fileExtension)
         except Exception as e:
             print(e)
             appLogger.exception("Can't open the file !")
             QMessageBox.critical(self , "Corrupted image" , "Can't open the file !")
         else:
             self.statusbar.showMessage(path.split("/")[-1])
-            if self.fileExtension == "dcm":
-                # If dicom
-                self.widthOfImage =  self.getAttr(data, 'Columns')
-                self.heightOfImage = self.getAttr(data, 'Rows')
-                self.depthOfImage = self.getAttr(data, 'BitsAllocated')
-                self.sizeOfImage = f"{self.widthOfImage * self.heightOfImage * self.depthOfImage} bits" 
-                self.widthOfImage =  f"{self.widthOfImage} px"
-                self.heightOfImage = f"{self.heightOfImage} px"
-                self.depthOfImage = f"{self.depthOfImage} bit/pixel"
-                self.modeOfImage = self.getAttr(data, "PhotometricInterpretation")
-                self.modalityOfImage = self.getAttr(data, "Modality")
-                self.nameOfPatient = self.getAttr(data, "PatientName")
-                self.ageOfPatient = self.getAttr(data,"PatientAge")
-                self.bodyOfPatient = self.getAttr(data,"BodyPartExamined") 
-            else:
-                # If (jpeg, bitmap etc..)
-                image = self.currentTab.primaryViewer.getOriginalImage()
-
-                self.widthOfImage = self.getAttr(data,'width')
-                self.heightOfImage = self.getAttr(data,'height')
-                self.depthOfImage = getDepth(image)
-                self.sizeOfImage = f"{self.widthOfImage * self.heightOfImage * self.depthOfImage} bits" 
-                self.widthOfImage =  f"{self.widthOfImage} px"
-                self.heightOfImage = f"{self.heightOfImage} px"
-                self.depthOfImage = f"{self.depthOfImage} bit/pixel"
-                self.modeOfImage = self.getAttr(data,"mode")
                 
-            # Set the information
-            self.setInfo(self.fileExtension, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-
     # Save Image
     def saveImage(self):
         output_file, _ = QFileDialog.getSaveFileName(self, 'Save image', None, 'jpeg files (.jpeg)')
@@ -1082,7 +1011,6 @@ class MainWindow(QMainWindow):
             def line_select_callback(eclick, erelease):
                 ROI, mean, variance, std = self.currentTab.primaryViewer.setROI(toggle_selector.RS.corners)
                 self.updateImage(ROI)
-                self.setInfo("ROI", mean, variance, std)
 
             def handle_close(event):
                 self.currentTab.primaryViewer.drawImage(image, scale="clip")
@@ -1191,9 +1119,7 @@ class MainWindow(QMainWindow):
             filterSize += 1
 
         self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
-                
-        # self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-    
+                    
     # Apply notch reject filter
     def notchRejectFilter(self):
         image = self.currentTab.primaryViewer.getGrayImage()
@@ -1275,8 +1201,6 @@ class MainWindow(QMainWindow):
         elif mode == "bilinear":
             self.interpolationMode = "Zoom Bilinear"
 
-        self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, self.sizeOfImage, self.depthOfImage, self.modeOfImage, self.modalityOfImage, self.nameOfPatient, self.ageOfPatient, self.bodyOfPatient)
-
     # Rotate Image
     def rotateImage(self, mode="bilinear"):
         requirements = {
@@ -1303,8 +1227,6 @@ class MainWindow(QMainWindow):
         else :
             self.interpolationMode = "Rotate Bilinear"
         
-        self.setInfo(self.interpolationMode, self.widthOfImage, self.heightOfImage, abs(rotationAngle), direction)
-
     ##########################################
     #       """Operations Functions"""       #
     ##########################################
@@ -1504,8 +1426,7 @@ class MainWindow(QMainWindow):
     # Update magnitude and phase and histogram for the image after every update
     def updateImage(self, image=[], log=True):
         if image == []:
-            image = self.currentTab.primaryViewer.grayImage
-            
+            image = self.currentTab.primaryViewer.getGrayImage()
         if log:
             self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude", True)
             self.currentTab.phaseViewer.fourierTransform(image, "phase", True)
@@ -1514,8 +1435,8 @@ class MainWindow(QMainWindow):
             self.currentTab.phaseViewer.fourierTransform(image, "phase")
 
         self.currentTab.histogramViewer.drawHistogram(image)
-        # self.currentTab.sinogramViewer.drawSinogram(image)
-                
+        self.setInfo(image, self.imageInformation)
+        
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
         # checking index i.e

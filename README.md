@@ -31,3 +31,14 @@
 ## Preview
 
 ---
+
+## References
+
+<https://shrishailsgajbhar.github.io/post/Image-Processing-Image-Rotation-Without-Library-Functions>
+<https://towardsdatascience.com/introduction-to-image-processing-with-python-dilation-and-erosion-for-beginners-d3a0f29ad72b>
+<https://python.plainenglish.io/image-erosion-explained-in-depth-using-numpy-320c01b674a8>
+<https://towardsdatascience.com/image-processing-image-scaling-algorithms-ae29aaa6b36c>
+<https://meghal-darji.medium.com/implementing-bilinear-interpolation-for-image-resizing-357cbb2c2722>
+<https://www.geeksforgeeks.org/python-opencv-bicubic-interpolation-for-resizing-image/>
+<https://medium.com/@ami25480/morphological-image-processing-operations-dilation-erosion-opening-and-closing-with-and-without-c95475468fca>
+<https://www.imageprocessingplace.com/root_files_V3/image_databases.htm>

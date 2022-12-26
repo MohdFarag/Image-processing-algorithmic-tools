@@ -87,14 +87,13 @@ class ImageViewer(FigureCanvasQTAgg):
     def setImage(self, image_path, fileExtension):
         # Reading the image
         if fileExtension == "dcm":
-            imgData = dicom.dcmread(image_path, force=True)
-            self.originalImage = imgData.pixel_array
+            imgInformation = dicom.dcmread(image_path, force=True)
+            self.originalImage = imgInformation.pixel_array
         else:
             self.originalImage = mpimg.imread(image_path)
-            imgData = Image.open(image_path)
+            imgInformation = Image.open(image_path)
 
         # If image is RGB transform it to gray.
-
         if self.originalImage.ndim > 2:
             self.grayImage = self.originalImage[:,:,0]
         else:
@@ -104,7 +103,7 @@ class ImageViewer(FigureCanvasQTAgg):
         self.drawImage(self.grayImage)
 
         # Depends on extension of the file
-        return imgData
+        return imgInformation
 
     # Get image
     def getGrayImage(self):
@@ -692,19 +691,14 @@ class ImageViewer(FigureCanvasQTAgg):
         if len(self.grayImage) != 0:
             image = binaryImage(self.grayImage)
             if option == 'erosion':
-                print(1)
                 result = erosionImage(image)
             elif option == 'dilation':
-                print(2)
                 result = dilationImage(image)
             elif option == 'opening':
-                print(3)
                 result = opening(image)
             elif option == 'closing':
-                print(4)
                 result = closing(image)
             elif option == 'noise':
-                print(5)
                 result = removeNoise(image)
 
             self.drawImage(result)

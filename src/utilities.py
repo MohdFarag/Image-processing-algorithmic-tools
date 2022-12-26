@@ -8,6 +8,15 @@ FLOAT = 310.47
 STR = "STRING"
 RADIO = "RADIO"
 
+# Get Data
+def getAttribute(variable, attribute):
+    if hasattr(variable, attribute):
+        # If attribute is found.
+        return getattr(variable, attribute)
+    else:
+        # If attribute is not found.
+        return "N/A"
+
 # Scale function
 def scaleImage(image:np.ndarray, mode="scale", a_min=0, a_max=255):
     resultImage = np.zeros(image.shape)        
@@ -579,11 +588,13 @@ def getStatisticsOfHistogram(histogram:np.ndarray, L=256):
 """Morphological Transformations"""
 ###############################################
 
+# TODO: Make from scratch
 def erosionImage(image, ST=None):
     # Erode the image
     AeB = erosion(image, ST)
     return AeB
 
+# TODO: Make from scratch
 def dilationImage(image, ST=None):
     # Dilate the image
     AdB = dilation(image, ST)
@@ -606,7 +617,7 @@ def closing(image:np.ndarray, SE=None):
     return AcB
 
 def removeNoise(image: np.ndarray):
-    # Define the structuring element using inbuilt CV2 function
+    # Define the structuring element
     SE = np.array([[1,1,1],
                    [1,1,1],
                    [1,1,1]])
