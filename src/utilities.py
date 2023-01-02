@@ -1,6 +1,6 @@
 import numpy as np
 from math import *
-from skimage.morphology import erosion, dilation
+# from skimage.morphology import erosion, dilation
 
 # Constants (Random values) -> to identify the type of popup
 INT = 127
@@ -19,14 +19,13 @@ def getAttribute(variable, attribute):
 
 # Scale function
 def scaleImage(image:np.ndarray, mode="scale", a_min=0, a_max=255):
-    resultImage = np.zeros(image.shape)        
-    
+    resultImage = np.zeros(image.shape)
     if mode == "scale":
         image = image - image.min()
         if image.max() == 0 and image.min() == 0:
-            resultImage = a_max * (image / 1)   
+            resultImage = a_max * (image / 1)
         else:            
-            resultImage = a_max * (image / image.max())   
+            resultImage = a_max * (image / image.max())
     elif mode == "clip":
         for i in range(image.shape[0]):
             for j in range(image.shape[1]):
@@ -200,8 +199,8 @@ def bitPlaneSlicing(image, k, p):
 ########################
 "Spatial Transformations"
 ########################
-# TODO: Add Bicubic interpolation
 
+# TODO: Add Bicubic interpolation
 # Zoom image
 def zoom(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
     # Get size of original image
@@ -499,6 +498,43 @@ def gaussianKernel(sigma):
 
     return filter
 
+# Apply specific 'spatial' filter
+# You can choose whether the filter applied in spatial or frequency domain
+def applySpatialFilter(image, kernel, domain="spatial"):
+    if len(image) != 0:
+        rows = image.shape[0] + kernel.shape[0] - 1
+        cols = image.shape[1] + kernel.shape[1] - 1
+
+        xImagePadding = (rows - image.shape[0]) // 2
+        yImagePadding = (cols - image.shape[1]) // 2
+        xPaddingFilterSize = (rows - kernel.shape[0]) // 2
+        yPaddingFilterSize = (cols - kernel.shape[1]) // 2
+
+        blurredImage = np.array([])
+        if domain == "spatial":
+            blurredImage = convolution(image, kernel)
+        
+        elif domain == "frequency": 
+            size = (min(kernel.shape[0],image.shape[0]),min(kernel.shape[1],image.shape[1]))
+
+            # Image fourier
+            image = addPadding(image, (xImagePadding,yImagePadding))
+            grayImageInFreqDomain = fourierTransform(image[:size[0],:size[1]])
+            
+            # Kernel fourier
+            kernel = addPadding(kernel, (xPaddingFilterSize,yPaddingFilterSize))
+            boxFilterInFreqDomain = fourierTransform(kernel[:size[0],:size[1]])
+
+            filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
+
+            blurredImage = inverseFourierTransform(filteredImageInFreqDomain)
+            blurredImage = np.fft.fftshift(blurredImage)
+
+            blurredImage = np.abs(blurredImage)
+            blurredImage = blurredImage[xImagePadding:rows-xImagePadding,yImagePadding:cols-yImagePadding]
+            
+        return blurredImage
+
 # Order statistics filter (medians & max & min)
 def OrderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
     paddingSize = kernelSize // 2
@@ -516,6 +552,24 @@ def OrderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
         resultImage.append(rowArray)
 
     return np.array(resultImage)
+
+# Notch reject filter
+def notchRejectFilter(image, magnitudeSpectrum, points, d0=9):
+    if len(image) != 0:
+        n = magnitudeSpectrum.shape[0]
+        m = magnitudeSpectrum.shape[1]
+        for u in range(n):
+            for v in range(m):
+                for d in range(len(points)):
+                    v0 = points[d][0]
+                    u0 = points[d][1]
+                    d1 = (u - u0)**2 + (v - v0)**2
+                    d2 = (u + u0)**2 + (v + v0)**2
+                    if d1 <= d0 or d2 <= d0:
+                        magnitudeSpectrum[u][v] = 0
+    
+        resultImage = np.abs(inverseFourierTransform(magnitudeSpectrum))
+        return resultImage
 
 ###############################################
 """Histogram Functions"""
@@ -589,14 +643,13 @@ def getStatisticsOfHistogram(histogram:np.ndarray, L=256):
 ###############################################
 
 # Erode the image
-def erosionImage(image, SE=None):
+def erosion(image, SE=None):
     # Define the structuring element
     if SE is None:
         k = 3
         SE = np.ones((k,k))
     else:
         k = len(SE)
-    
     constant = (k-1) // 2
 
     # Acquire size of the image
@@ -609,19 +662,18 @@ def erosionImage(image, SE=None):
     for i in range(constant, m-constant):
         for j in range(constant,n-constant):
             temp = image[i-constant:i+constant+1, j-constant:j+constant+1]
-            product = temp * SE
+            product = morphologyMultBitWise(temp,SE,1)
             AdB[i,j] = np.min(product)
     return AdB
 
 # Dilate the image
-def dilationImage(image, SE=None):
+def dilation(image, SE=None):
     # Define the structuring element
     if SE is None:
         k = 3
         SE = np.ones((k,k))
     else:
         k = len(SE)
-
     constant = (k-1)//2
     
     # Acquire size of the image
@@ -634,7 +686,7 @@ def dilationImage(image, SE=None):
     for i in range(constant, m-constant):
         for j in range(constant,n-constant):
             temp = image[i-constant:i+constant+1, j-constant:j+constant+1]
-            product = temp * SE
+            product = morphologyMultBitWise(temp,SE,0)
             AdB[i,j] = np.max(product)
 
     return AdB
@@ -642,17 +694,78 @@ def dilationImage(image, SE=None):
 # Opening the image
 def opening(image:np.ndarray, SE=None):
     # Erode the image
-    AeB = erosionImage(image, SE)
+    AeB = erosion(image, SE)
     # Dilate the eroded image
-    AoB = dilationImage(AeB, SE)
+    AoB = dilation(AeB, SE)
 
     return AoB
 
 # Closing the image
 def closing(image:np.ndarray, SE=None):
     # Dilate the image
-    AdB = dilationImage(image,SE)
+    AdB = dilation(image, SE)
     # Erode the dilated image
-    AcB = erosionImage(AdB,SE)
+    AcB = erosion(AdB, SE)
 
     return AcB
+
+# Hit or miss transform
+def hitOrMissTransform(image:np.ndarray, B1:np.ndarray, B2:np.ndarray):
+    AoB1 = erosion(image, B1)
+    AcoB2 = erosion(np.bitwise_not(image), B2)
+    AhmtB = np.bitwise_and(AoB1,AcoB2)
+
+    return AhmtB
+
+# Boundary extraction
+def boundaryExtraction(image:np.ndarray, SE=None):
+    return image - erosion(image,SE)
+
+# Multiplication Bitwise
+def morphologyMultBitWise(temp:np.ndarray,SE:np.ndarray, defaultValue=1):
+    if temp.shape == SE.shape:
+        size = temp.shape
+        result = np.zeros(size)
+        result.fill(defaultValue)
+
+        for i in range (size[0]):
+            for j in range(size[1]):
+                if SE[i][j] != 0 and SE[i][j] is not None:
+                    result[i][j] = temp[i][j] * SE[i][j]
+                    
+        return result
+    else:
+        raise "**Error** first matrix shape not equal second matrix shape"
+
+###############################################
+"""Fourier Transformations"""
+###############################################
+
+# Fourier transform
+def fourierTransform(image, mode="fourier", log=False):
+    f = np.fft.fft2(image)
+    fShift = np.fft.fftshift(f)
+    spectrum = None
+
+    if mode == "magnitude":
+        if not log:
+            spectrum = np.abs(fShift)
+        else:
+            spectrum = logTransformation(np.abs(fShift))
+    elif mode == "phase":
+        spectrum  = np.angle(fShift)
+    else:
+        spectrum = f
+
+    return spectrum
+
+# inverse Fourier transform
+def inverseFourierTransform(combinedImage, mode="normal"):
+    if mode=="separate":
+        combinedImage = np.multiply(combinedImage[0], np.exp(1j * combinedImage[1]))
+
+    shiftedImage = np.fft.ifftshift(combinedImage)
+    resultImage = np.fft.ifft2(shiftedImage)
+    return resultImage
+
+

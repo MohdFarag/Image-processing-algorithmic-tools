@@ -78,6 +78,8 @@ class ImageViewer(FigureCanvasQTAgg):
         if not self.axisExisting:
             self.axes.set_xticks([])
             self.axes.set_yticks([])
+        
+        plt.style.context('fivethirtyeight')
 
     ###############################################
     """Image Functions"""
@@ -222,19 +224,13 @@ class ImageViewer(FigureCanvasQTAgg):
             
             self.grayImage = resizedImage[:zoomWidth,:zoomHeight]
             self.drawImage(self.grayImage)
-            return resizedImage.shape[0], resizedImage.shape[1]
-        else:
-            return "N/A","N/A"
 
     # Rotate image
-    def rotateImage(self, image, angle, mode="nearest"):
-        if len(image) != 0:
+    def rotateImage(self, angle, mode="nearest"):
+        if len(self.grayImage) != 0:
             self.grayImage = rotate(self.grayImage, angle, mode)
-            self.drawImage(self.grayImage)
-            return self.grayImage.shape[0], self.grayImage.shape[1]   
-        else:
-            return "N/A","N/A"
-             
+            self.drawImage(self.grayImage) 
+
     # Shear image
     def shearImage(self, angle, mode="horizontal"):
         if self.loaded:
@@ -390,42 +386,6 @@ class ImageViewer(FigureCanvasQTAgg):
     """Filters Functions"""
     ###############################################
 
-    # Apply specific 'spatial' filter
-    # You can choose whether the filter applied in spatial or frequency domain
-    def applySpatialFilter(self, image, kernel, domain="spatial"):
-        if len(self.grayImage) != 0:
-            rows = self.grayImage.shape[0] + kernel.shape[0] - 1
-            cols = self.grayImage.shape[1] + kernel.shape[1] - 1
-            size = (rows,cols)
-
-            xImagePadding = kernel.shape[0] // 2
-            yImagePadding = kernel.shape[1] // 2
-            xPaddingFilterSize = self.grayImage.shape[0] // 2
-            yPaddingFilterSize = self.grayImage.shape[1] // 2
-
-            blurredImage = np.array([])
-            if domain == "spatial":
-                blurredImage = convolution(self.grayImage, kernel)
-            
-            elif domain == "frequency": 
-                # Image fourier
-                image = addPadding(image, (xImagePadding,yImagePadding))               
-                grayImageInFreqDomain = self.fourierTransform(image, draw=False, s=size)
-                
-                # Kernel fourier
-                kernel = addPadding(kernel, (xPaddingFilterSize,yPaddingFilterSize))
-                boxFilterInFreqDomain = self.fourierTransform(kernel, draw=False,s=size)
-
-                filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
-
-                blurredImage = self.inverseFourierTransform(filteredImageInFreqDomain)
-                blurredImage = np.fft.fftshift(blurredImage)
-
-                blurredImage = np.abs(blurredImage)
-                blurredImage = blurredImage[xImagePadding:rows-xImagePadding,yImagePadding:cols-yImagePadding]
-                
-            return blurredImage
-
     # Subtract blurred image from original
     def subtractBlurredFromOriginal(self, blurredImage):
         resultImage = np.subtract(self.grayImage, blurredImage)
@@ -450,7 +410,7 @@ class ImageViewer(FigureCanvasQTAgg):
         if len(self.grayImage) != 0:
             boxFilter = boxKernel(size)
             # Apply box kernel
-            blurredImage = self.applySpatialFilter(self.grayImage, boxFilter)
+            blurredImage = applySpatialFilter(self.grayImage, boxFilter)
             # Subtract blurred image from original image
             subtractedImage = self.subtractBlurredFromOriginal(blurredImage)
             # Multiply the result by k (highboost factor) then sum to original image
@@ -462,7 +422,7 @@ class ImageViewer(FigureCanvasQTAgg):
     def boxFiltering(self, size):
         if len(self.grayImage) != 0:
             boxFilter = boxKernel(size)
-            self.grayImage = self.applySpatialFilter(self.grayImage, boxFilter)
+            self.grayImage = applySpatialFilter(self.grayImage, boxFilter)
                        
             # Draw image
             self.drawImage(self.grayImage)
@@ -472,29 +432,18 @@ class ImageViewer(FigureCanvasQTAgg):
         if len(self.grayImage) != 0:
             boxFilter = boxKernel(filterSize)
 
-            self.grayImage = self.applySpatialFilter(self.grayImage, boxFilter, domain="frequency")
+            self.grayImage = applySpatialFilter(self.grayImage, boxFilter, domain="frequency")
             
             # Draw image
             self.drawImage(self.grayImage)
 
     # Notch reject filter
     def notchRejectFilter(self, magnitudeSpectrum, points, d0=9):
-        if len(self.grayImage) != 0:
-            n = magnitudeSpectrum.shape[0]
-            m = magnitudeSpectrum.shape[1]
-            for u in range(n):
-                for v in range(m):
-                    for d in range(len(points)):
-                        v0 = points[d][0]
-                        u0 = points[d][1]
-                        d1 = (u - u0)**2 + (v - v0)**2
-                        d2 = (u + u0)**2 + (v + v0)**2
-                        if d1 <= d0 or d2 <= d0:
-                            magnitudeSpectrum[u][v] = 0
-        
-            self.grayImage = np.abs(self.inverseFourierTransform(magnitudeSpectrum))
+        if len(self.grayImage) != 0:       
+            resultImage = notchRejectFilter(self.grayImage,magnitudeSpectrum,points,d0)
+            
             # Draw image
-            self.drawImage(self.grayImage)
+            self.drawImage(resultImage)
             
     ###############################################
     """Noise Functions"""
@@ -639,41 +588,12 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
     """Fourier Functions"""
     ###############################################
-    
+
     # Fourier transform
-    def fourierTransform(self, imageAtSpatialDomain, mode="fourier", log=False, draw=True, s=None):
-        if len(imageAtSpatialDomain) != 0:
-            if s == None:
-                f = np.fft.fft2(imageAtSpatialDomain)
-            else:
-                f = np.fft.fft2(imageAtSpatialDomain, s)
-
-            fShift = np.fft.fftshift(f)
-            spectrum = None
-
-            if mode == "magnitude":
-                if not log:
-                    spectrum = np.abs(fShift)
-                else:
-                    spectrum = logTransformation(np.abs(fShift))
-            elif mode == "phase":
-                spectrum  = np.angle(fShift)
-            else:
-                spectrum = f
-
-            if draw:
-                self.drawImage(spectrum, mode)
-
-            return spectrum
-
-    # inverse Fourier transform
-    def inverseFourierTransform(self, combinedImage, mode="normal"):
-        if mode=="separate":
-            combinedImage = np.multiply(combinedImage[0], np.exp(1j * combinedImage[1]))
-
-        # shiftedImage = np.fft.ifftshift(combinedImage)
-        resultImage = np.fft.ifft2(combinedImage)
-        return resultImage
+    def fourierTransform(self, image, mode="fourier", log=False):
+        if len(image) != 0:
+            spectrum = fourierTransform(image,mode,log)            
+            self.drawImage(spectrum, mode)
 
     ###############################################
     """Morphological Functions"""
@@ -682,17 +602,26 @@ class ImageViewer(FigureCanvasQTAgg):
     # inverse Fourier transform
     def morphologicalActions(self, option):
         if len(self.grayImage) != 0:
+            SE = np.array([[None,1,1,1,None],
+                          [1,1,1,1,1],
+                          [1,1,1,1,1],
+                          [1,1,1,1,1],
+                          [None,1,1,1,None]])
             image = binaryImage(self.grayImage)
             if option == 'erosion':
-                result = erosionImage(image)
+                result = erosion(image, SE)
             elif option == 'dilation':
-                result = dilationImage(image)
+                result = dilation(image, SE)
             elif option == 'opening':
-                result = opening(image)
+                result = opening(image, SE)
             elif option == 'closing':
-                result = closing(image)
+                result = closing(image, SE)
             elif option == 'noise':
-                AoB = opening(image)
-                result = closing(AoB)
+                SE = np.array([[0,1,0],
+                               [1,0,1],
+                               [0,1,0]])
+
+                result = opening(image,SE)
+                result = closing(result,SE)
 
             self.drawImage(result)

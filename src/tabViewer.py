@@ -9,9 +9,11 @@ except ImportError:
     from PyQt5.QtCore import *
 
 from .image import ImageViewer
-
+from matplotlib.backends.backend_qtagg import (
+    FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+    
 class tabViewer(QWidget):
-    """Tab widget with 4 viewers"""
+    """Tab widget with 7 viewers"""
     primaryViewer: ImageViewer
     secondaryViewer: ImageViewer
     histogramViewer: ImageViewer
@@ -35,65 +37,78 @@ class tabViewer(QWidget):
         self.tabLayout = QGridLayout()
         
         # Initialize the viewers
-        self.primaryViewer = ImageViewer(type="image", title=self.title)
-        self.secondaryViewer = ImageViewer(type="image", title=self.title)
+        self.primaryViewer, self.primaryFrame = self.addViewer(type="image", title=self.title)
+        
+        self.secondaryViewer, self.secondaryFrame = self.addViewer(type="image", title=self.title)
 
         # Histogram viewers
-        self.histogramViewer = ImageViewer(axisExisting=True, axisColor=self.color, type="hist", title=f"Histogram of {self.title}")
+        self.histogramViewer, self.histogramFrame = self.addViewer(axisExisting=True, axisColor=self.color, type="hist", title=f"Histogram of {self.title}")
         
         # Frequencies components
-        self.magnitudeViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Magnitude of {self.title}")
-        self.phaseViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Phase of {self.title}")
+        self.magnitudeViewer, self.magnitudeFrame = self.addViewer(axisExisting=True, axisColor=self.color, title=f"Magnitude of {self.title}")
+        self.phaseViewer, self.phaseFrame = self.addViewer(axisExisting=True, axisColor=self.color, title=f"Phase of {self.title}")
 
         # Phantom components
-        self.sinogramViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Sinogram of {self.title}")
-        self.laminogramViewer = ImageViewer(axisExisting=True, axisColor=self.color, title=f"Laminogram of {self.title}")
+        self.sinogramViewer, self.sinogramFrame = self.addViewer(axisExisting=True, axisColor=self.color, title=f"Sinogram of {self.title}")
+        self.laminogramViewer, self.laminogramFrame = self.addViewer(axisExisting=True, axisColor=self.color, title=f"Laminogram of {self.title}")
 
-        self.tabLayout.addWidget(self.primaryViewer,0,0)
+        self.tabLayout.addWidget(self.primaryFrame,0,0)
         if type == "compare":
-            self.tabLayout.addWidget(self.secondaryViewer,0,1)
+            self.tabLayout.addWidget(self.secondaryFrame,0,1)
         else:
-            self.tabLayout.addWidget(self.histogramViewer,0,1)
-            # self.histogramViewer.hide()
+            self.tabLayout.addWidget(self.histogramFrame,0,1)
+            self.histogramFrame.hide()
             
-            self.tabLayout.addWidget(self.magnitudeViewer,1,0)
-            self.magnitudeViewer.hide()
+            self.tabLayout.addWidget(self.magnitudeFrame,1,0)
+            self.magnitudeFrame.hide()
 
-            self.tabLayout.addWidget(self.phaseViewer,1,1)
-            self.phaseViewer.hide()
+            self.tabLayout.addWidget(self.phaseFrame,1,1)
+            self.phaseFrame.hide()
 
-            self.tabLayout.addWidget(self.sinogramViewer,2,0)
-            # self.sinogramViewer.hide()
+            self.tabLayout.addWidget(self.sinogramFrame,2,0)
+            self.sinogramFrame.hide()
 
-            self.tabLayout.addWidget(self.laminogramViewer,2,1)
-            # self.laminogramViewer.hide()
+            self.tabLayout.addWidget(self.laminogramFrame,2,1)
+            self.laminogramFrame.hide()
 
         # Set layout to new tab
         self.setLayout(self.tabLayout)
 
+    def addViewer(self,axisExisting=False, axisColor="#329da8", type="image", title=""):
+        viewerFrame = QFrame()
+        viewerLayout = QVBoxLayout()
+        viewer = ImageViewer(None,axisExisting, axisColor, type, title)
+        navToolbar = NavigationToolbar(viewer)
+
+        viewerLayout.addWidget(navToolbar)
+        viewerLayout.addWidget(viewer)
+        viewerFrame.setLayout(viewerLayout)
+
+        return viewer, viewerFrame
+
     def showHideHistogram(self):
         if not self.showHist:
             self.showHist = True
-            self.histogramViewer.show()
+            self.histogramFrame.show()
         else:
             self.showHist = False
-            self.histogramViewer.hide()
+            self.histogramFrame.hide()
     
     def showHideMagnitude(self):
         if not self.showMag:
             self.showMag = True
-            self.magnitudeViewer.show()
+            self.magnitudeFrame.show()
         else:
             self.showMag = False
-            self.magnitudeViewer.hide()
+            self.magnitudeFrame.hide()
     
     def showHidePhase(self):
         if not self.showPhase:
             self.showPhase = True
-            self.phaseViewer.show()
+            self.phaseFrame.show()
         else:
             self.showPhase = False
-            self.phaseViewer.hide()
+            self.phaseFrame.hide()
 
     def showHideFourier(self):
         self.showHideMagnitude()
@@ -102,20 +117,20 @@ class tabViewer(QWidget):
     def showHideSinogram(self):
         if not self.showSinogram:
             self.showSinogram = True
-            self.sinogramViewer.show()
+            self.sinogramFrame.show()
         else:
             self.showSinogram = False
-            self.sinogramViewer.hide()
+            self.sinogramFrame.hide()
         
         return self.showSinogram
     
     def showHideLaminogram(self):
         if not self.showLaminogram:
             self.showLaminogram = True
-            self.laminogramViewer.show()
+            self.laminogramFrame.show()
         else:
             self.showLaminogram = False
-            self.laminogramViewer.hide()
+            self.laminogramFrame.hide()
         
         return self.showLaminogram
 

@@ -30,6 +30,10 @@
 
 ## Preview
 
+![image](./docs/image1.png)
+![image](./docs/image2.png)
+![image](./docs/image3.png)
+
 ---
 
 ## References

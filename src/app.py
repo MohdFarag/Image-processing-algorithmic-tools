@@ -16,7 +16,7 @@ def main():
     app.setStyle('Fusion')
     
     # Apply the complete light theme to Qt App.
-    qdarktheme.setup_theme("auto")
+    qdarktheme.setup_theme("light")
     
     # Create and show the main window
     window = MainWindow()

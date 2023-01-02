@@ -700,30 +700,31 @@ class MainWindow(QMainWindow):
 
     # Set information
     def setInfo(self, image:np.ndarray, information):
-        width =  image.shape[1]
-        height = image.shape[0]
-        
-        depth = getDepth(image)
-        size = width * height * depth
+        if image is not None:
+            width =  image.shape[1]
+            height = image.shape[0]
+            
+            depth = getDepth(image)
+            size = width * height * depth
 
-        modality = getAttribute(information, "Modality")
-        patientName = getAttribute(information, "PatientName")
-        patientAge = getAttribute(information,"PatientAge")
-        bodyPartExamined = getAttribute(information,"BodyPartExamined") 
+            modality = getAttribute(information, "Modality")
+            patientName = getAttribute(information, "PatientName")
+            patientAge = getAttribute(information,"PatientAge")
+            bodyPartExamined = getAttribute(information,"BodyPartExamined") 
 
-        info = {
-            "Width": f"{width} px",
-            "Height": f"{height} px",
-            "Size": f"{size} bytes",
-            "Bit depth": f"{depth} px",
-            "Modality used": modality,
-            "Patient name": patientName,
-            "Patient Age": patientAge,
-            "Body part examined": bodyPartExamined,
-        }
+            info = {
+                "Width": f"{width} px",
+                "Height": f"{height} px",
+                "Size": f"{size} bytes",
+                "Bit depth": f"{depth} px",
+                "Modality used": modality,
+                "Patient name": patientName,
+                "Patient Age": patientAge,
+                "Body part examined": bodyPartExamined,
+            }
 
-        # Update the tree
-        self.setDataOfTree(info)
+            # Update the tree
+            self.setDataOfTree(info)
 
     # Set the data of the tree
     def setDataOfTree(self, data):
@@ -1146,8 +1147,8 @@ class MainWindow(QMainWindow):
                 return
 
             plt.clf()
-            spectrum = self.currentTab.primaryViewer.fourierTransform(image, draw=False)            
-            magnitudeSpectrum = self.currentTab.primaryViewer.fourierTransform(image, mode="magnitude", log=True, draw=False)
+            spectrum = fourierTransform(image)            
+            magnitudeSpectrum = fourierTransform(image, mode="magnitude", log=True)
             
             plt.imshow(magnitudeSpectrum, cmap = "gray")
             
@@ -1158,7 +1159,7 @@ class MainWindow(QMainWindow):
             points = np.asarray(plt.ginput(n, timeout = -1))
             plt.close()
 
-            self.currentTab.primaryViewer.notchRejectFilters(spectrum, points, frequency)
+            self.currentTab.primaryViewer.notchRejectFilter(spectrum, points, frequency)
             
     ##########################################
     #     """Transformations Functions"""    #
@@ -1196,12 +1197,7 @@ class MainWindow(QMainWindow):
         else:
             return
         
-        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
-                            
-        if mode == "nearest":
-            self.interpolationMode = "Zoom Nearest Neighbor"
-        elif mode == "bilinear":
-            self.interpolationMode = "Zoom Bilinear"
+        self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
 
     # Rotate Image
     def rotateImage(self, mode="bilinear"):
@@ -1217,18 +1213,9 @@ class MainWindow(QMainWindow):
             rotationAngle = output[0]
         else:
             return
-        image = self.currentTab.primaryViewer.getGrayImage()
-        self.widthOfImage, self.heightOfImage = self.currentTab.primaryViewer.rotateImage(image,rotationAngle, mode)
-
-        direction = "Clockwise"
-        if rotationAngle >= 0:
-            direction = "Counterclockwise"
-                
-        if mode == "nearest":
-            self.interpolationMode = "Rotate Nearest Neighbor"
-        else :
-            self.interpolationMode = "Rotate Bilinear"
         
+        self.currentTab.primaryViewer.rotateImage(rotationAngle, mode)
+       
     ##########################################
     #       """Operations Functions"""       #
     ##########################################
@@ -1365,48 +1352,48 @@ class MainWindow(QMainWindow):
     ##########################################
 
     def sinogram(self):
-        # if self.currentTab.showHideSinogram():
-        self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
+        if self.currentTab.showHideSinogram():
+            self.currentTab.sinogramViewer.drawSinogram(self.currentTab.primaryViewer.grayImage)
     
     def laminogram(self):
-        # if self.currentTab.showHideLaminogram():
-        requirements = {
-            "Filter Type": {
-                "type": RADIO,
-                "options": ['None', 'Hamming', 'Ram-Lak (ramp)']
-            },
-            "Mode": {
-                "type": RADIO,
-                "options": ['Start, End, step',"Values"]
-            },
-            "Angles (comma ',') ":{
-                "type": STR
+        if self.currentTab.showHideLaminogram():
+            requirements = {
+                "Filter Type": {
+                    "type": RADIO,
+                    "options": ['None', 'Hamming', 'Ram-Lak (ramp)']
+                },
+                "Mode": {
+                    "type": RADIO,
+                    "options": ['Start, End, step',"Values"]
+                },
+                "Angles (comma ',') ":{
+                    "type": STR
+                }
             }
-        }
 
-        output = self.getInputsFromUser(requirements, "Laminogram")
-        if output != None:
-            filterType = output[0]
-            mode = output[1]
-            angles = output[2].replace(" ","")
-        else:
-            return
-        angles = np.int64(np.array(angles.split(",")))
+            output = self.getInputsFromUser(requirements, "Laminogram")
+            if output != None:
+                filterType = output[0]
+                mode = output[1]
+                angles = output[2].replace(" ","")
+            else:
+                return
+            angles = np.int64(np.array(angles.split(",")))
 
-        if mode == 0:
-            if len(angles) == 2:
-                start, end = angles
-                angles = range(start, end)
-            elif len(angles) == 3:
-                start, end, step = angles
-                angles = range(start, end, step)
+            if mode == 0:
+                if len(angles) == 2:
+                    start, end = angles
+                    angles = range(start, end)
+                elif len(angles) == 3:
+                    start, end, step = angles
+                    angles = range(start, end, step)
 
-        if filterType == 0:
-            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles)
-        elif filterType == 1:
-            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, filterType="hamming")
-        elif filterType == 2:
-            self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, filterType="ramp")
+            if filterType == 0:
+                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles)
+            elif filterType == 1:
+                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, filterType="hamming")
+            elif filterType == 2:
+                self.currentTab.laminogramViewer.drawLaminogram(self.currentTab.sinogramViewer.grayImage, angles, filterType="ramp")
 
     ##########################################
     #         """View Functions"""           #
@@ -1429,15 +1416,17 @@ class MainWindow(QMainWindow):
     def updateImage(self, image=[], log=True):
         if image == []:
             image = self.currentTab.primaryViewer.getGrayImage()
-        if log:
-            self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude", True)
-            self.currentTab.phaseViewer.fourierTransform(image, "phase", True)
-        else:
-            self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude")
-            self.currentTab.phaseViewer.fourierTransform(image, "phase")
 
-        self.currentTab.histogramViewer.drawHistogram(image)
-        self.setInfo(image, self.imageInformation)
+        if len(image) != 0:
+            if log:
+                self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude", True)
+                self.currentTab.phaseViewer.fourierTransform(image, "phase", True)
+            else:
+                self.currentTab.magnitudeViewer.fourierTransform(image, "magnitude", log=False)
+                self.currentTab.phaseViewer.fourierTransform(image, "phase", log=False)
+
+            self.currentTab.histogramViewer.drawHistogram(image)
+            self.setInfo(image, self.imageInformation)
         
     # Open new tap when double click
     def tabOpenDoubleClick(self,i):
