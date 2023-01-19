@@ -1,62 +1,38 @@
-import cv2
-import math
+# pylint: disable=C0103,W0105,W0611,C0116,C0114,C0115,C0111, C0123
+
+from math import floor
 import numpy as np
+import matplotlib.pyplot as plt
 
-class rotator:
-
-    angle = 20.0
-    x = 330
-    y = 330
-
-    radians = float(angle*(math.pi/180))
-    img = cv2.imread('./testInputs/Lenna/lenna256x256.jpg',0)
-    width,height = img.shape
-
-
-    def showImg(name, self):
-        cv2.imshow(name, self.img)
-        self.img = np.pad(self.img, (self.height) ,'constant', constant_values=0)
-        self.width,self.height = self.img.shape
-
-    def printWH(self):
-        print(self.width)
-        print(self.height)
-
-    def rotate(self):
-        emptyF = np.zeros((self.width,self.height),dtype="uint8")
-        emptyB = np.zeros((self.width,self.height),dtype="uint8")
-        emptyBB = np.zeros((self.width,self.height),dtype="uint8")
-
-
-        for i in range(self.width):
-            for j in range(self.height):
-                temp = self.img[i,j]
-                #forward mapping
-                xf = (i-self.x)*math.cos(self.radians)-(j-self.y)*math.sin(self.radians)+self.x
-                yf = (i-self.x)*math.sin(self.radians)+(j-self.y)*math.cos(self.radians)+self.x
-                #backward mapping should change the forward mapping to the original image
-                xbb = (i-self.x)*math.cos(self.radians)+(j-self.y)*math.sin(self.radians)+self.x
-                ybb = -(i-self.x)*math.sin(self.radians)+(j-self.y)*math.cos(self.radians)+self.x
-                xbb = int(xbb)
-                ybb = int(ybb)
-                if xf < 660 and yf < 660 and xf>0 and yf > 0:
-                    emptyF[int(xf),int(yf)] = temp
-                else:
-                    pass
-                if xbb < 660 and ybb < 660 and xbb>0 and ybb > 0:
-                    emptyBB[(xbb),(ybb)] = temp
-                else:
-                    pass
-        cv2.imshow('Forward', emptyF)
-        cv2.imshow('Backward', emptyBB)
-
-def main():
-    rotator.showImg('normal', rotator)
-    rotator.printWH(rotator)
-    rotator.rotate(rotator)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows
+# Gaussian kernel
+def gaussianKernel(sigma:int, size:int=None):
+    """Create a Gaussian kernel of size (size x size) and standard deviation sigma.
+    """
+    
+    if size is None:
+        # Calculate the size of the kernel
+        size = 6*sigma + 1
+    
+    # Create a 2D array of zeros
+    kernel = np.zeros((size, size))
+      
+    K = 1/(2*np.pi*(sigma**2))
+    # Apply the Gaussian filter
+    for i in range(size):
+        for j in range(size):
+            s = i-(size//2)
+            t = j-(size//2)
+            kernel[i, j] = K*np.exp(-((s**2)+(t**2))/(2*(sigma**2)))
+    
+    # Area under the curve should be 1, but the discrete case is only
+    # an approximation, correct it
+    kernel = kernel / np.sum(kernel)
+    
+    # Return the kernel
+    return kernel
 
 
-if __name__ == '__main__':
-    main()
+Kernel = gaussianKernel(1,3)
+print(Kernel)
+plt.imshow(Kernel, cmap='gray')
+plt.show()

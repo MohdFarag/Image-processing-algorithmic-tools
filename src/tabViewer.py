@@ -10,7 +10,7 @@ except ImportError:
 
 from .image import ImageViewer
 from matplotlib.backends.backend_qtagg import (
-    FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+    NavigationToolbar2QT as NavigationToolbar)
     
 class tabViewer(QWidget):
     """Tab widget with 7 viewers"""

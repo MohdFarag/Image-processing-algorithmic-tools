@@ -1,6 +1,11 @@
-import numpy as np
+# pylint: disable=C0103,W0105,E0602
+
+"""Algorithms and tools for image processing.
+"""
+
 from math import *
-# from skimage.morphology import erosion, dilation
+import numpy as np
+from typing import Tuple, List, Dict, Union, Any
 
 # Constants (Random values) -> to identify the type of popup
 INT = 127
@@ -74,8 +79,33 @@ def getCenter(image:np.ndarray):
     centerCoordinates = (xCenter,yCenter)
     return centerCoordinates, image[centerCoordinates]
 
+# TODO: Test this function
+def coordinateIndexing(image:np.ndarray, rows, cols):
+    M = image.shape[0]
+    if rows * cols != M:
+        print("Error: rows * cols != M")
+        return None
+    
+    result = np.zeros((rows, cols))
+    for alpha in range(M):
+        x = alpha % cols
+        y = (alpha-x) / cols
+        result[x,y] = image[alpha]
+    return result
+
+# TODO: Test this function
+def LinearIndexing(image:np.ndarray):
+    M = image.shape[0]
+    N = image.shape[1]
+    
+    result = np.zeros(image.shape[0]*image.shape[1])
+    for x in range(M):
+        for y in range(N):
+            alpha = M * y + x
+            result[alpha] = image[x,y]
+    
 ########################
-"Statistics"
+# "Statistics"
 ########################
 
 def getMean(image):
@@ -88,7 +118,7 @@ def getVariance(image):
     return np.var(image)
 
 ########################
-"Intensity transformations"
+# "Intensity transformations"
 ########################
 
 # Transform grayscale image to binary
@@ -116,7 +146,8 @@ def gammaCorrectionImage(r, Y):
     s = c * r ** Y
     return s
 
-"Piecewise-Linear Transformation Functions"
+## "Piecewise-Linear Transformation Functions"
+
 # Process that expands the range of intensity
 # levels in an image.
 def contrastStretching(image, r1, s1, r2, s2):
@@ -141,11 +172,11 @@ def contrastStretching(image, r1, s1, r2, s2):
 # in an image often is of interest.
 def intensityLevelSlicing(image, A, B, mode="bw"):
     """
-    Arguments: 
+    Arguments:
         - image: image
         - A: min intensity
         - B: max intensity
-        - mode: 
+        - mode:
             - "bw" -> Black & White
             - "bd" -> Brightness & Darkness
     """
@@ -197,7 +228,7 @@ def bitPlaneSlicing(image, k, p):
     return resultImage
 
 ########################
-"Spatial Transformations"
+# "Spatial Transformations"
 ########################
 
 # TODO: Add Bicubic interpolation
@@ -209,7 +240,7 @@ def zoom(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
     # Set size of zoomed image
     newWidth = round(oldWidth * scaleFactor)
     newHeight = round(oldHeight * scaleFactor)
-    
+
     # Initialize resized image
     resizedImage = np.zeros([newWidth, newHeight])
 
@@ -225,9 +256,9 @@ def zoom(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
                     y = int(j/scaleFactor)
                 else:
                     # If I want to know the value of pixel at (3,1) then divide (3/2,1/2) 🡪 int(1.5,0.5) 🡪 (1,0)
-                    x = int(i/scaleFactor)
-                    y = int(j/scaleFactor)             
-                
+                    x = round(i/scaleFactor)
+                    y = round(j/scaleFactor)
+                    
                 pixel = image[x,y]
 
             elif mode == "bilinear":
@@ -255,7 +286,7 @@ def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:st
     provided. The rotated image can be of the same size as the original image
     or it can show the full image.
 
-    inputs: 
+    inputs:
             image: input image (dtype: numpy-ndarray)
             angle: amount of rotation in degrees (e.g., 45,90 etc.)
             interpolation: type of interpolation you need
@@ -285,11 +316,11 @@ def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:st
         widthRotated = round(abs(image.shape[0]*cos(angle))) + round(abs(image.shape[1]*sin(angle)))
         heightRotated = round(abs(image.shape[1]*sin(angle))) + round(abs(image.shape[0]*cos(angle)))
 
-        # Initialize rotated image 
-        rotatedImage = np.zeros((widthRotated, heightRotated)) 
+        # Initialize rotated image
+        rotatedImage = np.zeros((widthRotated, heightRotated))
     else:
-        # Initialize rotated image 
-        rotatedImage = np.zeros((oldWidth,oldHeight)) 
+        # Initialize rotated image
+        rotatedImage = np.zeros((oldWidth,oldHeight))
 
     # Finding the center point of rotated image.
     (oldCenterWidth, oldCenterHeight), _= getCenter(image)
@@ -310,14 +341,14 @@ def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:st
                 x += centerWidth
                 y += centerHeight
 
-            if interpolation == "nearest":            
+            if interpolation == "nearest":
                 # Get nearest index
-                x, y = round(x), round(y) 
+                x, y = round(x), round(y)
                 # Check if x/y corresponds to a valid pixel in input image
                 if (0 <= x < oldWidth and  0 <= y < oldHeight):
                     rotatedImage[i][j] = image[x][y]
 
-            elif interpolation == "bilinear":    
+            elif interpolation == "bilinear":
                 # Calculate the coordinate values for 4 surrounding pixels.
                 xFloor = int(x)
                 xCeil = min(oldWidth-1, ceil(x))
@@ -389,25 +420,36 @@ def shear(image, angle, mode="horizontal"):
     return shearedImage
 
 ########################
-"Radon Transformations"
+# "Radon Transformations"
 ########################
 
-# Build the Radon Transform using 'steps' or 'list' of angles projections of 'image'. 
-def radon(image, angles):
+# Build the Radon Transform using 'steps' or 'list' of angles projections of 'image'.
+def radon(image:np.ndarray, angles:Union[int, list, tuple, np.ndarray]):
+    """ Build the Radon Transform using 'steps' or 'list' of angles projections of 'image'.
+
+    Args:
+        image (np.ndarray): Image to be projected.
+        angles (Union[int, list, tuple, np.ndarray]): Angle increment for rotations.
+
+    Returns:
+        ndarray: image projections as a sinogram.
+    """
+    
     ## Accumulate projections in a list.
     projections = []
 
-    if type(angles) == int:
+    if isinstance(angles, int):
         # Angle increment for rotations.
         dTheta = -180.0 / angles
         for i in range(angles):
             rotatedImage = rotate(image, i*dTheta)
             projections.append(rotatedImage.sum(axis=0))
-    elif type(angles) == list or type(angles) == tuple or type(angles) == np.ndarray:
+            
+    elif isinstance(angles, list) or isinstance(angles, tuple) or isinstance(angles, np.ndarray):
         for angle in angles:
             rotatedImage = rotate(image, -angle)
             projections.append(rotatedImage.sum(axis=0))
-    
+
     return np.vstack(projections) # Return the projections as a sinogram
 
 # Build a Laminogram of the phantom from sinogram and thetas
@@ -425,13 +467,13 @@ def iradon(sinogram, angles=range(180)):
     return laminogram
 
 ########################
-"""Filters Functions"""
+# "Filters Functions"
 ########################
 
 # Add padding to image
 # TODO: Add Replicate padding & Mirror padding
 def addPadding(image, paddingSize, mode="same", value=0):
-    if type(paddingSize) == tuple:
+    if isinstance(paddingSize, tuple):
         xPaddingSize, yPaddingSize = paddingSize
     else:
         xPaddingSize = paddingSize
@@ -456,21 +498,21 @@ def addPadding(image, paddingSize, mode="same", value=0):
     return resultImage
 
 # Convolution function
-def convolution(image:np.ndarray, filter:np.ndarray, mode="convolution"):
+def convolution(image:np.ndarray, kernel:np.ndarray, mode="convolution"):
     if mode == "convolution":
-        filter = np.flip(filter)
+        kernel = np.flip(kernel)
 
-    filterWidth = filter.shape[0]
-    filterHeight = filter.shape[1]
-    paddedImage = addPadding(image, (filterWidth//2,filterHeight//2))
+    kernelWidth = kernel.shape[0]
+    kernelHeight = kernel.shape[1]
+    paddedImage = addPadding(image, (kernelWidth//2,kernelHeight//2))
 
     convolvedImage = []
     for i in range(image.shape[0]):
-        endPointVertical = i + filterWidth
+        endPointVertical = i + kernelWidth
         rowArray = []
         for j in range(image.shape[1]):
-            endPointHorizontal = j + filterHeight
-            rowArray.append(np.sum(paddedImage[i:endPointVertical,j:endPointHorizontal] * filter))
+            endPointHorizontal = j + kernelHeight
+            rowArray.append(np.sum(paddedImage[i:endPointVertical,j:endPointHorizontal] * kernel))
         convolvedImage.append(rowArray)
     
     convolvedImage = np.array(convolvedImage)
@@ -487,16 +529,32 @@ def boxKernel(size:int, shape=None):
     
     return filter
 
-# Gaussian Kernel
-def gaussianKernel(sigma):
-    size = (6*sigma) + 1
-    filter = np.zeros((size,size))
-    K = 1
-    for s in range(size):
-        for t in range(size):
-            filter[s,t] = K * exp(-(s**2+t**2)/(2*sigma**2))
-
-    return filter
+# Gaussian kernel
+def gaussianKernel(sigma:int, size:int=None):
+    """Create a Gaussian kernel of size (size x size) and standard deviation sigma.
+    """
+    
+    if size is None:
+        # Calculate the size of the kernel
+        size = 6*sigma + 1
+    
+    # Create a 2D array of zeros
+    kernel = np.zeros((size, size))
+      
+    K = 1/(2*np.pi*(sigma**2))
+    # Apply the Gaussian filter
+    for i in range(size):
+        for j in range(size):
+            s = i-(size//2)
+            t = j-(size//2)
+            kernel[i, j] = K*exp(-((s**2)+(t**2))/(2*(sigma**2)))
+    
+    # Area under the curve should be 1, but the discrete case is only
+    # an approximation, correct it
+    kernel = kernel / np.sum(kernel)
+    
+    # Return the kernel
+    return kernel
 
 # Apply specific 'spatial' filter
 # You can choose whether the filter applied in spatial or frequency domain
@@ -572,7 +630,7 @@ def notchRejectFilter(image, magnitudeSpectrum, points, d0=9):
         return resultImage
 
 ###############################################
-"""Histogram Functions"""
+# "Histogram Functions"
 ###############################################
 
 # Build histogram of the image
@@ -639,7 +697,7 @@ def getStatisticsOfHistogram(histogram:np.ndarray, L=256):
     return mean, variance, std
 
 ###############################################
-"""Morphological Transformations"""
+# "Morphological Transformations"
 ###############################################
 
 # Erode the image
@@ -732,13 +790,13 @@ def morphologyMultBitWise(temp:np.ndarray,SE:np.ndarray, defaultValue=1):
             for j in range(size[1]):
                 if SE[i][j] != 0 and SE[i][j] is not None:
                     result[i][j] = temp[i][j] * SE[i][j]
-                    
+
         return result
     else:
-        raise "**Error** first matrix shape not equal second matrix shape"
+        print("**Error** first matrix shape not equal second matrix shape")
 
 ###############################################
-"""Fourier Transformations"""
+# "Fourier Transformations"
 ###############################################
 
 # Fourier transform
@@ -768,4 +826,70 @@ def inverseFourierTransform(combinedImage, mode="normal"):
     resultImage = np.fft.ifft2(shiftedImage)
     return resultImage
 
+###############################################
+# "Set operations"
+###############################################
 
+def union2d(image1:np.ndarray, image2:np.ndarray):
+    """Union of 2 images
+
+    Args:
+        image1 (np.ndarray): input image 1
+        image2 (np.ndarray): input image 2
+
+    Returns:
+        ndarray: Output image
+    """
+
+    row = image1.shape[0]
+    col = image1.shape[1]
+    resultImage = np.zeros((row,col))
+
+    for i in range(row):
+        for j in range(col):
+            resultImage[i,j] = max(image1[i,j], image2[i,j])
+
+    return resultImage
+
+def intersect2d(image1:np.ndarray, image2:np.ndarray):
+    """Intersect between two images
+
+    Args:
+        image1 (np.ndarray): input image 1
+        image2 (np.ndarray): input image 2
+
+    Returns:
+        np.ndarray: Output image
+    """
+
+    row = image1.shape[0]
+    col = image1.shape[1]
+    resultImage = np.zeros((row,col))
+
+    for i in range(row):
+        for j in range(col):
+            resultImage[i,j] = abs(image1[i,j] - image2[i,j])
+
+    return resultImage
+
+def complement2d(image:np.ndarray):
+    """Complement of the image
+
+    Args:
+        image (np.ndarray): Input image
+
+    Returns:
+        np.ndarray: Output image
+    """
+
+    row = image.shape[0]
+    col = image.shape[1]
+    k = image.max()
+
+    resultImage = np.zeros((row,col))
+
+    for i in range(row):
+        for j in range(col):
+            resultImage[i,j] = k - image[i,j]
+
+    return resultImage

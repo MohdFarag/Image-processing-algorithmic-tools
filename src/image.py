@@ -1,6 +1,10 @@
+""" Image Viewer Class"""
+
+# pylint: disable=C0103, W0105, C0301, W0613, E1136
+
 # math & matrix computations library
-import numpy as np
 import random
+import numpy as np
 
 # Matplotlib
 import matplotlib as mpl
@@ -14,13 +18,19 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from phantominator import shepp_logan
 import skimage.transform # import iradon , radon, rotate, rescale
 
-from PIL import Image
-from .utilities import *
-
 # Pydicom
 import pydicom as dicom
 
+from PIL import Image
+from .utilities import *
+
 class ImageViewer(FigureCanvasQTAgg):
+    """Image Viewer Class
+
+    Args:
+        FigureCanvasQTAgg (_type_)
+    """
+
     def __init__(self, parent=None, axisExisting=False, axisColor="#329da8", type="image", title=""):
         self.fig = Figure(figsize = (6, 6), dpi = 80)
         self.axes = self.fig.add_subplot(111)
@@ -37,25 +47,25 @@ class ImageViewer(FigureCanvasQTAgg):
         if type == "image":
             self.xlabel = "Width"
             self.ylabel = "Height"
-        
+
         elif type == "hist":
             self.xlabel = "Intensity"
             self.ylabel = "Count"
             divider = make_axes_locatable(self.axes)
             cax = divider.append_axes('bottom', size='6%', pad=0.55, add_to_figure=True)
-            
+
             cmap = mpl.cm.gray
             norm = mpl.colors.Normalize(vmin=0, vmax=255)
-            
+
             self.fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation='horizontal')
-        
+
         self.axes.set_title(self.title)
         self.axes.set_xlabel(self.xlabel)
         self.axes.set_ylabel(self.ylabel)
         self.setTheme()
 
         super(ImageViewer, self).__init__(self.fig)
-   
+
     # Set grid
     def setGrid(self, status):
         self.axes.grid(status)
@@ -78,7 +88,7 @@ class ImageViewer(FigureCanvasQTAgg):
         if not self.axisExisting:
             self.axes.set_xticks([])
             self.axes.set_yticks([])
-        
+
         plt.style.context('fivethirtyeight')
 
     ###############################################
@@ -143,17 +153,17 @@ class ImageViewer(FigureCanvasQTAgg):
 
         self.loaded = False
         self.grayImage = np.array([])
-    
+
     ###############################################
     """plt Functions"""
     ###############################################
 
     def setROI(self, corners):
-        corners = np.int64(np.round(corners))
+        corners = np.int32(np.round(corners))
         p1 = corners[0][0], corners[1][0]
         p2 = corners[0][2], corners[1][2]
         ROI = self.grayImage[p1[1]:p2[1], p1[0]:p2[0]]
-        
+
         # To Draw ROI
         self.drawImage(ROI, scale="clip" ,save=False)
         return ROI
@@ -221,7 +231,7 @@ class ImageViewer(FigureCanvasQTAgg):
 
             zoomWidth = int(resizedImage.shape[0]/scaleFactor)
             zoomHeight = int(resizedImage.shape[1]/scaleFactor)
-            
+
             self.grayImage = resizedImage[:zoomWidth,:zoomHeight]
             self.drawImage(self.grayImage)
 
@@ -246,11 +256,11 @@ class ImageViewer(FigureCanvasQTAgg):
     # Construct T shape
     def constructT(self):
         self.grayImage = np.zeros((128,128), dtype=np.int64)
-        
+
         for i in range(29,50):
             for j in range(29,100):
                 self.grayImage[i,j] = 255
-        
+
         for i in range(49,100):
             for j in range(54,74):
                 self.grayImage[i,j] = 255
@@ -261,7 +271,7 @@ class ImageViewer(FigureCanvasQTAgg):
     # Construct Triangle shape
     def constructTriangle(self):
         self.grayImage = np.zeros((128,128), dtype=np.int64)
-        
+
         k = 100 - 29
         for i in range(29,100):
             for j in range(k,127-k):
@@ -326,7 +336,7 @@ class ImageViewer(FigureCanvasQTAgg):
         self.loaded = True
         sheppLoganPhantom = np.flip(shepp_logan(size))
         self.drawImage(sheppLoganPhantom)
-        
+
     # Display a Sinogram of this phantom
     def drawSinogram(self, image, angles=np.arange(180)):
         if len(image) != 0:
@@ -355,7 +365,7 @@ class ImageViewer(FigureCanvasQTAgg):
 
             # Calculate statistics of histogram
             mean, variance, std = getStatisticsOfHistogram(histogram, L)
-            
+
             # Normalize
             sumPixels = np.sum(histogram)
             normalizedHistogram = histogram/sumPixels
@@ -367,8 +377,8 @@ class ImageViewer(FigureCanvasQTAgg):
             self.axes.plot(cdf_normalized, color = 'black')
             self.axes.axvline(mean, color='g', linestyle='dashed', linewidth=1)
             self.axes.legend(('cumulative histogram','mean','histogram'), loc = 'upper left')
-           
-            self.axes.set_title(f'\u03BC = {mean}    \u03C3 = {std}')
+
+            self.axes.set_title(f'\u03BC = {mean:.2f}    \u03C3\u00b2 = {variance:.2f}    \u03C3 = {std:.2f}')
             self.draw()
         else:
             return
@@ -390,14 +400,14 @@ class ImageViewer(FigureCanvasQTAgg):
     def subtractBlurredFromOriginal(self, blurredImage):
         resultImage = np.subtract(self.grayImage, blurredImage)
         return resultImage
-    
+
     # Multiply by a factor K Then added to the original image
     def multiplyByFactor(self, image, k):
         resultImage = np.multiply(image,k)
         resultImage = np.add(resultImage, self.grayImage)
 
         return resultImage
-    
+
     # Order statistic mask
     def OrderStatisticFilter(self, size, percent):
         if len(self.grayImage) != 0:
@@ -417,23 +427,22 @@ class ImageViewer(FigureCanvasQTAgg):
             self.grayImage = self.multiplyByFactor(subtractedImage, k)          
             # Draw image
             self.drawImage(self.grayImage)
-    
-    # Perform box filtering
-    def boxFiltering(self, size):
+
+    # Perform box filtering in spatial domain or frequency domain
+    def boxFiltering(self, size, domain="spatial"):
         if len(self.grayImage) != 0:
             boxFilter = boxKernel(size)
-            self.grayImage = applySpatialFilter(self.grayImage, boxFilter)
-                       
+            self.grayImage = applySpatialFilter(self.grayImage, boxFilter, domain=domain)
+            
             # Draw image
             self.drawImage(self.grayImage)
-
-    # Perform box filtering in frequency domain
-    def boxFilteringUsingFourier(self, filterSize):
-        if len(self.grayImage) != 0:
-            boxFilter = boxKernel(filterSize)
-
-            self.grayImage = applySpatialFilter(self.grayImage, boxFilter, domain="frequency")
             
+    # Perform gaussian filtering
+    def gaussianFiltering(self, sigma, size, domain="spatial"):
+        if len(self.grayImage) != 0:
+            gaussianFilter = gaussianKernel(sigma,size)
+            self.grayImage = applySpatialFilter(self.grayImage, gaussianFilter, domain=domain)
+
             # Draw image
             self.drawImage(self.grayImage)
 
@@ -441,10 +450,10 @@ class ImageViewer(FigureCanvasQTAgg):
     def notchRejectFilter(self, magnitudeSpectrum, points, d0=9):
         if len(self.grayImage) != 0:       
             resultImage = notchRejectFilter(self.grayImage,magnitudeSpectrum,points,d0)
-            
+
             # Draw image
             self.drawImage(resultImage)
-            
+
     ###############################################
     """Noise Functions"""
     ###############################################
@@ -475,7 +484,7 @@ class ImageViewer(FigureCanvasQTAgg):
             rayleighNoise = np.random.rayleigh(mode, self.grayImage.shape)
             rayleighNoise = np.asarray(np.round(rayleighNoise), dtype=np.int64)            
             self.grayImage += rayleighNoise
-            
+
             # Draw image
             self.drawImage(self.grayImage)
 
@@ -496,7 +505,7 @@ class ImageViewer(FigureCanvasQTAgg):
             exponentialNoise = np.random.exponential(scale, (width,height))
             exponentialNoise = np.asarray(np.round(exponentialNoise), dtype=np.int64)            
             self.grayImage += exponentialNoise
-            
+
             # Draw image
             self.drawImage(self.grayImage)
 
@@ -504,7 +513,7 @@ class ImageViewer(FigureCanvasQTAgg):
     def addSaltAndPepperNoise(self, mode="salt and pepper"):
         if len(self.grayImage) != 0:
             width, height = self.grayImage.shape
-            
+
             # Randomly pick some pixels in the image for coloring them white
             number_of_pixels = int((random.randint(2,7)/100) * (width*height))
 
@@ -518,14 +527,14 @@ class ImageViewer(FigureCanvasQTAgg):
                 salt = False
                 pepper = True
 
-            if pepper == True:
+            if pepper is True:
                 for _ in range(number_of_pixels):        
                     self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 255
 
-            if salt == True:
+            if salt is True:
                 for _ in range(number_of_pixels):        
                     self.grayImage[random.randint(0, width - 1)][random.randint(0, height - 1)] = 0
-            
+
             # Draw image
             self.drawImage(self.grayImage)
 
@@ -555,9 +564,9 @@ class ImageViewer(FigureCanvasQTAgg):
             resultedImage = np.divide(image1, image2)
 
         elif operation == "union":
-            resultedImage = np.union1d(image1, image2)
+            resultedImage = union2d(image1, image2)
         elif operation == "intersect":
-            resultedImage = np.intersect1d(image1, image2)
+            resultedImage = intersect2d(image1, image2)
         
         elif operation == "and":
             resultedImage = np.bitwise_and(image1, image2)
@@ -581,8 +590,8 @@ class ImageViewer(FigureCanvasQTAgg):
             if operation == "not":
                 resultedImage = np.bitwise_not(self.grayImage)
             elif operation == "complement":
-                resultedImage = np.bitwise_not(self.grayImage)
-            
+                resultedImage = complement2d(self.grayImage)
+
             self.drawImage(resultedImage, "Operation")
 
     ###############################################
@@ -598,15 +607,15 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
     """Morphological Functions"""
     ###############################################
-    
+
     # inverse Fourier transform
     def morphologicalActions(self, option):
         if len(self.grayImage) != 0:
-            SE = np.array([[None,1,1,1,None],
+            SE = np.array([[0,1,1,1,0],
                           [1,1,1,1,1],
                           [1,1,1,1,1],
                           [1,1,1,1,1],
-                          [None,1,1,1,None]])
+                          [0,1,1,1,0]])
             image = binaryImage(self.grayImage)
             if option == 'erosion':
                 result = erosion(image, SE)
@@ -616,12 +625,5 @@ class ImageViewer(FigureCanvasQTAgg):
                 result = opening(image, SE)
             elif option == 'closing':
                 result = closing(image, SE)
-            elif option == 'noise':
-                SE = np.array([[0,1,0],
-                               [1,0,1],
-                               [0,1,0]])
-
-                result = opening(image,SE)
-                result = closing(result,SE)
 
             self.drawImage(result)

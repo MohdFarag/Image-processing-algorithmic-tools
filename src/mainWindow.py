@@ -155,18 +155,15 @@ class MainWindow(QMainWindow):
     def filtersActions(self):
         # Unsharp masking
         self.unsharpMaskAction = QAction(QIcon(":box"), "&Un-sharp Mask", self)
-        self.unsharpMaskAction.setShortcut("ctrl+U")
         self.unsharpMaskAction.setStatusTip('Create a Unsharp Masking')
 
         # Box filter
-        self.boxFilteringAction = QAction(QIcon(":blur"), "&Blur", self)
-        self.boxFilteringAction.setShortcut("ctrl+j")
-        self.boxFilteringAction.setStatusTip('Blur image in spatial domain')
+        self.boxFilteringAction = QAction(QIcon(":blur"), "&Box Filter", self)
+        self.boxFilteringAction.setStatusTip('Blur image by box kernel')
 
-        # Box filter (fourier)
-        self.boxFilteringByFourierAction = QAction(QIcon(":blurFourier"), "&Blur in frequency domain", self)
-        self.boxFilteringByFourierAction.setShortcut("ctrl+k")
-        self.boxFilteringByFourierAction.setStatusTip('Blur image in frequency domain using fourier transform')
+        # Gaussian filter
+        self.gaussianFilteringAction = QAction(QIcon(":blur"), "&Gaussian Filter", self)
+        self.gaussianFilteringAction.setStatusTip('Blur image by gaussian kernel')
 
         # Median filter (50th percentile)
         self.medianFilterAction = QAction(QIcon(":median"), "&Median filter", self)
@@ -400,7 +397,6 @@ class MainWindow(QMainWindow):
         "Filters Actions"
         self.unsharpMaskAction.setShortcut("ctrl+U")
         self.boxFilteringAction.setShortcut("ctrl+j")
-        self.boxFilteringByFourierAction.setShortcut("ctrl+k")
         self.medianFilterAction.setShortcut("ctrl+M")
         self.notchRejectFilterAction.setShortcut("ctrl+B")
         
@@ -536,7 +532,7 @@ class MainWindow(QMainWindow):
         filterMenu = QMenu("&Filter", self)
         filterMenu.addAction(self.unsharpMaskAction)
         filterMenu.addAction(self.boxFilteringAction)
-        filterMenu.addAction(self.boxFilteringByFourierAction)
+        filterMenu.addAction(self.gaussianFilteringAction)
         filterMenu.addAction(self.medianFilterAction)
         filterMenu.addAction(self.notchRejectFilterAction) 
 
@@ -789,8 +785,8 @@ class MainWindow(QMainWindow):
         " Filters "
         self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
         self.medianFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMedian))
-        self.boxFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter, "spatial"))
-        self.boxFilteringByFourierAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter, "frequency"))
+        self.boxFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter))
+        self.gaussianFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyGaussianFilter))
         self.notchRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.notchRejectFilter))
         
         " Noise "
@@ -1047,8 +1043,12 @@ class MainWindow(QMainWindow):
     ##########################################
     
     # Apply box filter
-    def applyBoxFilter(self, mode="spatial"):
+    def applyBoxFilter(self):
         requirements = {
+            "Domain":{
+                "type": RADIO,
+                "options": ["spatial","frequency"]
+            },
             "Kernel size":{
                 "type": INT,
                 "range": (1, inf)
@@ -1057,7 +1057,8 @@ class MainWindow(QMainWindow):
 
         output = self.getInputsFromUser(requirements, "Blur Image")
         if output != None:
-            filterSize = output[0]
+            domain = output[0]
+            filterSize = output[1]
         else:
             return
 
@@ -1065,10 +1066,48 @@ class MainWindow(QMainWindow):
             if filterSize % 2 == 0:
                 filterSize += 1
 
-            if mode == "frequency":
-                self.currentTab.primaryViewer.boxFilteringUsingFourier(filterSize)
+            if domain == 1:
+                domain = "frequency"
             else:
-                self.currentTab.primaryViewer.boxFiltering(filterSize)
+                domain = "spatial"
+                
+            self.currentTab.primaryViewer.boxFiltering(filterSize, domain)
+
+    # Apply box filter
+    def applyGaussianFilter(self):
+        requirements = {
+            "Domain":{
+                "type": RADIO,
+                "options": ["spatial","frequency"]
+            },
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            },
+            "sigma":{
+                "type": FLOAT,
+                "range": (1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Blur Image")
+        if output != None:
+            domain = output[0]
+            filterSize = output[1]
+            sigma = output[2]
+        else:
+            return
+
+        if filterSize > 0:
+            if filterSize % 2 == 0:
+                filterSize += 1
+
+            if domain == 1:
+                domain = "frequency"
+            else:
+                domain = "spatial"
+                
+            self.currentTab.primaryViewer.gaussianFiltering(sigma, filterSize, domain)
                 
     # Apply median masking
     def applyMedian(self): 
