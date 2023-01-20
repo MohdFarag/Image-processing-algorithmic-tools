@@ -46,3 +46,4 @@
 <https://www.geeksforgeeks.org/python-opencv-bicubic-interpolation-for-resizing-image/>
 <https://medium.com/@ami25480/morphological-image-processing-operations-dilation-erosion-opening-and-closing-with-and-without-c95475468fca>
 <https://www.imageprocessingplace.com/root_files_V3/image_databases.htm>
+<http://matematicas.uam.es/~fernando.chamizo/dark/d_periodic.html>

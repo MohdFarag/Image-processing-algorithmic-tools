@@ -224,15 +224,15 @@ class ImageViewer(FigureCanvasQTAgg):
     """Transformations Functions"""
     ###############################################
 
-    # Zoom image
-    def zoomImage(self, scaleFactor, mode):
+    # Scale image
+    def scaleImage(self, scaleFactor, mode):
         if self.loaded and self.grayImage.ndim == 2:
-            resizedImage = zoom(self.grayImage, scaleFactor, mode)
+            resizedImage = scale(self.grayImage, scaleFactor, mode)
 
-            zoomWidth = int(resizedImage.shape[0]/scaleFactor)
-            zoomHeight = int(resizedImage.shape[1]/scaleFactor)
+            scaleWidth = int(resizedImage.shape[0]/scaleFactor)
+            scaleHeight = int(resizedImage.shape[1]/scaleFactor)
 
-            self.grayImage = resizedImage[:zoomWidth,:zoomHeight]
+            self.grayImage = resizedImage[:scaleWidth,:scaleHeight]
             self.drawImage(self.grayImage)
 
     # Rotate image
@@ -245,6 +245,14 @@ class ImageViewer(FigureCanvasQTAgg):
     def shearImage(self, angle, mode="horizontal"):
         if self.loaded:
             self.grayImage = shear(self.grayImage, angle, mode)
+            self.drawImage(self.grayImage)
+        else:
+            return
+
+    # Shear image
+    def translateImage(self, x, y):
+        if self.loaded:
+            self.grayImage = translate(self.grayImage, x, y)
             self.drawImage(self.grayImage)
         else:
             return
@@ -446,10 +454,19 @@ class ImageViewer(FigureCanvasQTAgg):
             # Draw image
             self.drawImage(self.grayImage)
 
-    # Notch reject filter
-    def notchRejectFilter(self, magnitudeSpectrum, points, d0=9):
+    # Perform Ideal low pass filter by applying a mask in frequency domain
+    def idealLowPassFilter(self, d0=9):
+        if len(self.grayImage) != 0:
+            kernel = idealLowPassFilter(self.grayImage.shape, d0)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+            
+    # Band reject filter
+    def bandRejectFilter(self, magnitudeSpectrum, points, d0=9):
         if len(self.grayImage) != 0:       
-            resultImage = notchRejectFilter(self.grayImage,magnitudeSpectrum,points,d0)
+            resultImage = bandRejectFilter(self.grayImage,magnitudeSpectrum,points,d0)
 
             # Draw image
             self.drawImage(resultImage)
@@ -458,32 +475,43 @@ class ImageViewer(FigureCanvasQTAgg):
     """Noise Functions"""
     ###############################################
 
+    # Add periodic noise to the image
+    def addPeriodicNoise(self, amplitude, frequency, phase, center=0):
+        if len(self.grayImage) != 0:
+            x = np.linspace(0,1 ,self.grayImage.shape[1])
+            y = np.linspace(0,1 ,self.grayImage.shape[0])
+            x, y = np.meshgrid(x, y)
+
+            periodicNoise = sinusoidal(x+y,amplitude, frequency, phase, center)
+            self.grayImage = addNoise(self.grayImage, periodicNoise, scale=True)
+
+            # Draw image
+            self.drawImage(self.grayImage)
+    
     # Add uniform noise to the image
     def addUniformNoise(self, a, b):
         if len(self.grayImage) != 0:
             uniformNoise = np.random.uniform(a, b, self.grayImage.shape)
-            uniformNoise = np.asarray(np.round(uniformNoise), dtype=np.int64)
-            self.grayImage += uniformNoise
+            self.grayImage = addNoise(self.grayImage, uniformNoise)
 
             # Draw image
-            self.drawImage(self.grayImage, scale="clip")
+            self.drawImage(self.grayImage)
 
     # Add gaussian noise to the image
     def addGaussianNoise(self, mean, sigma):
         if len(self.grayImage) != 0:
             gaussianNoise = np.random.normal(mean, sigma, self.grayImage.shape)
-            gaussianNoise = np.asarray(np.round(gaussianNoise), dtype=np.int64)            
-            self.grayImage += gaussianNoise
+            self.grayImage = addNoise(self.grayImage, gaussianNoise)
+
 
             # Draw image
-            self.drawImage(self.grayImage, scale="clip")
+            self.drawImage(self.grayImage)
 
     # Add rayleigh noise to the image
     def addRayleighNoise(self, mode):
         if len(self.grayImage) != 0:
             rayleighNoise = np.random.rayleigh(mode, self.grayImage.shape)
-            rayleighNoise = np.asarray(np.round(rayleighNoise), dtype=np.int64)            
-            self.grayImage += rayleighNoise
+            self.grayImage = addNoise(self.grayImage, rayleighNoise)
 
             # Draw image
             self.drawImage(self.grayImage)
@@ -492,8 +520,7 @@ class ImageViewer(FigureCanvasQTAgg):
     def addErlangNoise(self, k, scale=1):
         if len(self.grayImage) != 0:
             erlangNoise = np.random.gamma(k, scale, self.grayImage.shape)
-            erlangNoise = np.asarray(np.round(erlangNoise), dtype=np.int64)            
-            self.grayImage += erlangNoise
+            self.grayImage = addNoise(self.grayImage, erlangNoise)
 
             # Draw image
             self.drawImage(self.grayImage)
@@ -501,10 +528,8 @@ class ImageViewer(FigureCanvasQTAgg):
     # Add rayleigh noise to the image
     def addExponentialNoise(self, scale):
         if len(self.grayImage) != 0:
-            width, height = self.grayImage.shape
-            exponentialNoise = np.random.exponential(scale, (width,height))
-            exponentialNoise = np.asarray(np.round(exponentialNoise), dtype=np.int64)            
-            self.grayImage += exponentialNoise
+            exponentialNoise = np.random.exponential(scale, self.grayImage.shape)
+            self.grayImage = addNoise(self.grayImage, exponentialNoise)
 
             # Draw image
             self.drawImage(self.grayImage)
@@ -582,7 +607,7 @@ class ImageViewer(FigureCanvasQTAgg):
             resultedImage = np.bitwise_not(np.bitwise_xor(image1, image2))
 
         # Draw image
-        self.drawImage(resultedImage)
+        self.drawImage(resultedImage, scale="clip")
 
     # Operation on one image
     def operationOneImages(self, operation):

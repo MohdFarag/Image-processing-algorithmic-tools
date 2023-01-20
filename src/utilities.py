@@ -104,9 +104,12 @@ def LinearIndexing(image:np.ndarray):
             alpha = M * y + x
             result[alpha] = image[x,y]
     
-########################
+def sinusoidal(x, A, f, phi, c=0):
+    y = A * np.sin(2*pi*f * x + phi) + c
+    return y
+###############################################
 # "Statistics"
-########################
+###############################################
 
 def getMean(image):
     return np.mean(image)
@@ -117,40 +120,128 @@ def getMedian(image):
 def getVariance(image):
     return np.var(image)
 
-########################
+###############################################
+# "Calculus"
+###############################################
+
+def derivative(image): 
+    rows = image.shape[0]
+    cols = image.shape[1]
+    
+    # Create a 2D array of zeros
+    kernel = np.zeros((rows, cols))
+      
+    # Apply the Gaussian filter
+    for i in range(rows):
+        for j in range(cols):
+            s = i-(cols//2)
+            t = j-(rows//2)
+            kernel[i, j] = 0
+
+    return kernel
+    
+###############################################
+# "Set operations"
+###############################################
+
+def union2d(image1:np.ndarray, image2:np.ndarray):
+    """Union of 2 images
+
+    Args:
+        image1 (np.ndarray): input image 1
+        image2 (np.ndarray): input image 2
+
+    Returns:
+        ndarray: Output image
+    """
+
+    row = image1.shape[0]
+    col = image1.shape[1]
+    resultImage = np.zeros((row,col))
+
+    for i in range(row):
+        for j in range(col):
+            resultImage[i,j] = max(image1[i,j], image2[i,j])
+
+    return resultImage
+
+def intersect2d(image1:np.ndarray, image2:np.ndarray):
+    """Intersect between two images
+
+    Args:
+        image1 (np.ndarray): input image 1
+        image2 (np.ndarray): input image 2
+
+    Returns:
+        np.ndarray: Output image
+    """
+
+    row = image1.shape[0]
+    col = image1.shape[1]
+    resultImage = np.zeros((row,col))
+
+    for i in range(row):
+        for j in range(col):
+            resultImage[i,j] = abs(image1[i,j] - image2[i,j])
+
+    return resultImage
+
+def complement2d(image:np.ndarray):
+    """Complement of the image
+
+    Args:
+        image (np.ndarray): Input image
+
+    Returns:
+        np.ndarray: Output image
+    """
+
+    row = image.shape[0]
+    col = image.shape[1]
+    k = image.max()
+
+    resultImage = np.zeros((row,col))
+
+    for i in range(row):
+        for j in range(col):
+            resultImage[i,j] = k - image[i,j]
+
+    return resultImage
+
+###############################################
 # "Intensity transformations"
-########################
+###############################################
 
 # Transform grayscale image to binary
-def binaryImage(r:np.ndarray, L=256):
-    r = np.round(r / r.max()) * (L-1)
-    return r
+def binaryImage(image:np.ndarray, L:int=256):
+    image = np.round(image / image.max()) * (L-1)
+    return image
 
 # Apply negative on image
-def negativeImage(r, L=256):
-    s = L - 1 - r
+def negativeImage(image:np.ndarray, L:int=256):
+    s = L - 1 - image
     return s
 
 # Log transformation
-def logTransformation(r:np.ndarray):
-    maxPixelValue = np.max(r)
+def logTransformation(image:np.ndarray):
+    maxPixelValue = np.max(image)
     c = 255 / (np.log(1 + maxPixelValue))        
-    result = c * np.log(1 + r)
+    result = c * np.log(1 + image)
 
     return result
 
 # Apply gamma correction on image
-def gammaCorrectionImage(r, Y):
-    maxPixelValue = np.max(r)
+def gammaCorrectionImage(image:np.ndarray, Y:float):
+    maxPixelValue = np.max(image)
     c = 255 / (maxPixelValue ** Y)
-    s = c * r ** Y
+    s = c * image ** Y
     return s
 
 ## "Piecewise-Linear Transformation Functions"
 
 # Process that expands the range of intensity
 # levels in an image.
-def contrastStretching(image, r1, s1, r2, s2):
+def contrastStretching(image:np.ndarray, r1, s1, r2, s2):
     # Get shape of image
     row, column = image.shape[0], image.shape[1]
 
@@ -170,7 +261,8 @@ def contrastStretching(image, r1, s1, r2, s2):
 
 # Highlighting a specific range if intensities 
 # in an image often is of interest.
-def intensityLevelSlicing(image, A, B, mode="bw"):
+# TODO: Test this function
+def intensityLevelSlicing(image:np.ndarray, A, B, mode="bw"):
     """
     Arguments:
         - image: image
@@ -219,7 +311,7 @@ def extractKBits(num, k, p):
         return (int(kBitSubStr,2))
     return 0
 
-def bitPlaneSlicing(image, k, p):
+def bitPlaneSlicing(image:np.ndarray, k, p):
     row, column = image.shape[0], image.shape[1]
     resultImage = np.zeros((row,column))
     for i in range(row):
@@ -227,17 +319,17 @@ def bitPlaneSlicing(image, k, p):
             resultImage[i,j] = extractKBits(int(image[i,j]), k, p)
     return resultImage
 
-########################
+###############################################
 # "Spatial Transformations"
-########################
-
 # TODO: Add Bicubic interpolation
-# Zoom image
-def zoom(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
+###############################################
+
+# Scale image
+def scale(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
     # Get size of original image
     oldWidth, oldHeight = image.shape[0], image.shape[1]
 
-    # Set size of zoomed image
+    # Set size of scaled image
     newWidth = round(oldWidth * scaleFactor)
     newHeight = round(oldHeight * scaleFactor)
 
@@ -381,7 +473,18 @@ def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:st
     return rotatedImage
 
 # Shear image
-def shear(image, angle, mode="horizontal"):
+def shear(image:np.ndarray, angle:float, mode:str="horizontal"):
+    """ This function shears the image by amount of degrees
+
+    Args:
+        image (ndarray): image to be sheared
+        angle (float): amount of shear in degrees
+        mode (str, optional): horizontal or vertical . Defaults to "horizontal".
+
+    Returns:
+        ndarray: sheared image
+    """
+    
     # Converting degrees to radians
     angle = radians(angle)
 
@@ -419,9 +522,43 @@ def shear(image, angle, mode="horizontal"):
     
     return shearedImage
 
-########################
+# Translate image
+def translate(image:np.ndarray, x:int, y:int):
+    """ Translate image by x and y pixels
+
+    Args:
+        image (ndarray): Image to translate
+        x (int): Number of pixels to translate in x direction
+        y (int): Number of pixels to translate in y direction
+
+    Returns:
+        ndarray: Translated image
+    """
+    
+    # Define the rows of the image
+    rows = image.shape[0]
+    # Define the cols of the image
+    cols = image.shape[1]
+    
+    # Initialize translated image
+    translatedImage = np.zeros((rows,cols))
+
+    # Find the center of the image
+    (centerRows, centerCols), _ = getCenter(image) # mid col
+    
+    for i in range(rows):
+        for j in range(cols):
+            new_x = i - x
+            new_y = j - y
+
+            if (new_x >= 0 and new_y >= 0 and new_x < rows and new_y < cols):
+                translatedImage[j][i] = image[new_y,new_x]
+    
+    return translatedImage
+
+###############################################
 # "Radon Transformations"
-########################
+###############################################
 
 # Build the Radon Transform using 'steps' or 'list' of angles projections of 'image'.
 def radon(image:np.ndarray, angles:Union[int, list, tuple, np.ndarray]):
@@ -466,13 +603,13 @@ def iradon(sinogram, angles=range(180)):
     
     return laminogram
 
-########################
+###############################################
 # "Filters Functions"
-########################
+###############################################
 
 # Add padding to image
 # TODO: Add Replicate padding & Mirror padding
-def addPadding(image, paddingSize, mode="same", value=0):
+def addPadding(image:np.ndarray, paddingSize, mode="same", value=0):
     if isinstance(paddingSize, tuple):
         xPaddingSize, yPaddingSize = paddingSize
     else:
@@ -518,6 +655,73 @@ def convolution(image:np.ndarray, kernel:np.ndarray, mode="convolution"):
     convolvedImage = np.array(convolvedImage)
     return convolvedImage
 
+# Apply specific 'spatial' filter
+# You can choose whether the filter applied in spatial or frequency domain
+def applySpatialFilter(image:np.ndarray, kernel, domain="spatial"):
+    if len(image) != 0:
+        if domain == "spatial":
+            filteredImage = convolution(image, kernel)
+        elif domain == "frequency": 
+            rowsSize = image.shape[0] + kernel.shape[0] - 1
+            colsSize = image.shape[1] + kernel.shape[1] - 1
+            
+            # Image fourier
+            xImagePadding = (rowsSize - image.shape[0]) // 2
+            yImagePadding = (colsSize - image.shape[1]) // 2
+            image = addPadding(image, (xImagePadding,yImagePadding))
+            
+            # Kernel fourier
+            xPaddingFilterSize = (rowsSize - kernel.shape[0]) // 2
+            yPaddingFilterSize = (colsSize - kernel.shape[1]) // 2
+            kernel = addPadding(kernel, (xPaddingFilterSize,yPaddingFilterSize))
+            
+            size = (min(kernel.shape[0],image.shape[0]), min(kernel.shape[1],image.shape[1]))
+
+            # Apply fourier transform
+            grayImageInFreqDomain = fourierTransform(image[:size[0],:size[1]])            
+            boxFilterInFreqDomain = fourierTransform(kernel[:size[0],:size[1]])
+
+            # Apply filter in frequency domain
+            filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
+
+            # Apply inverse fourier transform
+            filteredImage = inverseFourierTransform(filteredImageInFreqDomain)
+            filteredImage = np.fft.fftshift(filteredImage)
+            
+            # Get real part
+            filteredImage = np.real(filteredImage)
+            
+            # Remove padding
+            filteredImage = filteredImage[xImagePadding:rowsSize-xImagePadding,yImagePadding:colsSize-yImagePadding]
+        else:
+            print("Domain is not valid")
+            return []
+
+        return filteredImage
+
+# Apply specific 'spatial' filter
+# You can choose whether the filter applied in spatial or frequency domain
+def applyFrequencyFilter(image:np.ndarray, kernel, domain="spatial"):
+    if len(image) != 0:
+        if domain == "spatial":
+            # Apply fourier transform
+            imageInFreqDomain = fourierTransform(image)
+        elif domain == "frequency": 
+            imageInFreqDomain = image
+        else:
+            print("Domain is not valid")
+            return []
+
+        # Apply filter in frequency domain
+        filteredImageInFreqDomain = imageInFreqDomain * kernel
+        
+        # Apply inverse fourier transform
+        filteredImage = inverseFourierTransform(filteredImageInFreqDomain)
+        
+        # Get real part
+        filteredImage = np.real(filteredImage)
+        return filteredImage
+
 # Box Kernel
 def boxKernel(size:int, shape=None):
     if shape == None:
@@ -556,42 +760,167 @@ def gaussianKernel(sigma:int, size:int=None):
     # Return the kernel
     return kernel
 
-# Apply specific 'spatial' filter
-# You can choose whether the filter applied in spatial or frequency domain
-def applySpatialFilter(image, kernel, domain="spatial"):
-    if len(image) != 0:
-        rows = image.shape[0] + kernel.shape[0] - 1
-        cols = image.shape[1] + kernel.shape[1] - 1
+# Ideal low pass filter
+def idealLowPassFilter(shape, d0=9):
+    """ Ideal low pass filter
 
-        xImagePadding = (rows - image.shape[0]) // 2
-        yImagePadding = (cols - image.shape[1]) // 2
-        xPaddingFilterSize = (rows - kernel.shape[0]) // 2
-        yPaddingFilterSize = (cols - kernel.shape[1]) // 2
+    Args:
+        shape (tuple): Shape of the filter
+        d0 (int, optional): Diameter of the filter. Defaults to 9.
 
-        blurredImage = np.array([])
-        if domain == "spatial":
-            blurredImage = convolution(image, kernel)
+    Returns:
+        ndarray: Low Pass Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            if sqrt((i - centerRow)**2 + (j - centerCol)**2) <= d0:
+                kernel[i][j] = 1
+                
+    return kernel
+
+# Ideal high pass filter
+def idealHighPassFilter(shape, d0=9):
+    """ Ideal high pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        d0 (int, optional): Diameter of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: High pass Filter
+    """
+    kernel = np.ones(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            if sqrt((i - centerRow)**2 + (j - centerCol)**2) <= d0:
+                kernel[i][j] = 0
+                
+    return kernel
+
+# Butterworth low pass filter
+def ButterworthLowPassFilter(shape, n, d0=9):
+    """ Butterworth low pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        n (int): Order of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            kernel[i][j] = 1 / (1 + (sqrt((i - centerRow)**2 + (j - centerCol)**2) / d0)**(2*n))
+                
+    return kernel
+
+# Butterworth high pass filter
+def ButterworthHighPassFilter(shape, n, d0=9):
+    """ Butterworth high pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        n (int): Order of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            kernel[i][j] = 1 / (1 + (d0 / sqrt((i - centerRow)**2 + (j - centerCol)**2))**(2*n))
+                
+    return kernel
+
+# Gaussian low pass filter
+def gaussianLowPassFilter(shape, d0=9):
+    """ Gaussian low pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            kernel[i][j] = exp(-((i - centerRow)**2 + (j - centerCol)**2) / (2 * d0**2))
+                
+    return kernel
+
+# Gaussian high pass filter
+def gaussianHighPassFilter(shape, d0=9):
+    """ Gaussian high pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            kernel[i][j] = 1 - exp(-((i - centerRow)**2 + (j - centerCol)**2) / (2 * d0**2))
+                
+    return kernel
+
+def laplacianKernel(domain='frequency', shape=(3,3), enhance=False):
+    if domain == 'spatial':
+        kernel = np.array([[0,1,0],[1,-4,1],[0,1,0]])
+    elif domain == 'frequency':
+        kernel = np.zeros(shape)
+        rows, cols = shape
         
-        elif domain == "frequency": 
-            size = (min(kernel.shape[0],image.shape[0]),min(kernel.shape[1],image.shape[1]))
+        centerRow = rows // 2
+        centerCol = cols // 2
+        
+        for i in range(rows):
+            for j in range(cols):
+                if not enhance:
+                    kernel[i][j] = -4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
+                else:
+                    kernel[i][j] = 1 + 4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
 
-            # Image fourier
-            image = addPadding(image, (xImagePadding,yImagePadding))
-            grayImageInFreqDomain = fourierTransform(image[:size[0],:size[1]])
-            
-            # Kernel fourier
-            kernel = addPadding(kernel, (xPaddingFilterSize,yPaddingFilterSize))
-            boxFilterInFreqDomain = fourierTransform(kernel[:size[0],:size[1]])
-
-            filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
-
-            blurredImage = inverseFourierTransform(filteredImageInFreqDomain)
-            blurredImage = np.fft.fftshift(blurredImage)
-
-            blurredImage = np.abs(blurredImage)
-            blurredImage = blurredImage[xImagePadding:rows-xImagePadding,yImagePadding:cols-yImagePadding]
-            
-        return blurredImage
+        return kernel
+        
 
 # Order statistics filter (medians & max & min)
 def OrderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
@@ -611,8 +940,8 @@ def OrderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
 
     return np.array(resultImage)
 
-# Notch reject filter
-def notchRejectFilter(image, magnitudeSpectrum, points, d0=9):
+# Band reject filter
+def bandRejectFilter(image:np.ndarray, magnitudeSpectrum, points, d0=9):
     if len(image) != 0:
         n = magnitudeSpectrum.shape[0]
         m = magnitudeSpectrum.shape[1]
@@ -701,7 +1030,7 @@ def getStatisticsOfHistogram(histogram:np.ndarray, L=256):
 ###############################################
 
 # Erode the image
-def erosion(image, SE=None):
+def erosion(image:np.ndarray, SE=None):
     # Define the structuring element
     if SE is None:
         k = 3
@@ -725,7 +1054,7 @@ def erosion(image, SE=None):
     return AdB
 
 # Dilate the image
-def dilation(image, SE=None):
+def dilation(image:np.ndarray, SE=None):
     # Define the structuring element
     if SE is None:
         k = 3
@@ -800,7 +1129,7 @@ def morphologyMultBitWise(temp:np.ndarray,SE:np.ndarray, defaultValue=1):
 ###############################################
 
 # Fourier transform
-def fourierTransform(image, mode="fourier", log=False):
+def fourierTransform(image:np.ndarray, mode="fourier", log=False):
     f = np.fft.fft2(image)
     fShift = np.fft.fftshift(f)
     spectrum = None
@@ -813,83 +1142,67 @@ def fourierTransform(image, mode="fourier", log=False):
     elif mode == "phase":
         spectrum  = np.angle(fShift)
     else:
-        spectrum = f
+        spectrum = fShift
 
     return spectrum
 
 # inverse Fourier transform
-def inverseFourierTransform(combinedImage, mode="normal"):
+def inverseFourierTransform(combinedImage:Union[np.ndarray,tuple], mode:str="normal"):
+    """ Inverse Fourier transform
+
+    Args:
+        combinedImage (np.ndarray or tuple): Image to be transformed
+        mode (str): Mode of the image. "normal" for normal image, "separate" for magnitude and phase image
+
+    Returns:
+        np.ndarray: Inverse Fourier transformed image
+    """
+    
     if mode=="separate":
         combinedImage = np.multiply(combinedImage[0], np.exp(1j * combinedImage[1]))
-
+    
     shiftedImage = np.fft.ifftshift(combinedImage)
     resultImage = np.fft.ifft2(shiftedImage)
     return resultImage
 
 ###############################################
-# "Set operations"
+# "Noise"
 ###############################################
 
-def union2d(image1:np.ndarray, image2:np.ndarray):
-    """Union of 2 images
+# Add noise to the image
+def addNoise(image, noise, scale=False):
+    if scale:
+        noise = scaleImage(noise, "scale", 0, 255)
+    else:
+        noise = np.round(np.asarray(noise, np.int64))
 
-    Args:
-        image1 (np.ndarray): input image 1
-        image2 (np.ndarray): input image 2
+    image = image + noise
 
-    Returns:
-        ndarray: Output image
-    """
+    return image
 
-    row = image1.shape[0]
-    col = image1.shape[1]
-    resultImage = np.zeros((row,col))
+# Add salt & pepper noise to the image
+def addSaltAndPepperNoise(image, mode="salt and pepper"):
+    rows, cols = image.shape
 
-    for i in range(row):
-        for j in range(col):
-            resultImage[i,j] = max(image1[i,j], image2[i,j])
+    # Randomly pick some pixels in the image for coloring them white
+    number_of_pixels = int((np.random.randint(2,7)/100) * (rows*cols))
 
-    return resultImage
+    if mode == "salt and pepper":
+        salt = True
+        pepper = True
+    elif mode == "salt":
+        salt = True
+        pepper = False
+    elif mode == "pepper":
+        salt = False
+        pepper = True
 
-def intersect2d(image1:np.ndarray, image2:np.ndarray):
-    """Intersect between two images
+    if pepper is True:
+        for _ in range(number_of_pixels):        
+            image[np.random.randint(0, rows - 1)][np.random.randint(0, cols - 1)] = 255
 
-    Args:
-        image1 (np.ndarray): input image 1
-        image2 (np.ndarray): input image 2
+    if salt is True:
+        for _ in range(number_of_pixels):        
+            image[np.random.randint(0, rows - 1)][np.random.randint(0, cols - 1)] = 0
 
-    Returns:
-        np.ndarray: Output image
-    """
-
-    row = image1.shape[0]
-    col = image1.shape[1]
-    resultImage = np.zeros((row,col))
-
-    for i in range(row):
-        for j in range(col):
-            resultImage[i,j] = abs(image1[i,j] - image2[i,j])
-
-    return resultImage
-
-def complement2d(image:np.ndarray):
-    """Complement of the image
-
-    Args:
-        image (np.ndarray): Input image
-
-    Returns:
-        np.ndarray: Output image
-    """
-
-    row = image.shape[0]
-    col = image.shape[1]
-    k = image.max()
-
-    resultImage = np.zeros((row,col))
-
-    for i in range(row):
-        for j in range(col):
-            resultImage[i,j] = k - image[i,j]
-
-    return resultImage
+    return image

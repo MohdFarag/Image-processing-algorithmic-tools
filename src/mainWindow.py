@@ -165,39 +165,36 @@ class MainWindow(QMainWindow):
         self.gaussianFilteringAction = QAction(QIcon(":blur"), "&Gaussian Filter", self)
         self.gaussianFilteringAction.setStatusTip('Blur image by gaussian kernel')
 
+        # Ideal LPF
+        self.idealLowPassFilteringAction = QAction(QIcon(":blur"), "&Ideal low pass filter", self)
+        self.idealLowPassFilteringAction.setStatusTip('Apply ideal Low pass filtering in frequency domain')
+
         # Median filter (50th percentile)
         self.medianFilterAction = QAction(QIcon(":median"), "&Median filter", self)
         self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
 
-        # Notch reject filter
-        self.notchRejectFilterAction = QAction(QIcon(":bandReject"), "&Notch Reject", self)
-        self.notchRejectFilterAction.setStatusTip('Apply notch reject filter on image')
+        # Band reject filter
+        self.bandRejectFilterAction = QAction(QIcon(":bandReject"), "&Band Reject", self)
+        self.bandRejectFilterAction.setStatusTip('Apply band reject filter on image')
     
     # Transformation Actions
     def transformationsActions(self):
-        # Zoom Nearest Neighbor Interpolation Action
-        self.zoomNearestNeighborInterpolationAction = QAction(QIcon(":NNZoom"), "&Zoom by Nearest Neighbor", self)
-        self.zoomNearestNeighborInterpolationAction.setStatusTip('Zoom in/out by Nearest Neighbor Interpolation method based on input')
 
-        # Zoom Linear Interpolation Action
-        self.zoomLinearInterpolationAction = QAction(QIcon(":LZoom"), "&Zoom by Linear", self)
-        self.zoomLinearInterpolationAction.setStatusTip('Zoom in/out by Linear Interpolation method based on input')
+        # Scale nearest neighbour / Linear interpolation Action
+        self.scaleAction = QAction(QIcon(":scale"), "&Scale", self)
+        self.scaleAction.setStatusTip('Scale in/out by based on input')
 
-        # Rotate the image by nearest neighbour interpolation
-        self.rotateNearestAction = QAction(QIcon(":rotate"), "&Rotate by Nearest Neighbor", self)
-        self.rotateNearestAction.setStatusTip('Rotate the image')
+        # Rotate the image by nearest neighbour / linear interpolation
+        self.rotateAction = QAction(QIcon(":rotate"), "&Rotate", self)
+        self.rotateAction.setStatusTip('Rotate the image')
 
-        # Rotate the image by linear interpolation
-        self.rotateLinearAction = QAction(QIcon(":rotate"), "&Rotate by Linear", self)
-        self.rotateLinearAction.setStatusTip('Rotate the image')
-
-        # Shear the image horizontally
-        self.shearActionHorizontal = QAction(QIcon(":shear"), "&Shear horizontally", self)
-        self.shearActionHorizontal.setStatusTip('Shear the image horizontally')
-
-        # Shear the image horizontally
-        self.shearActionVertical = QAction(QIcon(":shear"), "&Shear vertically", self)
-        self.shearActionVertical.setStatusTip('Shear the image vertically')
+        # Translate the image
+        self.translateAction = QAction(QIcon(":translate"), "&Translate", self)
+        self.translateAction.setStatusTip('Translate the image')
+        
+        # Shear the image
+        self.shearAction = QAction(QIcon(":shear"), "&Shear", self)
+        self.shearAction.setStatusTip('Shear the image')
 
     # Operations Actions
     def operationsActions(self):
@@ -292,10 +289,13 @@ class MainWindow(QMainWindow):
     
     # Noises Actions
     def noisesActions(self):
-        # Add gaussian noise action
+        # Add uniform noise action
         self.addUniformNoiseAction = QAction(QIcon(":uniform"), "&Uniform Noise", self)
         self.addUniformNoiseAction.setStatusTip('Add uniform noise')
 
+        self.addPeriodicNoiseAction = QAction(QIcon(":periodic"), "&Periodic Noise", self)
+        self.addPeriodicNoiseAction.setStatusTip('Add periodic noise')
+        
         # Add gaussian noise action
         self.addGaussianNoiseAction = QAction(QIcon(":gaussian"), "&Gaussian Noise", self)
         self.addGaussianNoiseAction.setStatusTip('Add gaussian noise')
@@ -308,7 +308,7 @@ class MainWindow(QMainWindow):
         self.addErlangNoiseAction = QAction(QIcon(":Erlang"), "&Erlang Noise", self)
         self.addErlangNoiseAction.setStatusTip('Add erlang noise')
 
-        # Add gaussian noise action
+        # Add exponential noise action
         self.addExponentialNoiseAction = QAction(QIcon(":Exponential"), "&Exponential Noise", self)
         self.addExponentialNoiseAction.setStatusTip('Add exponential noise')
 
@@ -398,15 +398,13 @@ class MainWindow(QMainWindow):
         self.unsharpMaskAction.setShortcut("ctrl+U")
         self.boxFilteringAction.setShortcut("ctrl+j")
         self.medianFilterAction.setShortcut("ctrl+M")
-        self.notchRejectFilterAction.setShortcut("ctrl+B")
+        self.bandRejectFilterAction.setShortcut("ctrl+B")
         
         "Transformations Actions"
-        self.zoomNearestNeighborInterpolationAction.setShortcut("Ctrl+1")
-        self.zoomLinearInterpolationAction.setShortcut("Ctrl+2")
-        self.rotateNearestAction.setShortcut("ctrl+3")
-        self.rotateLinearAction.setShortcut("ctrl+4")
-        self.shearActionHorizontal.setShortcut("ctrl+5")
-        self.shearActionVertical.setShortcut("ctrl+6")
+        self.scaleAction.setShortcut("Ctrl+1")
+        self.rotateAction.setShortcut("ctrl+2")
+        self.translateAction.setShortcut("ctrl+4")
+        self.shearAction.setShortcut("ctrl+3")
 
         "Operations Actions"
         self.subtractionAction.setShortcut("ctrl+D")
@@ -498,14 +496,10 @@ class MainWindow(QMainWindow):
         
         """Transformation"""
         transformationMenu = QMenu("&Transformation", self)
-        transformationMenu.addAction(self.zoomNearestNeighborInterpolationAction)
-        transformationMenu.addAction(self.zoomLinearInterpolationAction)
-        transformationMenu.addSeparator()
-        transformationMenu.addAction(self.rotateNearestAction)
-        transformationMenu.addAction(self.rotateLinearAction)
-        transformationMenu.addSeparator()
-        transformationMenu.addAction(self.shearActionHorizontal)
-        transformationMenu.addAction(self.shearActionVertical)
+        transformationMenu.addAction(self.scaleAction)
+        transformationMenu.addAction(self.rotateAction)
+        transformationMenu.addAction(self.translateAction)
+        transformationMenu.addAction(self.shearAction)
 
         """Operation"""
         operationMenu = QMenu("&Operation", self)
@@ -533,8 +527,9 @@ class MainWindow(QMainWindow):
         filterMenu.addAction(self.unsharpMaskAction)
         filterMenu.addAction(self.boxFilteringAction)
         filterMenu.addAction(self.gaussianFilteringAction)
+        filterMenu.addAction(self.idealLowPassFilteringAction)
         filterMenu.addAction(self.medianFilterAction)
-        filterMenu.addAction(self.notchRejectFilterAction) 
+        filterMenu.addAction(self.bandRejectFilterAction) 
 
         """Shape"""
         shapeMenu = QMenu("&Shape", self)
@@ -552,6 +547,8 @@ class MainWindow(QMainWindow):
         noiseMenu.addAction(self.addRayleighNoiseAction)
         noiseMenu.addAction(self.addErlangNoiseAction)
         noiseMenu.addAction(self.addExponentialNoiseAction)
+        noiseMenu.addSeparator()
+        noiseMenu.addAction(self.addPeriodicNoiseAction)
         noiseMenu.addSeparator()
         noiseMenu.addAction(self.addSaltPepperNoiseAction)
         noiseMenu.addAction(self.addSaltNoiseAction)
@@ -609,19 +606,16 @@ class MainWindow(QMainWindow):
             self.addToolBar(Qt.ToolBarArea.TopToolBarArea,self.toolBar) # type: ignore
             self.toolBar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon) # type: ignore
             
-            self.toolBar.addAction(self.zoomNearestNeighborInterpolationAction)
-            self.toolBar.addAction(self.zoomLinearInterpolationAction)
-            self.toolBar.addAction(self.rotateNearestAction)
-            self.toolBar.addAction(self.rotateLinearAction)
-            self.toolBar.addAction(self.shearActionHorizontal)     
-            self.toolBar.addAction(self.shearActionVertical)     
+            self.toolBar.addAction(self.scaleAction)
+            self.toolBar.addAction(self.rotateAction)
+            self.toolBar.addAction(self.translateAction)     
+            self.toolBar.addAction(self.shearAction)
 
         elif type == "shapes":
             self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolBar)  # type: ignore
             
             self.toolBar.addAction(self.constructTAction)
             self.toolBar.addAction(self.constructCircleBoxAction)
-            self.toolBar.addAction(self.constructSquareBoxAction)
             self.toolBar.addAction(self.constructPhantomAction)
 
         elif type == "operation":
@@ -758,15 +752,14 @@ class MainWindow(QMainWindow):
         self.setROIAction.triggered.connect(self.getROI)
 
         " Transformation image "
-        # Zoom image
-        self.zoomNearestNeighborInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"nearest"))
-        self.zoomLinearInterpolationAction.triggered.connect(lambda: self.baseBehavior(self.zoomImage,"bilinear"))
+        # Scale image
+        self.scaleAction.triggered.connect(lambda: self.baseBehavior(self.scaleImage))
         # Rotate image
-        self.rotateNearestAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"nearest"))
-        self.rotateLinearAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage,"bilinear"))
+        self.rotateAction.triggered.connect(lambda: self.baseBehavior(self.rotateImage))
+        # Translate image
+        self.translateAction.triggered.connect(lambda: self.baseBehavior(self.translateImage))
         # Shear image
-        self.shearActionHorizontal.triggered.connect(lambda: self.baseBehavior(self.shearImage,"horizontal"))
-        self.shearActionVertical.triggered.connect(lambda: self.baseBehavior(self.shearImage,"vertical"))
+        self.shearAction.triggered.connect(lambda: self.baseBehavior(self.shearImage))
 
         " Shapes construction "
         # Construct T
@@ -787,7 +780,8 @@ class MainWindow(QMainWindow):
         self.medianFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMedian))
         self.boxFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter))
         self.gaussianFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyGaussianFilter))
-        self.notchRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.notchRejectFilter))
+        self.idealLowPassFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyIdealLowPassFilter))
+        self.bandRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.bandRejectFilter))
         
         " Noise "
         self.addUniformNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "uniform"))
@@ -795,6 +789,7 @@ class MainWindow(QMainWindow):
         self.addRayleighNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "rayleigh"))
         self.addErlangNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "erlang"))
         self.addExponentialNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "exponential"))
+        self.addPeriodicNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "periodic"))
         self.addSaltNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "salt"))
         self.addPepperNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "pepper"))
         self.addSaltPepperNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "salt and pepper"))
@@ -976,7 +971,7 @@ class MainWindow(QMainWindow):
             },
             "Mode":{
                 "type": RADIO,
-                "options": ["white","brightens"]
+                "options": ["Black and White","Brightens or (Darkness)"]
             }
         }
 
@@ -988,7 +983,7 @@ class MainWindow(QMainWindow):
         else:
             return
 
-        if mode == "0":
+        if mode == 0:
             mode = "bw"
         else:
             mode = "bd"
@@ -1108,7 +1103,24 @@ class MainWindow(QMainWindow):
                 domain = "spatial"
                 
             self.currentTab.primaryViewer.gaussianFiltering(sigma, filterSize, domain)
-                
+    
+    # Apply ideal low pass filter
+    def applyIdealLowPassFilter(self):
+        requirements = {
+            "Diameter":{
+                "type": FLOAT,
+                "range": (0.1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Ideal Low Pass Filter")
+        if output != None:
+            diameter = output[0]
+        else:
+            return
+
+        self.currentTab.primaryViewer.idealLowPassFilter(diameter)
+           
     # Apply median masking
     def applyMedian(self): 
         requirements = {
@@ -1162,8 +1174,8 @@ class MainWindow(QMainWindow):
 
         self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
                     
-    # Apply notch reject filter
-    def notchRejectFilter(self):
+    # Apply band reject filter
+    def bandRejectFilter(self):
         image = self.currentTab.primaryViewer.getGrayImage()
 
         if len(image) != 0:
@@ -1178,7 +1190,7 @@ class MainWindow(QMainWindow):
                 }
             }
 
-            output = self.getInputsFromUser(requirements, "Notch Reject Filter")
+            output = self.getInputsFromUser(requirements, "Band Reject Filter")
             if output != None:
                 n = output[0]
                 frequency = output[1]
@@ -1198,15 +1210,19 @@ class MainWindow(QMainWindow):
             points = np.asarray(plt.ginput(n, timeout = -1))
             plt.close()
 
-            self.currentTab.primaryViewer.notchRejectFilter(spectrum, points, frequency)
+            self.currentTab.primaryViewer.bandRejectFilter(spectrum, points, frequency)
             
     ##########################################
     #     """Transformations Functions"""    #
     ##########################################
 
     # Shear Image
-    def shearImage(self, mode="horizontal"):
+    def shearImage(self):
         requirements = {
+            "Shear Type":{
+                "type": RADIO,
+                "options": ["horizontal","vertical"]
+            },
             "Shear Factor":{
                 "type": FLOAT,
                 "range": (-90, 90)
@@ -1215,32 +1231,52 @@ class MainWindow(QMainWindow):
 
         output = self.getInputsFromUser(requirements, "Shear Image")
         if output != None:
-            shearFactor = output[0]
+            shearDirection = output[0]
+            shearFactor = output[1]
         else:
             return
 
+        if shearDirection == 0:
+            mode = "horizontal"
+        else:
+            mode = "vertical"
+            
         self.currentTab.primaryViewer.shearImage(shearFactor, mode)
     
-    # Zoom Image
-    def zoomImage(self, mode="bilinear"):
+    # Scale Image
+    def scaleImage(self):
         requirements = {
-            "Zooming Factor":{
+            "Interpolation Type":{
+                "type": RADIO,
+                "options": ["bilinear","nearest neighbor"]
+            },
+            "Scaling Factor":{
                 "type": FLOAT,
                 "range": (0.1, inf)
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Zoom image")
+        output = self.getInputsFromUser(requirements, "Scale image")
         if output != None:
-            zoomingFactor = output[0]
+            interpolationType = output[0]
+            scalingFactor = output[1]
         else:
             return
         
-        self.currentTab.primaryViewer.zoomImage(zoomingFactor, mode)
+        if interpolationType == 0:
+            mode = "bilinear"
+        else:
+            mode = "nearest neighbor"
+            
+        self.currentTab.primaryViewer.scaleImage(scalingFactor, mode)
 
     # Rotate Image
-    def rotateImage(self, mode="bilinear"):
+    def rotateImage(self):
         requirements = {
+            "Interpolation Type":{
+                "type": RADIO,
+                "options": ["bilinear","nearest neighbor"]
+            },
             "Rotation Angle":{
                 "type": FLOAT,
                 "range": (-inf, inf)
@@ -1249,12 +1285,40 @@ class MainWindow(QMainWindow):
 
         output = self.getInputsFromUser(requirements, "Rotate Image")
         if output != None:
-            rotationAngle = output[0]
+            interpolationType = output[0]
+            rotationAngle = output[1]
         else:
             return
         
+        if interpolationType == 0:
+            mode = "bilinear"
+        else:
+            mode = "nearest neighbor"
+            
         self.currentTab.primaryViewer.rotateImage(rotationAngle, mode)
-       
+
+    # Translate Image
+    def translateImage(self):
+        requirements = {
+            "x":{
+                "type": INT,
+                "range": (-inf, inf)
+            },
+            "y":{
+                "type": INT,
+                "range": (-inf, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Translate Image")
+        if output != None:
+            x = output[0]
+            y = output[1]
+        else:
+            return
+            
+        self.currentTab.primaryViewer.translateImage(x, y)
+
     ##########################################
     #       """Operations Functions"""       #
     ##########################################
@@ -1378,7 +1442,43 @@ class MainWindow(QMainWindow):
                 return
             self.currentTab.primaryViewer.addErlangNoise(k, scale)
         elif mode == "exponential":
-            self.currentTab.primaryViewer.addExponentialNoise(5)
+            requirements = {
+                "Scale":{
+                    "type": FLOAT,
+                    "range": (0, inf)
+                }
+            }
+
+            output = self.getInputsFromUser(requirements, "Exponential Noise")
+            if output != None:
+                scale = output[0]
+            else:
+                return
+            self.currentTab.primaryViewer.addExponentialNoise(scale)            
+        elif mode == "periodic":
+            requirements = {
+                "Amplitude":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                },
+                "Frequency":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                },
+                "Phase":{
+                    "type": FLOAT,
+                    "range": (-inf, inf)
+                }
+            }
+            
+            output = self.getInputsFromUser(requirements, "Periodic Noise")
+            if output != None:
+                amplitude = output[0]
+                frequency = output[1]
+                phase = output[2]
+            else:
+                return
+            self.currentTab.primaryViewer.addPeriodicNoise(amplitude,frequency,phase)
         elif mode == "pepper":
             self.currentTab.primaryViewer.addSaltAndPepperNoise("pepper")
         elif mode == "salt":
