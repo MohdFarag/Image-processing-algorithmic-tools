@@ -13,6 +13,10 @@ FLOAT = 310.47
 STR = "STRING"
 RADIO = "RADIO"
 
+# Options for radio buttons
+DOMAINS = ["spatial", "frequency"]
+FILTER_TYPES = ["lowpass", "highpass"]
+
 # Get Data
 def getAttribute(variable, attribute):
     if hasattr(variable, attribute):
@@ -679,10 +683,10 @@ def applySpatialFilter(image:np.ndarray, kernel, domain="spatial"):
 
             # Apply fourier transform
             grayImageInFreqDomain = fourierTransform(image[:size[0],:size[1]])            
-            boxFilterInFreqDomain = fourierTransform(kernel[:size[0],:size[1]])
+            filterInFreqDomain = fourierTransform(kernel[:size[0],:size[1]])
 
             # Apply filter in frequency domain
-            filteredImageInFreqDomain = boxFilterInFreqDomain * grayImageInFreqDomain
+            filteredImageInFreqDomain = filterInFreqDomain * grayImageInFreqDomain
 
             # Apply inverse fourier transform
             filteredImage = inverseFourierTransform(filteredImageInFreqDomain)
@@ -723,7 +727,7 @@ def applyFrequencyFilter(image:np.ndarray, kernel, domain="spatial"):
         return filteredImage
 
 # Box Kernel
-def boxKernel(size:int, shape=None):
+def boxFilter(size:int, shape=None):
     if shape == None:
         shape = (size, size)
         
@@ -734,7 +738,7 @@ def boxKernel(size:int, shape=None):
     return filter
 
 # Gaussian kernel
-def gaussianKernel(sigma:int, size:int=None):
+def gaussianFilter(sigma:int, size:int=None):
     """Create a Gaussian kernel of size (size x size) and standard deviation sigma.
     """
     
@@ -758,6 +762,29 @@ def gaussianKernel(sigma:int, size:int=None):
     kernel = kernel / np.sum(kernel)
     
     # Return the kernel
+    return kernel
+
+# Gaussian low pass filter
+def gaussianLowPassFilter(shape, d0=9):
+    """ Gaussian low pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            kernel[i][j] = exp(-((i - centerRow)**2 + (j - centerCol)**2) / (2 * d0**2))
+                
     return kernel
 
 # Ideal low pass filter
@@ -784,6 +811,50 @@ def idealLowPassFilter(shape, d0=9):
                 
     return kernel
 
+# Butterworth low pass filter
+def butterworthLowPassFilter(shape, d0=9, n=2):
+    """ Butterworth low pass filter
+
+    Args:
+        shape (tuple): Shape of the filter
+        n (int): Order of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+
+    Returns:
+        ndarray: Filter
+    """
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            kernel[i][j] = 1 / (1 + (sqrt((i - centerRow)**2 + (j - centerCol)**2) / d0)**(2*n))
+                
+    return kernel
+
+# Laplacian filter
+def laplacianFilter(domain='frequency', shape=(3,3), enhance=False):
+    if domain == 'spatial':
+        kernel = np.array([[0,1,0],[1,-4,1],[0,1,0]])
+    elif domain == 'frequency':
+        kernel = np.zeros(shape)
+        rows, cols = shape
+        
+        centerRow = rows // 2
+        centerCol = cols // 2
+        
+        for i in range(rows):
+            for j in range(cols):
+                if not enhance:
+                    kernel[i][j] = -4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
+                else:
+                    kernel[i][j] = 1 + 4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
+
+        return kernel
+
 # Ideal high pass filter
 def idealHighPassFilter(shape, d0=9):
     """ Ideal high pass filter
@@ -808,32 +879,8 @@ def idealHighPassFilter(shape, d0=9):
                 
     return kernel
 
-# Butterworth low pass filter
-def ButterworthLowPassFilter(shape, n, d0=9):
-    """ Butterworth low pass filter
-
-    Args:
-        shape (tuple): Shape of the filter
-        n (int): Order of the filter
-        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
-
-    Returns:
-        ndarray: Filter
-    """
-    kernel = np.zeros(shape)
-    rows, cols = shape
-    
-    centerRow = rows // 2
-    centerCol = cols // 2
-    
-    for i in range(rows):
-        for j in range(cols):
-            kernel[i][j] = 1 / (1 + (sqrt((i - centerRow)**2 + (j - centerCol)**2) / d0)**(2*n))
-                
-    return kernel
-
 # Butterworth high pass filter
-def ButterworthHighPassFilter(shape, n, d0=9):
+def butterworthHighPassFilter(shape, d0=9, n=2):
     """ Butterworth high pass filter
 
     Args:
@@ -853,29 +900,6 @@ def ButterworthHighPassFilter(shape, n, d0=9):
     for i in range(rows):
         for j in range(cols):
             kernel[i][j] = 1 / (1 + (d0 / sqrt((i - centerRow)**2 + (j - centerCol)**2))**(2*n))
-                
-    return kernel
-
-# Gaussian low pass filter
-def gaussianLowPassFilter(shape, d0=9):
-    """ Gaussian low pass filter
-
-    Args:
-        shape (tuple): Shape of the filter
-        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
-
-    Returns:
-        ndarray: Filter
-    """
-    kernel = np.zeros(shape)
-    rows, cols = shape
-    
-    centerRow = rows // 2
-    centerCol = cols // 2
-    
-    for i in range(rows):
-        for j in range(cols):
-            kernel[i][j] = exp(-((i - centerRow)**2 + (j - centerCol)**2) / (2 * d0**2))
                 
     return kernel
 
@@ -902,28 +926,36 @@ def gaussianHighPassFilter(shape, d0=9):
                 
     return kernel
 
-def laplacianKernel(domain='frequency', shape=(3,3), enhance=False):
-    if domain == 'spatial':
-        kernel = np.array([[0,1,0],[1,-4,1],[0,1,0]])
-    elif domain == 'frequency':
-        kernel = np.zeros(shape)
-        rows, cols = shape
-        
-        centerRow = rows // 2
-        centerCol = cols // 2
-        
-        for i in range(rows):
-            for j in range(cols):
-                if not enhance:
-                    kernel[i][j] = -4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
-                else:
-                    kernel[i][j] = 1 + 4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
+# Homomorphic filter
+def homomorphicFilter(shape, d0=9, c=1, gammaLow=0.5, gammaHigh=1.5):
+    """ Homomorphic filter
 
-        return kernel
-        
+    Args:
+        shape (tuple): Shape of the filter
+        d0 (int, optional): Diameter (cutoff frequency) of the filter. Defaults to 9.
+        c (int, optional): Constant. Defaults to 1.
+        gammaLow (float, optional): Low gamma. Defaults to 0.5.
+        gammaHigh (float, optional): High gamma. Defaults to 1.5.
 
+    Returns:
+        ndarray: Filtered image
+    """
+
+    kernel = np.zeros(shape)
+    rows, cols = shape
+    
+    centerRow = rows // 2
+    centerCol = cols // 2
+    
+    for i in range(rows):
+        for j in range(cols):
+            D = sqrt((i - centerRow)**2 + (j - centerCol)**2)
+            kernel[i][j] = (gammaHigh - gammaLow) * (1 - exp(-c * D**2  / d0**2)) + gammaLow
+                
+    return kernel
+           
 # Order statistics filter (medians & max & min)
-def OrderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
+def orderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
     paddingSize = kernelSize // 2
     paddedImage = addPadding(image, paddingSize)
 
@@ -957,6 +989,35 @@ def bandRejectFilter(image:np.ndarray, magnitudeSpectrum, points, d0=9):
     
         resultImage = np.abs(inverseFourierTransform(magnitudeSpectrum))
         return resultImage
+
+# Perform un-sharp masking
+def unsharpMask(image, size, k, domain='spatial', filterType='lowpass'):
+    if domain == 'spatial':
+        kernel = boxFilter(size)
+        # Apply box kernel
+        blurredImage = applySpatialFilter(image, kernel)
+        # Subtract blurred image from original image
+        mask = image - blurredImage
+        # Multiply the result by k (highboost factor) then sum to original image
+        resultImage = image + k * mask   
+        
+    elif domain == 'frequency':
+        if filterType == 'highpass':
+            k1 = 1
+            k2 = k
+            kernel = idealHighPassFilter(image.shape, size)
+        elif filterType == 'lowpass':
+            k1 = 1 - k
+            k2 = -k
+            kernel = idealLowPassFilter(image.shape, size)
+            
+        imageInFreqDomain = fourierTransform(image)
+        
+        # Get filtered image in frequency domain
+        filteredImageInFreqDomain = imageInFreqDomain * (k1 + k2 * kernel)
+        resultImage = np.real(inverseFourierTransform(filteredImageInFreqDomain))
+        
+    return resultImage
 
 ###############################################
 # "Histogram Functions"

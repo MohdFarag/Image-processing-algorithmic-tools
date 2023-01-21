@@ -404,53 +404,37 @@ class ImageViewer(FigureCanvasQTAgg):
     """Filters Functions"""
     ###############################################
 
-    # Subtract blurred image from original
-    def subtractBlurredFromOriginal(self, blurredImage):
-        resultImage = np.subtract(self.grayImage, blurredImage)
-        return resultImage
-
-    # Multiply by a factor K Then added to the original image
-    def multiplyByFactor(self, image, k):
-        resultImage = np.multiply(image,k)
-        resultImage = np.add(resultImage, self.grayImage)
-
-        return resultImage
-
     # Order statistic mask
     def OrderStatisticFilter(self, size, percent):
         if len(self.grayImage) != 0:
-            self.grayImage = OrderStatisticFilter(self.grayImage, size, percent)
+            self.grayImage = orderStatisticFilter(self.grayImage, size, percent)
             # Draw image
             self.drawImage(self.grayImage)
 
     # Perform un-sharp masking
-    def unsharpMask(self, size, k):
+    def unsharpMask(self, size, k, domain="spatial", filterType="lowpass"):
         if len(self.grayImage) != 0:
-            boxFilter = boxKernel(size)
-            # Apply box kernel
-            blurredImage = applySpatialFilter(self.grayImage, boxFilter)
-            # Subtract blurred image from original image
-            subtractedImage = self.subtractBlurredFromOriginal(blurredImage)
-            # Multiply the result by k (highboost factor) then sum to original image
-            self.grayImage = self.multiplyByFactor(subtractedImage, k)          
+            self.grayImage = unsharpMask(self.grayImage, size, k, domain=domain, filterType=filterType)
             # Draw image
             self.drawImage(self.grayImage)
 
+
+    def homomorphicFilter(self, d0, c, gammaL, gammaH):
+        if len(self.grayImage) != 0:
+            kernel = homomorphicFilter(self.grayImage.shape, d0, c, gammaL, gammaH)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+            
+    ### low pass filters ###
+    
     # Perform box filtering in spatial domain or frequency domain
     def boxFiltering(self, size, domain="spatial"):
         if len(self.grayImage) != 0:
-            boxFilter = boxKernel(size)
+            boxFilter = boxFilter(size)
             self.grayImage = applySpatialFilter(self.grayImage, boxFilter, domain=domain)
             
-            # Draw image
-            self.drawImage(self.grayImage)
-            
-    # Perform gaussian filtering
-    def gaussianFiltering(self, sigma, size, domain="spatial"):
-        if len(self.grayImage) != 0:
-            gaussianFilter = gaussianKernel(sigma,size)
-            self.grayImage = applySpatialFilter(self.grayImage, gaussianFilter, domain=domain)
-
             # Draw image
             self.drawImage(self.grayImage)
 
@@ -462,7 +446,78 @@ class ImageViewer(FigureCanvasQTAgg):
             
             # Draw image
             self.drawImage(self.grayImage)
+    
+    # Perform gaussian filtering
+    def gaussianFiltering(self, sigma, size, domain="spatial"):
+        if len(self.grayImage) != 0:
+            gaussianFilter = gaussianFilter(sigma,size)
+            self.grayImage = applySpatialFilter(self.grayImage, gaussianFilter, domain=domain)
+
+            # Draw image
+            self.drawImage(self.grayImage)
             
+    # Perform Gaussian low pass filter by applying a mask in frequency domain
+    def gaussianLowPassFilter(self, d0=9):
+        if len(self.grayImage) != 0:
+            kernel = gaussianLowPassFilter(self.grayImage.shape, d0)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+
+    # Perform Butterworth low pass filter by applying a mask in frequency domain
+    def butterworthLowPassFilter(self, d0=9, n=2):
+        if len(self.grayImage) != 0:
+            kernel = butterworthLowPassFilter(self.grayImage.shape, d0, n)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+    
+    ### High pass filters ###
+    
+    # Perform Laplacian filter
+    def laplacianFiltering(self, domain="spatial", size=3):
+        if len(self.grayImage) != 0:
+            if domain == "frequency":
+                kernel = laplacianFilter(shape=self.grayImage.shape)
+                self.grayImage = applyFrequencyFilter(self.grayImage, kernel)
+            else:
+                kernel = laplacianFilter(domain='spatial', shape=(size,size))
+                self.grayImage = applySpatialFilter(self.grayImage, kernel)
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+
+    # Perform Ideal high pass filter by applying a mask in frequency domain
+    def idealHighPassFilter(self, d0=9):
+        if len(self.grayImage) != 0:
+            kernel = idealHighPassFilter(self.grayImage.shape, d0)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+            
+    # Perform Gaussian high pass filter by applying a mask in frequency domain
+    def gaussianHighPassFilter(self, d0=9):
+        if len(self.grayImage) != 0:
+            kernel = gaussianHighPassFilter(self.grayImage.shape, d0)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+
+    # Perform Butterworth high pass filter by applying a mask in frequency domain
+    def butterworthHighPassFilter(self, d0=9, n=2):
+        if len(self.grayImage) != 0:
+            kernel = butterworthHighPassFilter(self.grayImage.shape, d0, n)
+            self.grayImage = applyFrequencyFilter(self.grayImage, kernel, domain="spatial")
+            
+            # Draw image
+            self.drawImage(self.grayImage)
+    
+    ### Band pass filters ###
+    
     # Band reject filter
     def bandRejectFilter(self, magnitudeSpectrum, points, d0=9):
         if len(self.grayImage) != 0:       

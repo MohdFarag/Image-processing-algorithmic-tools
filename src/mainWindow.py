@@ -154,29 +154,72 @@ class MainWindow(QMainWindow):
     # Filters Actions
     def filtersActions(self):
         # Unsharp masking
-        self.unsharpMaskAction = QAction(QIcon(":box"), "&Un-sharp Mask", self)
+        self.unsharpMaskAction = QAction("&Un-sharp Mask", self)
         self.unsharpMaskAction.setStatusTip('Create a Unsharp Masking')
 
-        # Box filter
-        self.boxFilteringAction = QAction(QIcon(":blur"), "&Box Filter", self)
-        self.boxFilteringAction.setStatusTip('Blur image by box kernel')
+        ### Spatial filters ###
+        
+        # Spatial Box filter
+        self.spatialBoxLpfAction = QAction("&Box", self)
+        self.spatialBoxLpfAction.setStatusTip('Blur image by box kernel')
 
-        # Gaussian filter
-        self.gaussianFilteringAction = QAction(QIcon(":blur"), "&Gaussian Filter", self)
-        self.gaussianFilteringAction.setStatusTip('Blur image by gaussian kernel')
+        # Spatial gaussian low pass filter
+        self.spatialGaussianLpfAction = QAction("&Gaussian", self)
+        self.spatialGaussianLpfAction.setStatusTip('Blur image by gaussian kernel')
 
+        # Spatial Gradient filter
+        self.spatialGradientHpfAction = QAction("&Gradient", self)
+        self.spatialGradientHpfAction.setStatusTip('Apply Laplacian filter on image')
+
+        # Spatial Laplacian filter
+        self.spatialLaplacianHpfAction = QAction("&Laplacian", self)
+        self.spatialLaplacianHpfAction.setStatusTip('Apply Laplacian filter on image')
+
+        ### Frequency filters ###
+        
+        ## Low pass filters ##
         # Ideal LPF
-        self.idealLowPassFilteringAction = QAction(QIcon(":blur"), "&Ideal low pass filter", self)
-        self.idealLowPassFilteringAction.setStatusTip('Apply ideal Low pass filtering in frequency domain')
+        self.frequencyIdealLpfAction = QAction("&Ideal", self)
+        self.frequencyIdealLpfAction.setStatusTip('Apply ideal low pass filtering in frequency domain')
 
-        # Median filter (50th percentile)
-        self.medianFilterAction = QAction(QIcon(":median"), "&Median filter", self)
-        self.medianFilterAction.setStatusTip('Delete salt and pepper noise')
+        # Frequency gaussian low pass filter
+        self.frequencyGaussianLpfAction = QAction("&Gaussian", self)
+        self.frequencyGaussianLpfAction.setStatusTip('Blur image by gaussian kernel')
 
+        # Butterworth LPF
+        self.frequencyButterworthLpfAction = QAction("&Butterworth", self)
+        self.frequencyButterworthLpfAction.setStatusTip('Apply butterworth low pass filtering in frequency domain')
+
+        ## High pass filters ##
+        # Ideal HPF
+        self.frequencyIdealHpfAction = QAction("&Ideal", self)
+        self.frequencyIdealHpfAction.setStatusTip('Apply ideal high pass filtering in frequency domain')
+
+        # Gaussian high pass filter
+        self.frequencyGaussianHpfAction = QAction("&Gaussian", self)
+        self.frequencyGaussianHpfAction.setStatusTip('sharpening image by gaussian kernel')
+
+        # Butterworth HPF
+        self.frequencyButterworthHpfAction = QAction("&Butterworth", self)
+        self.frequencyButterworthHpfAction.setStatusTip('Apply butterworth high pass filtering in frequency domain')
+
+        # Frequency Laplacian filter
+        self.frequencyLaplacianHpfAction = QAction("&Laplacian", self)
+        self.frequencyLaplacianHpfAction.setStatusTip('Apply Laplacian filter on image')
+
+        ## Band filters ##
         # Band reject filter
-        self.bandRejectFilterAction = QAction(QIcon(":bandReject"), "&Band Reject", self)
+        self.bandRejectFilterAction = QAction("&Band Reject", self)
         self.bandRejectFilterAction.setStatusTip('Apply band reject filter on image')
-    
+        
+        # Order Statistic filter
+        self.orderStatisticFilterAction = QAction("&Order Statistic", self)
+        self.orderStatisticFilterAction.setStatusTip('Apply Order Statistic filter on image')
+
+        # Homomorphic Filter Action
+        self.homomorphicFilterAction = QAction("&Homomorphic", self)
+        self.homomorphicFilterAction.setStatusTip('Apply Homomorphic Filter Action on image')
+
     # Transformation Actions
     def transformationsActions(self):
 
@@ -385,62 +428,23 @@ class MainWindow(QMainWindow):
         self.exitAction.setShortcut("Ctrl+Q")
 
         "Image Actions"
-        self.equalizeAction.setShortcut("ctrl+E")
-        self.binaryAction.setShortcut("ctrl+G")
-        self.negativeAction.setShortcut("ctrl+n")
-        self.logImageAction.setShortcut("ctrl+l")
-        self.gammaAction.setShortcut("ctrl+g")
         
         "Fourier Actions"
-        self.logMagnitudeAction.setShortcut("ctrl+L")
 
         "Filters Actions"
-        self.unsharpMaskAction.setShortcut("ctrl+U")
-        self.boxFilteringAction.setShortcut("ctrl+j")
-        self.medianFilterAction.setShortcut("ctrl+M")
-        self.bandRejectFilterAction.setShortcut("ctrl+B")
         
         "Transformations Actions"
-        self.scaleAction.setShortcut("Ctrl+1")
-        self.rotateAction.setShortcut("ctrl+2")
-        self.translateAction.setShortcut("ctrl+4")
-        self.shearAction.setShortcut("ctrl+3")
 
         "Operations Actions"
-        self.subtractionAction.setShortcut("ctrl+D")
-        self.additionAction.setShortcut("ctrl+A")
-        self.multiplicationAction.setShortcut("ctrl+*")
-        self.divisionAction.setShortcut("ctrl+/")
-
-        self.complementAction.setShortcut("ctrl+c")
-        self.unionAction.setShortcut("ctrl+u")
-        self.intersectAction.setShortcut("ctrl+i")
-
-        self.notAction.setShortcut("ctrl+n")
-        self.andAction.setShortcut("ctrl+d")
-        self.nandAction.setShortcut("ctrl+d")
-        self.orAction.setShortcut("ctrl+r")
-        self.norAction.setShortcut("ctrl+[")
-        self.xorAction.setShortcut("ctrl+x")
-        self.xnorAction.setShortcut("ctrl+z")
-
-        self.addToCompareListAction.setShortcut("Ctrl+B")
+        self.addToCompareListAction.setShortcut("Ctrl++")
 
         "Construction Shapes Actions"
-        self.constructTAction.setShortcut("ctrl+T")
-        self.constructTriangleAction.setShortcut("ctrl+M")
 
         "Noises Actions"
-        self.addSaltPepperNoiseAction.setShortcut("ctrl+P")
 
         "View Actions"
-        self.showHistogramAction.setShortcut("ctrl+H")
-        self.showFourierAction.setShortcut("ctrl+F")
 
         "HelpActions"
-        self.helpContentAction.setShortcut("alt+H")
-        self.checkUpdatesAction.setShortcut("alt+Z")
-        self.aboutAction.setShortcut("alt+X") 
 
     ##########################################
     
@@ -525,12 +529,45 @@ class MainWindow(QMainWindow):
         """Filter"""
         filterMenu = QMenu("&Filter", self)
         filterMenu.addAction(self.unsharpMaskAction)
-        filterMenu.addAction(self.boxFilteringAction)
-        filterMenu.addAction(self.gaussianFilteringAction)
-        filterMenu.addAction(self.idealLowPassFilteringAction)
-        filterMenu.addAction(self.medianFilterAction)
-        filterMenu.addAction(self.bandRejectFilterAction) 
-
+        fileMenu.addSeparator()
+        
+        ### Spatial filters ###
+        spatialMenu = QMenu("&Spatial Filters", self)
+        ## Low pass filters ##
+        spatialLpfMenu = QMenu("&Low Pass Filters", self)
+        spatialLpfMenu.addAction(self.spatialBoxLpfAction)
+        spatialLpfMenu.addAction(self.spatialGaussianLpfAction)
+        spatialMenu.addMenu(spatialLpfMenu)
+        ## High pass filters ##
+        spatialHpfMenu = QMenu("&High Pass Filters", self)
+        spatialHpfMenu.addAction(self.spatialGradientHpfAction)
+        spatialHpfMenu.addAction(self.spatialLaplacianHpfAction)
+        spatialMenu.addMenu(spatialHpfMenu)
+        spatialMenu.addAction(self.bandRejectFilterAction)
+        spatialMenu.addSeparator()
+        spatialMenu.addAction(self.orderStatisticFilterAction)
+        
+        ### Frequency filters ###
+        frequencyMenu = QMenu("&Frequency Filters", self)
+        ## Low pass filters ##
+        frequencyLpfMenu = QMenu("&Low Pass Filters", self)
+        frequencyLpfMenu.addAction(self.frequencyIdealLpfAction)
+        frequencyLpfMenu.addAction(self.frequencyGaussianLpfAction)
+        frequencyLpfMenu.addAction(self.frequencyButterworthLpfAction)
+        frequencyMenu.addMenu(frequencyLpfMenu)
+        ## High pass filters ##
+        frequencyHpfMenu = QMenu("&High Pass Filters", self)
+        frequencyHpfMenu.addAction(self.frequencyIdealHpfAction)
+        frequencyHpfMenu.addAction(self.frequencyGaussianHpfAction)
+        frequencyHpfMenu.addAction(self.frequencyButterworthHpfAction)
+        frequencyHpfMenu.addAction(self.frequencyLaplacianHpfAction)
+        frequencyMenu.addMenu(frequencyHpfMenu)
+        frequencyMenu.addSeparator()
+        frequencyMenu.addAction(self.homomorphicFilterAction)
+        
+        filterMenu.addMenu(spatialMenu)
+        filterMenu.addMenu(frequencyMenu)
+        
         """Shape"""
         shapeMenu = QMenu("&Shape", self)
         shapeMenu.addAction(self.constructTAction)
@@ -776,12 +813,30 @@ class MainWindow(QMainWindow):
         self.constructPhantomAction.triggered.connect(lambda: self.baseBehavior(self.drawShape,"phantom"))
         
         " Filters "
+        ## Spatial filters ##
+        # Low pass filters #
+        self.spatialBoxLpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialBoxLpf))
+        self.spatialGaussianLpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialGaussianLpf))
+        # High pass filters #
+        self.spatialGradientHpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialLaplacianHpf)) # TODO:EDIT TO GRADIENT
+        self.spatialLaplacianHpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialLaplacianHpf))
+
+        ## Frequency filters ##
+        # Low pass filters #
+        self.frequencyIdealLpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyIdealLpf))
+        self.frequencyGaussianLpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyGaussianLpf))
+        self.frequencyButterworthLpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyButterworthLpf))
+        # High pass filters #
+        self.frequencyIdealHpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyIdealHpf))
+        self.frequencyGaussianHpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyGaussianHpf))
+        self.frequencyButterworthHpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyButterworthHpf))
+        self.frequencyLaplacianHpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyLaplacianHpf))
+        # Band pass filter #
+        self.bandRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyBandRejectFilter))
+
         self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
-        self.medianFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMedian))
-        self.boxFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyBoxFilter))
-        self.gaussianFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyGaussianFilter))
-        self.idealLowPassFilteringAction.triggered.connect(lambda: self.baseBehavior(self.applyIdealLowPassFilter))
-        self.bandRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.bandRejectFilter))
+        self.orderStatisticFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyOrderStatisticFilter))
+        self.homomorphicFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyHomomorphicFilter))
         
         " Noise "
         self.addUniformNoiseAction.triggered.connect(lambda: self.baseBehavior(self.addNoise, "uniform"))
@@ -1037,12 +1092,14 @@ class MainWindow(QMainWindow):
     #       """Filters Functions"""          #
     ##########################################
     
-    # Apply box filter
-    def applyBoxFilter(self):
+    ### Spatial Filters ###
+    
+    # Apply spatial box filter
+    def applySpatialBoxLpf(self):
         requirements = {
             "Domain":{
                 "type": RADIO,
-                "options": ["spatial","frequency"]
+                "options": DOMAINS
             },
             "Kernel size":{
                 "type": INT,
@@ -1052,7 +1109,7 @@ class MainWindow(QMainWindow):
 
         output = self.getInputsFromUser(requirements, "Blur Image")
         if output != None:
-            domain = output[0]
+            domain = DOMAINS[output[0]]
             filterSize = output[1]
         else:
             return
@@ -1060,21 +1117,12 @@ class MainWindow(QMainWindow):
         if filterSize > 0:
             if filterSize % 2 == 0:
                 filterSize += 1
-
-            if domain == 1:
-                domain = "frequency"
-            else:
-                domain = "spatial"
-                
+               
             self.currentTab.primaryViewer.boxFiltering(filterSize, domain)
 
-    # Apply box filter
-    def applyGaussianFilter(self):
+    # Apply spatial gaussian filter
+    def applySpatialGaussianLpf(self):
         requirements = {
-            "Domain":{
-                "type": RADIO,
-                "options": ["spatial","frequency"]
-            },
             "Kernel size":{
                 "type": INT,
                 "range": (1, inf)
@@ -1087,25 +1135,24 @@ class MainWindow(QMainWindow):
 
         output = self.getInputsFromUser(requirements, "Blur Image")
         if output != None:
-            domain = output[0]
-            filterSize = output[1]
-            sigma = output[2]
+            filterSize = output[0]
+            sigma = output[1]
         else:
             return
 
-        if filterSize > 0:
-            if filterSize % 2 == 0:
-                filterSize += 1
+        if filterSize % 2 == 0:
+            filterSize += 1
+            
+        self.currentTab.primaryViewer.gaussianFiltering(sigma, filterSize)
 
-            if domain == 1:
-                domain = "frequency"
-            else:
-                domain = "spatial"
-                
-            self.currentTab.primaryViewer.gaussianFiltering(sigma, filterSize, domain)
+    # Apply spatial laplacian high pass filter
+    def applySpatialLaplacianHpf(self):           
+        self.currentTab.primaryViewer.laplacianFiltering("spatial")
+
+    ### Frequency Filters ###
     
-    # Apply ideal low pass filter
-    def applyIdealLowPassFilter(self):
+    # Apply frequency ideal low pass filter
+    def applyFrequencyIdealLpf(self):
         requirements = {
             "Diameter":{
                 "type": FLOAT,
@@ -1120,62 +1167,111 @@ class MainWindow(QMainWindow):
             return
 
         self.currentTab.primaryViewer.idealLowPassFilter(diameter)
-           
-    # Apply median masking
-    def applyMedian(self): 
+
+    # Apply frequency gaussian low pass filter
+    def applyFrequencyGaussianLpf(self):
         requirements = {
-            "Kernel size":{
-                "type": INT,
-                "range": (1, inf)
-            },
-            "Percent":{
+            "Diameter":{
                 "type": FLOAT,
-                "range": (0, 100)
+                "range": (0.1, inf)
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Order Statistic Filter")
+        output = self.getInputsFromUser(requirements, "Gaussian Low Pass Filter")
         if output != None:
-            filterSize = output[0]
-            percent = output[1]
+            diameter = output[0]
         else:
             return
 
+        self.currentTab.primaryViewer.gaussianLowPassFilter(diameter)
 
-        if filterSize > 0:
-            if filterSize % 2 == 0:
-                filterSize += 1
-            
-            self.currentTab.primaryViewer.OrderStatisticFilter(filterSize, percent)               
-            
-    # Apply un-sharp masking
-    def applyUnsharp(self):
-
+    # Apply frequency butterworth low pass filter
+    def applyFrequencyButterworthLpf(self):
         requirements = {
-            "Kernel size":{
-                "type": INT,
-                "range": (1, inf)
-            },
-            "HighBoost Factor":{
+            "Diameter":{
                 "type": FLOAT,
-                "range": (0, inf)
+                "range": (0.1, inf)
+            },
+            "Order":{
+                "type": FLOAT,
+                "range": (-inf, inf)
+            }
+
+        }
+
+        output = self.getInputsFromUser(requirements, "Butterworth Low Pass Filter")
+        if output != None:
+            diameter = output[0]
+            n = output[1]
+        else:
+            return
+
+        self.currentTab.primaryViewer.butterworthLowPassFilter(diameter, n)
+
+    # Apply frequency ideal high pass filter
+    def applyFrequencyIdealHpf(self):
+        requirements = {
+            "Diameter":{
+                "type": FLOAT,
+                "range": (0.1, inf)
             }
         }
 
-        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        output = self.getInputsFromUser(requirements, "Ideal High Pass Filter")
         if output != None:
-            filterSize = output[0]
-            factorSize = output[1]
+            diameter = output[0]
         else:
             return
 
-        if filterSize % 2 == 0:
-            filterSize += 1
+        self.currentTab.primaryViewer.idealHighPassFilter(diameter)
 
-        self.currentTab.primaryViewer.unsharpMask(filterSize,factorSize)
-                    
+    # Apply frequency gaussian high pass filter
+    def applyFrequencyGaussianHpf(self):
+        requirements = {
+            "Diameter":{
+                "type": FLOAT,
+                "range": (0.1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Gaussian High Pass Filter")
+        if output != None:
+            diameter = output[0]
+        else:
+            return
+
+        self.currentTab.primaryViewer.gaussianHighPassFilter(diameter)
+
+    # Apply frequency butterworth high pass filter
+    def applyFrequencyButterworthHpf(self):
+        requirements = {
+            "Diameter":{
+                "type": FLOAT,
+                "range": (0.1, inf)
+            },
+            "Order":{
+                "type": FLOAT,
+                "range": (-inf, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Butterworth High Pass Filter")
+        if output != None:
+            diameter = output[0]
+            n = output[1]
+        else:
+            return
+
+        self.currentTab.primaryViewer.butterworthHighPassFilter(diameter, n)
+    
+    # Apply frequency laplacian high pass filter
+    def applyFrequencyLaplacianHpf(self):           
+        self.currentTab.primaryViewer.laplacianFiltering("frequency")
+
+    ### Band Pass Filters ###
+    
     # Apply band reject filter
-    def bandRejectFilter(self):
+    def applyBandRejectFilter(self):
         image = self.currentTab.primaryViewer.getGrayImage()
 
         if len(image) != 0:
@@ -1211,7 +1307,105 @@ class MainWindow(QMainWindow):
             plt.close()
 
             self.currentTab.primaryViewer.bandRejectFilter(spectrum, points, frequency)
+
+    ### Order Statistic Filters ###
+    
+    # Apply order statistic filter masking
+    def applyOrderStatisticFilter(self): 
+        requirements = {
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            },
+            "Percent":{
+                "type": FLOAT,
+                "range": (0, 100)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Order Statistic Filter")
+        if output != None:
+            filterSize = output[0]
+            percent = output[1]
+        else:
+            return
+
+
+        if filterSize > 0:
+            if filterSize % 2 == 0:
+                filterSize += 1
             
+            self.currentTab.primaryViewer.OrderStatisticFilter(filterSize, percent)               
+    
+    ### Other Filters ###
+                
+    # Apply un-sharp masking
+    def applyUnsharp(self):        
+        requirements = {
+            "Domain":{
+                "type": RADIO,
+                "options": DOMAINS,
+            },
+            "Filter Type":{
+                "type": RADIO,
+                "options": FILTER_TYPES,
+            },
+            "Kernel size/Diameter":{
+                "type": INT,
+                "range": (1, inf)
+            },
+            "HighBoost Factor":{
+                "type": FLOAT,
+                "range": (0, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        if output != None:
+            domain = DOMAINS[output[0]]
+            filterType = FILTER_TYPES[output[1]]
+            filterSize = output[2]
+            factorSize = output[3]
+        else:
+            return
+
+        if filterSize % 2 == 0 and domain == "Spatial":
+            filterSize += 1
+
+        self.currentTab.primaryViewer.unsharpMask(filterSize, factorSize, domain, filterType)
+    
+    # Apply Homomorphic Filter
+    def applyHomomorphicFilter(self):
+        requirements = {
+            "Diameter":{
+                "type": FLOAT,
+                "range": (1, inf)
+            },
+            "Constant C":{
+                "type": INT,
+                "range": (1, inf)
+            },
+            "Gamma Low":{
+                "type": FLOAT,
+                "range": (0, inf)
+            },
+            "Gamma High":{
+                "type": FLOAT,
+                "range": (0, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Unsharp Filter")
+        if output != None:
+            d = output[0]
+            c = output[1]
+            gammaLow = output[2]
+            gammaHigh = output[3]
+        else:
+            return
+
+        self.currentTab.primaryViewer.homomorphicFilter(d, c, gammaLow, gammaHigh)
+             
     ##########################################
     #     """Transformations Functions"""    #
     ##########################################
