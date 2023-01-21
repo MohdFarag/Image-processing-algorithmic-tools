@@ -208,13 +208,18 @@ class MainWindow(QMainWindow):
         self.frequencyLaplacianHpfAction.setStatusTip('Apply Laplacian filter on image')
 
         ## Band filters ##
-        # Band reject filter
-        self.bandRejectFilterAction = QAction("&Band Reject", self)
-        self.bandRejectFilterAction.setStatusTip('Apply band reject filter on image')
+        # Notch reject filter
+        self.notchRejectFilterAction = QAction("&Notch Reject", self)
+        self.notchRejectFilterAction.setStatusTip('Apply notch reject filter on image')
         
-        # Order Statistic filter
-        self.orderStatisticFilterAction = QAction("&Order Statistic", self)
-        self.orderStatisticFilterAction.setStatusTip('Apply Order Statistic filter on image')
+        ## Order Statistic filter ##
+        # Percentile filter [Min, Max, Median]
+        self.percentilesFilterAction = QAction("&Percentiles", self)
+        self.percentilesFilterAction.setStatusTip('Apply Percentiles filter on image')
+
+        # Percentile filter [Min, Max, Median]
+        self.midpointFilterAction = QAction("&Midpoint", self)
+        self.midpointFilterAction.setStatusTip('Apply midpoint filter on image')
 
         # Homomorphic Filter Action
         self.homomorphicFilterAction = QAction("&Homomorphic", self)
@@ -528,24 +533,25 @@ class MainWindow(QMainWindow):
 
         """Filter"""
         filterMenu = QMenu("&Filter", self)
-        filterMenu.addAction(self.unsharpMaskAction)
-        fileMenu.addSeparator()
         
         ### Spatial filters ###
         spatialMenu = QMenu("&Spatial Filters", self)
         ## Low pass filters ##
-        spatialLpfMenu = QMenu("&Low Pass Filters", self)
+        spatialLpfMenu = QMenu("&Blurring Filters", self)
         spatialLpfMenu.addAction(self.spatialBoxLpfAction)
         spatialLpfMenu.addAction(self.spatialGaussianLpfAction)
         spatialMenu.addMenu(spatialLpfMenu)
         ## High pass filters ##
-        spatialHpfMenu = QMenu("&High Pass Filters", self)
+        spatialHpfMenu = QMenu("&Sharpening Filters", self)
         spatialHpfMenu.addAction(self.spatialGradientHpfAction)
         spatialHpfMenu.addAction(self.spatialLaplacianHpfAction)
         spatialMenu.addMenu(spatialHpfMenu)
-        spatialMenu.addAction(self.bandRejectFilterAction)
         spatialMenu.addSeparator()
-        spatialMenu.addAction(self.orderStatisticFilterAction)
+        ## Order statistics filters ##
+        spatialOsfMenu = QMenu("&Order Statistics Filters", self)
+        spatialOsfMenu.addAction(self.percentilesFilterAction)
+        spatialOsfMenu.addAction(self.midpointFilterAction)
+        spatialMenu.addMenu(spatialOsfMenu)
         
         ### Frequency filters ###
         frequencyMenu = QMenu("&Frequency Filters", self)
@@ -562,11 +568,16 @@ class MainWindow(QMainWindow):
         frequencyHpfMenu.addAction(self.frequencyButterworthHpfAction)
         frequencyHpfMenu.addAction(self.frequencyLaplacianHpfAction)
         frequencyMenu.addMenu(frequencyHpfMenu)
+        ## Notch pass filters ##
+        frequencyMenu.addAction(self.notchRejectFilterAction)
         frequencyMenu.addSeparator()
         frequencyMenu.addAction(self.homomorphicFilterAction)
         
         filterMenu.addMenu(spatialMenu)
         filterMenu.addMenu(frequencyMenu)
+        fileMenu.addSeparator()
+        filterMenu.addAction(self.unsharpMaskAction)
+
         
         """Shape"""
         shapeMenu = QMenu("&Shape", self)
@@ -614,8 +625,8 @@ class MainWindow(QMainWindow):
         menuBar.addMenu(imageMenu)
         menuBar.addMenu(transformationMenu)
         menuBar.addMenu(operationMenu)
-        menuBar.addMenu(filterMenu)
         menuBar.addMenu(shapeMenu)
+        menuBar.addMenu(filterMenu)
         menuBar.addMenu(noiseMenu)
         menuBar.addMenu(morphologicalMenu)
         menuBar.addMenu(viewMenu)
@@ -818,7 +829,7 @@ class MainWindow(QMainWindow):
         self.spatialBoxLpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialBoxLpf))
         self.spatialGaussianLpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialGaussianLpf))
         # High pass filters #
-        self.spatialGradientHpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialLaplacianHpf)) # TODO:EDIT TO GRADIENT
+        self.spatialGradientHpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialGradientHpf)) 
         self.spatialLaplacianHpfAction.triggered.connect(lambda: self.baseBehavior(self.applySpatialLaplacianHpf))
 
         ## Frequency filters ##
@@ -832,10 +843,11 @@ class MainWindow(QMainWindow):
         self.frequencyButterworthHpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyButterworthHpf))
         self.frequencyLaplacianHpfAction.triggered.connect(lambda: self.baseBehavior(self.applyFrequencyLaplacianHpf))
         # Band pass filter #
-        self.bandRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyBandRejectFilter))
+        self.notchRejectFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyNotchRejectFilter))
 
         self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
-        self.orderStatisticFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyOrderStatisticFilter))
+        self.percentilesFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyPercentileFilter))
+        self.midpointFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMidpointFilter))
         self.homomorphicFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyHomomorphicFilter))
         
         " Noise "
@@ -1145,6 +1157,11 @@ class MainWindow(QMainWindow):
             
         self.currentTab.primaryViewer.gaussianFiltering(sigma, filterSize)
 
+    # Apply spatial gradient high pass filter
+    # TODO:EDIT TO GRADIENT
+    def applySpatialGradientHpf(self):           
+        pass
+    
     # Apply spatial laplacian high pass filter
     def applySpatialLaplacianHpf(self):           
         self.currentTab.primaryViewer.laplacianFiltering("spatial")
@@ -1270,8 +1287,8 @@ class MainWindow(QMainWindow):
 
     ### Band Pass Filters ###
     
-    # Apply band reject filter
-    def applyBandRejectFilter(self):
+    # Apply notch reject filter
+    def applyNotchRejectFilter(self):
         image = self.currentTab.primaryViewer.getGrayImage()
 
         if len(image) != 0:
@@ -1286,7 +1303,7 @@ class MainWindow(QMainWindow):
                 }
             }
 
-            output = self.getInputsFromUser(requirements, "Band Reject Filter")
+            output = self.getInputsFromUser(requirements, "Notch Reject Filter")
             if output != None:
                 n = output[0]
                 frequency = output[1]
@@ -1306,12 +1323,12 @@ class MainWindow(QMainWindow):
             points = np.asarray(plt.ginput(n, timeout = -1))
             plt.close()
 
-            self.currentTab.primaryViewer.bandRejectFilter(spectrum, points, frequency)
+            self.currentTab.primaryViewer.notchRejectFilter(spectrum, points, frequency)
 
     ### Order Statistic Filters ###
     
     # Apply order statistic filter masking
-    def applyOrderStatisticFilter(self): 
+    def applyPercentileFilter(self): 
         requirements = {
             "Kernel size":{
                 "type": INT,
@@ -1335,7 +1352,29 @@ class MainWindow(QMainWindow):
             if filterSize % 2 == 0:
                 filterSize += 1
             
-            self.currentTab.primaryViewer.OrderStatisticFilter(filterSize, percent)               
+            self.currentTab.primaryViewer.percentileFilter(filterSize, percent)               
+
+    # Apply midpoint filter masking
+    def applyMidpointFilter(self): 
+        requirements = {
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Midpoint Filter")
+        if output != None:
+            filterSize = output[0]
+        else:
+            return
+
+
+        if filterSize > 0:
+            if filterSize % 2 == 0:
+                filterSize += 1
+            
+            self.currentTab.primaryViewer.midPointFilter(filterSize)
     
     ### Other Filters ###
                 

@@ -853,7 +853,7 @@ def laplacianFilter(domain='frequency', shape=(3,3), enhance=False):
                 else:
                     kernel[i][j] = 1 + 4 * pi**2 * ((i - centerRow)**2 + (j - centerCol)**2)
 
-        return kernel
+    return kernel
 
 # Ideal high pass filter
 def idealHighPassFilter(shape, d0=9):
@@ -954,8 +954,8 @@ def homomorphicFilter(shape, d0=9, c=1, gammaLow=0.5, gammaHigh=1.5):
                 
     return kernel
            
-# Order statistics filter (medians & max & min)
-def orderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
+# Percentile filter (medians & max & min)
+def percentileFilter(image:np.ndarray, kernelSize:int, percent):
     paddingSize = kernelSize // 2
     paddedImage = addPadding(image, paddingSize)
 
@@ -972,8 +972,29 @@ def orderStatisticFilter(image:np.ndarray, kernelSize:int, percent):
 
     return np.array(resultImage)
 
-# Band reject filter
-def bandRejectFilter(image:np.ndarray, magnitudeSpectrum, points, d0=9):
+# Midpoint filter
+def midPointFilter(image:np.ndarray, kernelSize:int):
+    paddingSize = kernelSize // 2
+    paddedImage = addPadding(image, paddingSize)
+
+    resultImage = []
+    for i in range(image.shape[0]):
+        endpointVertical = i + kernelSize
+        
+        rowArray = []
+        for j in range(image.shape[1]):
+            endPointHorizontal = j + kernelSize
+            temp = paddedImage[i:endpointVertical,j:endPointHorizontal]
+            maxValue = np.max(temp)
+            minValue = np.min(temp)
+            rowArray.append((1/2)*(maxValue + minValue))
+
+        resultImage.append(rowArray)
+        
+    return np.array(resultImage)
+
+# Notch reject filter
+def notchRejectFilter(image:np.ndarray, magnitudeSpectrum, points, d0=9):
     if len(image) != 0:
         n = magnitudeSpectrum.shape[0]
         m = magnitudeSpectrum.shape[1]

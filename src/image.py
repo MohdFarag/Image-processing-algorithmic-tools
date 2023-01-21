@@ -405,12 +405,18 @@ class ImageViewer(FigureCanvasQTAgg):
     ###############################################
 
     # Order statistic mask
-    def OrderStatisticFilter(self, size, percent):
+    def percentileFilter(self, size, percent):
         if len(self.grayImage) != 0:
-            self.grayImage = orderStatisticFilter(self.grayImage, size, percent)
+            self.grayImage = percentileFilter(self.grayImage, size, percent)
             # Draw image
             self.drawImage(self.grayImage)
 
+    def midPointFilter(self, size):
+        if len(self.grayImage) != 0:
+            self.grayImage = midPointFilter(self.grayImage, size)
+            # Draw image
+            self.drawImage(self.grayImage)
+    
     # Perform un-sharp masking
     def unsharpMask(self, size, k, domain="spatial", filterType="lowpass"):
         if len(self.grayImage) != 0:
@@ -518,10 +524,10 @@ class ImageViewer(FigureCanvasQTAgg):
     
     ### Band pass filters ###
     
-    # Band reject filter
-    def bandRejectFilter(self, magnitudeSpectrum, points, d0=9):
+    # Notch reject filter
+    def notchRejectFilter(self, magnitudeSpectrum, points, d0=9):
         if len(self.grayImage) != 0:       
-            resultImage = bandRejectFilter(self.grayImage,magnitudeSpectrum,points,d0)
+            resultImage = notchRejectFilter(self.grayImage,magnitudeSpectrum,points,d0)
 
             # Draw image
             self.drawImage(resultImage)
