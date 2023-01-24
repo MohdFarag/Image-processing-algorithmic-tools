@@ -1,7 +1,7 @@
 """Image Processing Algorithmic tools
 
 Author: Mohamed Ahmed Abdullah
-Version: V3
+Version: V4
 
 This module provides the entry-point script.
 """

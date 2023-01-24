@@ -1180,16 +1180,12 @@ class MainWindow(QMainWindow):
             }
         }
         
-        print("yyx")
-
         output = self.getInputsFromUser(requirements, "Gradient High Pass Filter")
         if output != None:
             gradientType = gradients[output[0]]
             show = SPECTRUMS[output[1]]
         else:
             return
-        
-        print("Xxx")
 
         self.currentTab.primaryViewer.gradientFiltering(gradientType,show)
 
