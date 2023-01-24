@@ -411,12 +411,20 @@ class ImageViewer(FigureCanvasQTAgg):
             # Draw image
             self.drawImage(self.grayImage)
 
+    # Midpoint filter
     def midPointFilter(self, size):
         if len(self.grayImage) != 0:
             self.grayImage = midPointFilter(self.grayImage, size)
             # Draw image
             self.drawImage(self.grayImage)
     
+    # Alpha Trimmed Mean Filter
+    def alphaTrimmedMeanFilter(self, size, alpha):
+        if len(self.grayImage) != 0:
+            self.grayImage = alphaTrimmedMeanFilter(self.grayImage, size, alpha)
+            # Draw image
+            self.drawImage(self.grayImage)
+            
     # Perform un-sharp masking
     def unsharpMask(self, size, k, domain="spatial", filterType="lowpass"):
         if len(self.grayImage) != 0:
@@ -424,7 +432,7 @@ class ImageViewer(FigureCanvasQTAgg):
             # Draw image
             self.drawImage(self.grayImage)
 
-
+    # Perform homomorphic filtering
     def homomorphicFilter(self, d0, c, gammaL, gammaH):
         if len(self.grayImage) != 0:
             kernel = homomorphicFilter(self.grayImage.shape, d0, c, gammaL, gammaH)
@@ -492,6 +500,30 @@ class ImageViewer(FigureCanvasQTAgg):
                 kernel = laplacianFilter(domain='spatial', shape=(size,size))
                 self.grayImage = applySpatialFilter(self.grayImage, kernel)
             
+            # Draw image
+            self.drawImage(self.grayImage)
+
+    # Perform Laplacian filter
+    def gradientFiltering(self, operator="sobel", part="magnitude"):
+        if len(self.grayImage) != 0:
+            dxKernel = gradientFilter(operator=operator, d="x")
+            dyKernel = gradientFilter(operator=operator, d="y")
+
+            xImage = applySpatialFilter(self.grayImage, dxKernel)
+            yImage = applySpatialFilter(self.grayImage, dyKernel)
+            
+            if part == "magnitude":
+                self.grayImage = np.sqrt(xImage**2 + yImage**2)
+            elif part == "phase":
+                self.grayImage = np.arctan2(yImage, xImage)
+            elif part == "dx":
+                self.grayImage = xImage
+            elif part == "dy":
+                self.grayImage = yImage
+            else:
+                print("Invalid part")
+                self.grayImage = np.zeros(self.grayImage.shape)
+                
             # Draw image
             self.drawImage(self.grayImage)
 

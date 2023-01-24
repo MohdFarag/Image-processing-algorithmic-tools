@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
 
         # Spatial Gradient filter
         self.spatialGradientHpfAction = QAction("&Gradient", self)
-        self.spatialGradientHpfAction.setStatusTip('Apply Laplacian filter on image')
+        self.spatialGradientHpfAction.setStatusTip('Apply Gradient filter on image')
 
         # Spatial Laplacian filter
         self.spatialLaplacianHpfAction = QAction("&Laplacian", self)
@@ -217,9 +217,13 @@ class MainWindow(QMainWindow):
         self.percentilesFilterAction = QAction("&Percentiles", self)
         self.percentilesFilterAction.setStatusTip('Apply Percentiles filter on image')
 
-        # Percentile filter [Min, Max, Median]
+        # Midpoint filter
         self.midpointFilterAction = QAction("&Midpoint", self)
         self.midpointFilterAction.setStatusTip('Apply midpoint filter on image')
+        
+        # Alpha trimmed mean filter
+        self.alphaTrimmedMeanFilterAction = QAction("&Alpha Trimmed Mean", self)
+        self.alphaTrimmedMeanFilterAction.setStatusTip('Apply alpha trimmed mean filter on image')
 
         # Homomorphic Filter Action
         self.homomorphicFilterAction = QAction("&Homomorphic", self)
@@ -551,6 +555,8 @@ class MainWindow(QMainWindow):
         spatialOsfMenu = QMenu("&Order Statistics Filters", self)
         spatialOsfMenu.addAction(self.percentilesFilterAction)
         spatialOsfMenu.addAction(self.midpointFilterAction)
+        spatialOsfMenu.addAction(self.alphaTrimmedMeanFilterAction)
+
         spatialMenu.addMenu(spatialOsfMenu)
         
         ### Frequency filters ###
@@ -578,7 +584,6 @@ class MainWindow(QMainWindow):
         fileMenu.addSeparator()
         filterMenu.addAction(self.unsharpMaskAction)
 
-        
         """Shape"""
         shapeMenu = QMenu("&Shape", self)
         shapeMenu.addAction(self.constructTAction)
@@ -848,6 +853,7 @@ class MainWindow(QMainWindow):
         self.unsharpMaskAction.triggered.connect(lambda: self.baseBehavior(self.applyUnsharp))
         self.percentilesFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyPercentileFilter))
         self.midpointFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyMidpointFilter))
+        self.alphaTrimmedMeanFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyAlphaTrimmedMeanFilter))
         self.homomorphicFilterAction.triggered.connect(lambda: self.baseBehavior(self.applyHomomorphicFilter))
         
         " Noise "
@@ -1159,9 +1165,34 @@ class MainWindow(QMainWindow):
 
     # Apply spatial gradient high pass filter
     # TODO:EDIT TO GRADIENT
-    def applySpatialGradientHpf(self):           
-        pass
-    
+    def applySpatialGradientHpf(self):    
+        gradients = ["sobel","prewitt","roberts"] 
+        SPECTRUMS = ["magnitude","phase","dx","dy"]
+        
+        requirements = {
+            "Gradient Type":{
+                "type": RADIO,
+                "options": gradients
+            },
+            "Show":{
+                "type": RADIO,
+                "options": SPECTRUMS
+            }
+        }
+        
+        print("yyx")
+
+        output = self.getInputsFromUser(requirements, "Gradient High Pass Filter")
+        if output != None:
+            gradientType = gradients[output[0]]
+            show = SPECTRUMS[output[1]]
+        else:
+            return
+        
+        print("Xxx")
+
+        self.currentTab.primaryViewer.gradientFiltering(gradientType,show)
+
     # Apply spatial laplacian high pass filter
     def applySpatialLaplacianHpf(self):           
         self.currentTab.primaryViewer.laplacianFiltering("spatial")
@@ -1376,10 +1407,36 @@ class MainWindow(QMainWindow):
             
             self.currentTab.primaryViewer.midPointFilter(filterSize)
     
+    # Apply Alpha trimmed mean filter masking
+    def applyAlphaTrimmedMeanFilter(self): 
+        requirements = {
+            "Kernel size":{
+                "type": INT,
+                "range": (1, inf)
+            },
+            "Alpha":{
+                "type": INT,
+                "range": (0, inf)
+            }
+        }
+
+        output = self.getInputsFromUser(requirements, "Alpha Trimmed Mean Filter")
+        if output != None:
+            filterSize = output[0]
+            alpha = output[1]
+        else:
+            return
+
+
+        if filterSize % 2 == 0:
+            filterSize += 1
+        
+        self.currentTab.primaryViewer.alphaTrimmedMeanFilter(filterSize, alpha)
+    
     ### Other Filters ###
                 
     # Apply un-sharp masking
-    def applyUnsharp(self):        
+    def applyUnsharp(self):
         requirements = {
             "Domain":{
                 "type": RADIO,

@@ -16,6 +16,7 @@ RADIO = "RADIO"
 # Options for radio buttons
 DOMAINS = ["spatial", "frequency"]
 FILTER_TYPES = ["lowpass", "highpass"]
+SPECTRUMS = ["magnitude", "phase"]
 
 # Get Data
 def getAttribute(variable, attribute):
@@ -48,7 +49,7 @@ def scaleImage(image:np.ndarray, mode="scale", a_min=0, a_max=255):
     resultImage = np.round(np.asarray(resultImage, np.int64))
     return resultImage
 
-# Distances
+# Get distance between two points
 def getDistance(p, q, mode="euclidean"):
     x, y = p
     u, v = q
@@ -56,9 +57,9 @@ def getDistance(p, q, mode="euclidean"):
     d = 0
     if mode == "euclidean":
         d = np.sqrt((x-u)**2 + (y-v)**2)
-    elif mode == "manhattan" or mode == "City block":
+    elif mode == "manhattan" or mode == "city block":
         d = np.abs(x-u) + np.abs(y-v)
-    elif mode == "Chessboard":
+    elif mode == "chessboard":
         d = max(np.abs(x-u), np.abs(y-v))
 
     return d
@@ -108,42 +109,84 @@ def LinearIndexing(image:np.ndarray):
             alpha = M * y + x
             result[alpha] = image[x,y]
     
-def sinusoidal(x, A, f, phi, c=0):
-    y = A * np.sin(2*pi*f * x + phi) + c
-    return y
 ###############################################
 # "Statistics"
 ###############################################
 
-def getMean(image):
-    return np.mean(image)
+# Get mean of image
+def getMean(image:np.ndarray) -> float:
+    """ Get mean of image
 
-def getMedian(image):
-    return np.median(image)
+    Args:
+        image (np.ndarray): image to get mean of
 
-def getVariance(image):
-    return np.var(image)
+    Returns:
+        float: mean of image
+    """
+    
+    # Flatten image
+    image = image.flatten()
+    # Get sum of all numbers in image
+    sumOfNumbers = image.sum()
+    # Get mean of image
+    mean = sumOfNumbers / (image.shape[0])
+    
+    return mean
+    
+# Get median of image
+def getMedian(image:np.ndarray) -> float:
+    """ Get median of image
+
+    Args:
+        image (np.ndarray): image to get median of
+
+    Returns:
+        float: median of image
+    """
+    
+    # Flatten image
+    image = image.flatten()
+    # Sort image
+    image.sort()
+    # Get median of image
+    median = image[len(image)//2]
+    
+    return median
+
+# Get variance of image
+def getVariance(image:np.ndarray) -> float:
+    """ Get variance of image
+
+    Args:
+        image (np.ndarray): image to get variance of
+
+    Returns:
+        float: variance of image
+    """
+    
+    # Flatten image
+    image = image.flatten()
+    # Get mean of image
+    mean = getMean(image)
+    # Get variance of image
+    variance = ((image - mean)**2).sum() / (image.shape[0])
+    
+    return variance
 
 ###############################################
 # "Calculus"
 ###############################################
 
-def derivative(image): 
-    rows = image.shape[0]
-    cols = image.shape[1]
-    
-    # Create a 2D array of zeros
-    kernel = np.zeros((rows, cols))
-      
-    # Apply the Gaussian filter
-    for i in range(rows):
-        for j in range(cols):
-            s = i-(cols//2)
-            t = j-(rows//2)
-            kernel[i, j] = 0
+# Get Sinusoidal function
+def sinusoidal(x, A, f, phi, c=0):
+    y = A * np.sin(2*pi*f * x + phi) + c
+    return y
 
-    return kernel
-    
+# Get Cosine function
+def cosine(x, A, f, phi, c=0):
+    y = A * np.cos(2*pi*f * x + phi) + c
+    return y
+
 ###############################################
 # "Set operations"
 ###############################################
@@ -186,7 +229,7 @@ def intersect2d(image1:np.ndarray, image2:np.ndarray):
 
     for i in range(row):
         for j in range(col):
-            resultImage[i,j] = abs(image1[i,j] - image2[i,j])
+            resultImage[i,j] = min(image1[i,j], image2[i,j])
 
     return resultImage
 
@@ -235,17 +278,44 @@ def logTransformation(image:np.ndarray):
     return result
 
 # Apply gamma correction on image
-def gammaCorrectionImage(image:np.ndarray, Y:float):
+def gammaCorrectionImage(image:np.ndarray, Y:float) -> np.ndarray:
+    """ Apply gamma correction on image
+
+    Args:
+        image (np.ndarray): input image
+        Y (float): gamma value
+
+    Returns:
+        ndarray: output image
+    """
+    
+    # Get max pixel value
     maxPixelValue = np.max(image)
+    # Get constant
     c = 255 / (maxPixelValue ** Y)
+    # Apply gamma correction
     s = c * image ** Y
+    
     return s
 
 ## "Piecewise-Linear Transformation Functions"
 
 # Process that expands the range of intensity
 # levels in an image.
-def contrastStretching(image:np.ndarray, r1, s1, r2, s2):
+def contrastStretching(image:np.ndarray, r1:int, s1:int, r2:int, s2:int) -> np.ndarray:
+    """ Process that expands the range of intensity levels in an image.
+
+    Args:
+        image (np.ndarray): input image
+        r1 (int): r1
+        s1 (int): s1
+        r2 (int): r2
+        s2 (int): s2
+
+    Returns:
+        np.ndarray: output image
+    """
+    
     # Get shape of image
     row, column = image.shape[0], image.shape[1]
 
@@ -266,7 +336,7 @@ def contrastStretching(image:np.ndarray, r1, s1, r2, s2):
 # Highlighting a specific range if intensities 
 # in an image often is of interest.
 # TODO: Test this function
-def intensityLevelSlicing(image:np.ndarray, A, B, mode="bw"):
+def intensityLevelSlicing(image:np.ndarray, A, B, mode="bw") -> np.ndarray:
     """
     Arguments:
         - image: image
@@ -315,7 +385,19 @@ def extractKBits(num, k, p):
         return (int(kBitSubStr,2))
     return 0
 
-def bitPlaneSlicing(image:np.ndarray, k, p):
+# Function to extract ‘k’ bits from a given ‘p’ in an image
+def bitPlaneSlicing(image:np.ndarray, k:int, p:int) -> np.ndarray:
+    """ Extract k bits from p position in image
+
+    Args:
+        image (np.ndarray): input image
+        k (int): bits to extract
+        p (int): position to extract
+
+    Returns:
+        np.ndarray: output image
+    """
+    
     row, column = image.shape[0], image.shape[1]
     resultImage = np.zeros((row,column))
     for i in range(row):
@@ -330,6 +412,8 @@ def bitPlaneSlicing(image:np.ndarray, k, p):
 
 # Scale image
 def scale(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
+    """ Scale image """
+    
     # Get size of original image
     oldWidth, oldHeight = image.shape[0], image.shape[1]
 
@@ -377,7 +461,7 @@ def scale(image:np.ndarray, scaleFactor:float, mode:str="nearest"):
 
 # Rotate image
 def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:str='same'):
-    '''
+    """
     This function rotates the image around its center by amount of degrees
     provided. The rotated image can be of the same size as the original image
     or it can show the full image.
@@ -393,7 +477,7 @@ def rotate(image:np.ndarray, angle:float, interpolation:str="nearest", option:st
                     It is default value for this variable.
                 'full': the rotated image will show the full rotation of original
                     image thus the size may be different than original.
-    '''
+    """
     
     # Converting degrees to radians
     angle = radians(-angle)
@@ -595,6 +679,8 @@ def radon(image:np.ndarray, angles:Union[int, list, tuple, np.ndarray]):
 
 # Build a Laminogram of the phantom from sinogram and thetas
 def iradon(sinogram, angles=range(180)):
+    """ Build a Laminogram of the phantom from sinogram and thetas """
+    
     # Initialize laminogram
     laminogram = np.zeros((sinogram.shape[1],sinogram.shape[1]))
     j = 0
@@ -855,6 +941,36 @@ def laplacianFilter(domain='frequency', shape=(3,3), enhance=False):
 
     return kernel
 
+# Gradient filter
+def gradientFilter(operator="sobel", d="x"):
+    if operator == "sobel":
+        if d == "x":
+            kernel = np.array([[-1,-2,-1],
+                                [0,0,0],
+                                [1,2,1]])
+        elif d == "y":
+            kernel = np.array([[-1,0,1],
+                                [-2,0,2],
+                                [-1,0,1]])
+    elif operator == "prewitt":
+        if d == "x":
+            kernel = np.array([[-1,-1,-1],
+                                [0,0,0],
+                                [1,1,1]])
+        elif d == "y":
+            kernel = np.array([[-1,0,1],
+                                [-1,0,1],
+                                [-1,0,1]])
+    elif operator == "roberts":
+        if d == "x":
+            kernel = np.array([[-1,0],
+                                [0 ,1]])
+        elif d == "y":
+            kernel = np.array([[0,-1],
+                                [1,0]])
+    
+    return kernel
+
 # Ideal high pass filter
 def idealHighPassFilter(shape, d0=9):
     """ Ideal high pass filter
@@ -974,6 +1090,16 @@ def percentileFilter(image:np.ndarray, kernelSize:int, percent):
 
 # Midpoint filter
 def midPointFilter(image:np.ndarray, kernelSize:int):
+    """ Midpoint filter
+
+    Args:
+        image (np.ndarray): input image
+        kernelSize (int): kernel size
+
+    Returns:
+        np.ndarray: output image
+    """
+    
     paddingSize = kernelSize // 2
     paddedImage = addPadding(image, paddingSize)
 
@@ -993,6 +1119,31 @@ def midPointFilter(image:np.ndarray, kernelSize:int):
         
     return np.array(resultImage)
 
+# Alpha trimmed mean filter
+def alphaTrimmedMeanFilter(image:np.ndarray, kernelSize:int, d=1):
+    paddingSize = kernelSize // 2
+    paddedImage = addPadding(image, paddingSize)
+
+    resultImage = []
+    for i in range(image.shape[0]):
+        endpointVertical = i + kernelSize
+        
+        rowArray = []
+        for j in range(image.shape[1]):
+            endPointHorizontal = j + kernelSize
+            # Get the array
+            temp = paddedImage[i:endpointVertical,j:endPointHorizontal]
+            # Sort the array
+            temp = np.sort(temp, axis=None)
+            # Remove d/2 elements from both sides
+            temp = temp[d//2:-d//2]
+            # Calculate the mean
+            rowArray.append(np.mean(temp))
+
+        resultImage.append(rowArray)
+        
+    return np.array(resultImage)
+    
 # Notch reject filter
 def notchRejectFilter(image:np.ndarray, magnitudeSpectrum, points, d0=9):
     if len(image) != 0:
@@ -1046,6 +1197,16 @@ def unsharpMask(image, size, k, domain='spatial', filterType='lowpass'):
 
 # Build histogram of the image
 def getHistogram(image:np.ndarray, bins=256):
+    """ Build histogram of the image
+
+    Args:
+        image (np.ndarray): input image
+        bins (int, optional): Defaults to 256.
+
+    Returns:
+        np.ndarray: histogram
+    """
+    
     # Calculate the histogram size
     bins = max(image.max(), bins) + 1
     
@@ -1181,14 +1342,47 @@ def closing(image:np.ndarray, SE=None):
 # Hit or miss transform
 def hitOrMissTransform(image:np.ndarray, B1:np.ndarray, B2:np.ndarray):
     AoB1 = erosion(image, B1)
-    AcoB2 = erosion(np.bitwise_not(image), B2)
-    AhmtB = np.bitwise_and(AoB1,AcoB2)
+    AcoB2 = erosion(complement2d(image), B2)
+    AhmtB = intersect2d(AoB1,AcoB2)
 
     return AhmtB
 
 # Boundary extraction
 def boundaryExtraction(image:np.ndarray, SE=None):
+    # If SE is not defined, use a 3x3 square structuring element
+    if SE is None:
+        SE = np.ones((3,3))
+        
     return image - erosion(image,SE)
+
+# Region filling
+def regionFilling(image:np.ndarray, startPoint, SE=None):
+    # If SE is not defined, use a 3x3 square structuring element
+    if SE is None:
+        SE = np.array([[0,1,0],
+                       [1,1,1],
+                       [0,1,0]])
+        
+    # Get the complement of the image
+    complementImage = complement2d(image)
+
+    # Initialize the result image
+    resultImage = np.zeros(image.shape)   
+    # Start with a point inside the region 
+    resultImage[startPoint[0]][startPoint[1]] = 1
+    
+    while True:
+        prevResultImage = resultImage.copy()
+        # Dilate the image repeatedly
+        resultImage = dilation(resultImage, SE)
+        # Intersect with the complement of the image
+        resultImage = intersect2d(resultImage, complementImage)
+        
+        # Stop when no more changes
+        if prevResultImage == resultImage:
+            break
+    
+    return resultImage
 
 # Multiplication Bitwise
 def morphologyMultBitWise(temp:np.ndarray,SE:np.ndarray, defaultValue=1):
