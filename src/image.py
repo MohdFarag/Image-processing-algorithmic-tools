@@ -52,7 +52,7 @@ class ImageViewer(FigureCanvasQTAgg):
             self.xlabel = "Intensity"
             self.ylabel = "Count"
             divider = make_axes_locatable(self.axes)
-            cax = divider.append_axes('bottom', size='6%', pad=0.55, add_to_figure=True)
+            cax = divider.append_axes('bottom', size='6%', pad=0.55)
 
             cmap = mpl.cm.gray
             norm = mpl.colors.Normalize(vmin=0, vmax=255)
@@ -729,11 +729,9 @@ class ImageViewer(FigureCanvasQTAgg):
     # inverse Fourier transform
     def morphologicalActions(self, option):
         if len(self.grayImage) != 0:
-            SE = np.array([[0,1,1,1,0],
-                          [1,1,1,1,1],
-                          [1,1,1,1,1],
-                          [1,1,1,1,1],
-                          [0,1,1,1,0]])
+            SE = np.array([[0, 1, 0], 
+                           [1, 1, 1], 
+                           [0, 1, 0]])
             image = binaryImage(self.grayImage)
             if option == 'erosion':
                 result = erosion(image, SE)
